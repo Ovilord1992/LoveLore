@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/settings_service.dart';
+import '../services/locale_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -86,6 +87,12 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (v) => settingsNotifier.setSfxVolume(v),
             ),
           ],
+
+          const SizedBox(height: 24),
+
+          // Язык
+          _SectionTitle('Язык'),
+          _LanguageTile(ref: ref),
 
           const SizedBox(height: 24),
 
@@ -282,6 +289,57 @@ class _InfoTile extends StatelessWidget {
                     style:
                         const TextStyle(fontSize: 12, color: Colors.white38)),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LanguageTile extends ConsumerWidget {
+  final WidgetRef ref;
+  const _LanguageTile({required this.ref});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16213E),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.language, color: Colors.white54, size: 20),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text('Язык / Language',
+                style: TextStyle(color: Colors.white)),
+          ),
+          SegmentedButton<AppLocale>(
+            segments: const [
+              ButtonSegment(value: AppLocale.ru, label: Text('🇷🇺 RU')),
+              ButtonSegment(value: AppLocale.en, label: Text('🇬🇧 EN')),
+            ],
+            selected: {locale},
+            onSelectionChanged: (selection) {
+              ref
+                  .read(localeProvider.notifier)
+                  .setLocale(selection.first);
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Color(0xFFE91E63);
+                }
+                return Colors.transparent;
+              }),
+              foregroundColor: WidgetStateProperty.all(Colors.white),
+              side: WidgetStateProperty.all(
+                  const BorderSide(color: Colors.white24)),
+            ),
           ),
         ],
       ),
