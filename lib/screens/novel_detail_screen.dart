@@ -188,41 +188,14 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                   // Кнопки
                   if (_checking)
                     const Center(child: CircularProgressIndicator())
-                  else if (!_isAvailableLocally && downloadState.status != DownloadStatus.completed)
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: downloadState.status == DownloadStatus.downloading
-                            ? null
-                            : () => ref.read(downloadStateProvider(novel.id).notifier).download(),
-                        icon: downloadState.status == DownloadStatus.downloading
-                            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(
-                                value: downloadState.progress > 0 ? downloadState.progress : null,
-                                strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.download),
-                        label: Text(
-                          downloadState.status == DownloadStatus.downloading
-                              ? 'Загрузка ${(downloadState.progress * 100).toInt()}%'
-                              : downloadState.status == DownloadStatus.error
-                                  ? 'Ошибка. Повторить'
-                                  : 'Скачать',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E88E5),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 4,
-                        ),
-                      ),
-                    )
                   else ...[
                     SizedBox(
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: () => _startGame(context, hasSave),
+                        onPressed: downloadState.status == DownloadStatus.downloading
+                            ? null
+                            : () => _handlePlay(context, hasSave),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE91E63),
                           foregroundColor: Colors.white,
@@ -231,11 +204,22 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                           ),
                           elevation: 4,
                         ),
-                        child: Text(
-                          hasSave ? 'Продолжить' : 'Начать историю',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w600),
-                        ),
+                        child: downloadState.status == DownloadStatus.downloading
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(width: 20, height: 20, child: CircularProgressIndicator(
+                                    value: downloadState.progress > 0 ? downloadState.progress : null,
+                                    strokeWidth: 2, color: Colors.white)),
+                                  const SizedBox(width: 12),
+                                  Text('Загрузка ${(downloadState.progress * 100).toInt()}%',
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                                ],
+                              )
+                            : Text(
+                                hasSave ? 'Продолжить' : 'Начать историю',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ),
 
@@ -268,6 +252,17 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _handlePlay(BuildContext context, bool hasSave) async {
+    if (!_isAvailableLocally) {
+      // Скачиваем и ждём завершения
+      await ref.read(downloadStateProvider(widget.novel.id).notifier).download();
+      final state = ref.read(downloadStateProvider(widget.novel.id));
+      if (state.status != DownloadStatus.completed) return;
+      setState(() => _isAvailableLocally = true);
+    }
+    if (context.mounted) _startGame(context, hasSave);
   }
 
   void _startGame(BuildContext context, bool hasSave) {
