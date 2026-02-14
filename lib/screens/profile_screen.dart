@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/user_profile_service.dart';
 import '../services/currency_service.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
 import 'gallery_screen.dart';
+import 'auth_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -169,6 +172,12 @@ class ProfileScreen extends ConsumerWidget {
                 },
               ),
             ),
+
+          const SizedBox(height: 24),
+
+          // Аккаунт
+          _SectionTitle('Аккаунт'),
+          _AccountSection(),
 
           const SizedBox(height: 40),
         ],
@@ -496,6 +505,151 @@ class _EmptyPlaceholder extends StatelessWidget {
             text,
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 13, color: Colors.white38),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authServiceProvider);
+
+    if (!authState.isLoggedIn) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16213E),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.cloud_off, color: Colors.white24, size: 32),
+            const SizedBox(height: 8),
+            const Text(
+              'Войдите, чтобы сохранять\nпрогресс на сервере',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white38, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AuthScreen()),
+                  );
+                },
+                icon: const Icon(Icons.login, size: 18),
+                label: const Text('Войти / Регистрация'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E8C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16213E),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cloud_done, color: Color(0xFF4CAF50), size: 24),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      authState.email ?? '',
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                    const Text(
+                      'Прогресс синхронизируется',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final syncService = ref.read(syncServiceProvider);
+                    await syncService.pushAll();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Данные синхронизированы ☁️')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.cloud_upload, size: 16),
+                  label: const Text('Синхронизировать'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white54,
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: const Color(0xFF16213E),
+                      title: const Text('Выйти?', style: TextStyle(color: Colors.white)),
+                      content: const Text(
+                        'Локальные данные останутся на устройстве.',
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Отмена', style: TextStyle(color: Colors.white54)),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Выйти', style: TextStyle(color: Colors.redAccent)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    ref.read(authServiceProvider.notifier).logout();
+                  }
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Выйти'),
+              ),
+            ],
           ),
         ],
       ),

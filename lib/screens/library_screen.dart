@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/novel_loader.dart';
+import '../services/auth_service.dart';
 import '../models/novel.dart';
 import '../widgets/novel_card.dart';
 import 'novel_detail_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
+import 'auth_screen.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authServiceProvider);
+
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -40,15 +44,29 @@ class LibraryScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Твои истории',
-                          style: TextStyle(fontSize: 16, color: Colors.white54),
+                        Text(
+                          authState.isLoggedIn
+                              ? 'Привет, ${authState.displayName ?? 'Читатель'}!'
+                              : 'Твои истории',
+                          style: const TextStyle(fontSize: 16, color: Colors.white54),
                         ),
                       ],
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (!authState.isLoggedIn)
+                          IconButton(
+                            icon: const Icon(Icons.login,
+                                color: Color(0xFFE91E8C)),
+                            tooltip: 'Войти',
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const AuthScreen()),
+                              );
+                            },
+                          ),
                         IconButton(
                           icon: const Icon(Icons.person_outline,
                               color: Colors.white38),
