@@ -22,7 +22,7 @@ class LibraryScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Navell',
+                      'Amoria',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,

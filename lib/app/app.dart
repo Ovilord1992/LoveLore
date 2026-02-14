@@ -8,7 +8,7 @@ class NavellApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Navell',
+      title: 'Amoria',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: const LibraryScreen(),
