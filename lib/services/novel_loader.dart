@@ -93,7 +93,12 @@ class NovelLoader {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final list = data['novels'] as List;
         for (final j in list) {
-          final meta = NovelMeta.fromJson(j as Map<String, dynamic>);
+          final map = Map<String, dynamic>.from(j as Map<String, dynamic>);
+          // Сервер отдаёт chaptersCount, модель ожидает totalChapters
+          if (map.containsKey('chaptersCount') && !map.containsKey('totalChapters')) {
+            map['totalChapters'] = map['chaptersCount'];
+          }
+          final meta = NovelMeta.fromJson(map);
           if (!novels.any((n) => n.id == meta.id)) {
             novels.add(meta);
           }
