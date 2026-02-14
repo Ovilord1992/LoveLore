@@ -2,17 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/novel.dart';
 import '../services/save_service.dart';
+import '../services/novel_loader.dart';
+import '../services/novel_api_service.dart';
 import 'game_screen.dart';
 
-class NovelDetailScreen extends ConsumerWidget {
+class NovelDetailScreen extends ConsumerStatefulWidget {
   final NovelMeta novel;
 
   const NovelDetailScreen({super.key, required this.novel});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NovelDetailScreen> createState() => _NovelDetailScreenState();
+}
+
+class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
+  bool _isAvailableLocally = true;
+  bool _checking = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAvailability();
+  }
+
+  Future<void> _checkAvailability() async {
+    final loader = ref.read(novelLoaderProvider);
+    // Проверяем: есть ли файлы локально (assets или скачанные)
+    try {
+      await loader.loadNovelMeta(widget.novel.id);
+      setState(() { _isAvailableLocally = true; _checking = false; });
+    } catch (_) {
+      setState(() { _isAvailableLocally = false; _checking = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final saveService = ref.read(saveServiceProvider);
-    final hasSave = saveService.hasSave(novel.id);
+    final hasSave = saveService.hasSave(widget.novel.id);
+    final novel = widget.novel;
+    final downloadState = ref.watch(downloadStateProvider(novel.id));
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
@@ -157,45 +186,78 @@ class NovelDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 32),
 
                   // Кнопки
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: () => _startGame(context, hasSave),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE91E63),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 4,
-                      ),
-                      child: Text(
-                        hasSave ? 'Продолжить' : 'Начать историю',
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-
-                  if (hasSave) ...[
-                    const SizedBox(height: 12),
+                  if (_checking)
+                    const Center(child: CircularProgressIndicator())
+                  else if (!_isAvailableLocally && downloadState.status != DownloadStatus.completed)
                     SizedBox(
                       width: double.infinity,
-                      height: 48,
-                      child: OutlinedButton(
-                        onPressed: () => _startNewGame(context, ref),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white60,
-                          side: const BorderSide(color: Colors.white24),
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: downloadState.status == DownloadStatus.downloading
+                            ? null
+                            : () => ref.read(downloadStateProvider(novel.id).notifier).download(),
+                        icon: downloadState.status == DownloadStatus.downloading
+                            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(
+                                value: downloadState.progress > 0 ? downloadState.progress : null,
+                                strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.download),
+                        label: Text(
+                          downloadState.status == DownloadStatus.downloading
+                              ? 'Загрузка ${(downloadState.progress * 100).toInt()}%'
+                              : downloadState.status == DownloadStatus.error
+                                  ? 'Ошибка. Повторить'
+                                  : 'Скачать',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E88E5),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 4,
+                        ),
+                      ),
+                    )
+                  else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => _startGame(context, hasSave),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE91E63),
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
+                          elevation: 4,
                         ),
-                        child: const Text('Начать заново',
-                            style: TextStyle(fontSize: 16)),
+                        child: Text(
+                          hasSave ? 'Продолжить' : 'Начать историю',
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
+
+                    if (hasSave) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton(
+                          onPressed: () => _startNewGame(context, ref),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white60,
+                            side: const BorderSide(color: Colors.white24),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text('Начать заново',
+                              style: TextStyle(fontSize: 16)),
+                        ),
+                      ),
+                    ],
                   ],
 
                   const SizedBox(height: 40),
@@ -211,7 +273,7 @@ class NovelDetailScreen extends ConsumerWidget {
   void _startGame(BuildContext context, bool hasSave) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => GameScreen(novelId: novel.id),
+        pageBuilder: (_, _, _) => GameScreen(novelId: widget.novel.id),
         transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -239,12 +301,12 @@ class NovelDetailScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () async {
-              await ref.read(saveServiceProvider).deleteSave(novel.id);
+              await ref.read(saveServiceProvider).deleteSave(widget.novel.id);
               if (ctx.mounted) Navigator.pop(ctx);
               if (context.mounted) {
                 Navigator.of(context).push(
                   PageRouteBuilder(
-                    pageBuilder: (_, _, _) => GameScreen(novelId: novel.id, forceNew: true),
+                    pageBuilder: (_, _, _) => GameScreen(novelId: widget.novel.id, forceNew: true),
                     transitionsBuilder: (_, animation, _, child) {
                       return FadeTransition(opacity: animation, child: child);
                     },

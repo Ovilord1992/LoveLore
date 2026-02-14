@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../models/models.dart';
+import 'api_config.dart';
 
 final novelLoaderProvider = Provider<NovelLoader>((ref) => NovelLoader());
 
@@ -77,6 +79,24 @@ class NovelLoader {
               }
             }
           } catch (_) {}
+        }
+      }
+    } catch (_) {}
+
+    // 3. Каталог с сервера (новеллы, которых нет локально)
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/novels'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final list = data['novels'] as List;
+        for (final j in list) {
+          final meta = NovelMeta.fromJson(j as Map<String, dynamic>);
+          if (!novels.any((n) => n.id == meta.id)) {
+            novels.add(meta);
+          }
         }
       }
     } catch (_) {}

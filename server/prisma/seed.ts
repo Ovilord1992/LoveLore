@@ -40,6 +40,21 @@ async function main() {
     },
   });
 
+  await prisma.novel.upsert({
+    where: { id: 'demo_novel_2' },
+    update: {},
+    create: {
+      id: 'demo_novel_2',
+      title: 'Парижские тайны',
+      description: 'Стажировка в модном доме Парижа. Интриги, страсть и выбор между карьерой и любовью...',
+      author: 'Amoria Team',
+      tags: ['романтика', 'драма', 'Париж'],
+      version: 1,
+      chaptersCount: 2,
+      isPublished: true,
+    },
+  });
+
   console.log('Seed complete.');
 }
 
