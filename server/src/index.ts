@@ -4,6 +4,7 @@ import path from 'path';
 import { novelsRouter } from './routes/novels';
 import { authRouter } from './routes/auth';
 import { syncRouter } from './routes/sync';
+import { adminRouter } from './routes/admin';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -18,6 +19,7 @@ app.use('/covers', express.static(path.join(__dirname, '../uploads/covers')));
 app.use('/v1/auth', authRouter);
 app.use('/v1/novels', novelsRouter);
 app.use('/v1/sync', syncRouter);
+app.use('/v1/admin', adminRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

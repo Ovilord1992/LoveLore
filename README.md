@@ -10,6 +10,7 @@
 | **Мобильное приложение** | Flutter 3.41 · Dart 3.11 · Riverpod · Hive |
 | **Сервер** | Node.js · Express · TypeScript · Prisma · PostgreSQL |
 | **Редактор новелл** | React 18 · TypeScript · Vite · Zustand · @xyflow/react |
+| **Админ-панель** | React 18 · TypeScript · Vite · Ant Design |
 
 ## Структура проекта
 
@@ -25,6 +26,8 @@ navell/
 ├── server/               # REST API сервер
 │   ├── src/              # Express роуты, middleware, утилиты
 │   └── prisma/           # Схема БД, миграции, seed
+├── admin/                # Веб-админка (управление пользователями, новеллами)
+│   └── src/              # React + Ant Design компоненты
 ├── editor/               # Веб-редактор для авторов
 │   └── src/              # React компоненты, Zustand стор
 ├── assets/novels/        # Демо-новелла «Тени Петербурга»
@@ -57,6 +60,16 @@ cd editor
 npm install
 npm run dev                   # http://localhost:5173
 ```
+
+### Админ-панель
+
+```bash
+cd admin
+npm install
+npm run dev                   # http://localhost:5174
+```
+
+Логин по умолчанию: `admin@amoria.app` / `admin123`
 
 ## Возможности
 
@@ -104,6 +117,12 @@ npm run dev                   # http://localhost:5173
 - 📤 Экспорт в JSON / ZIP для Amoria
 - 📥 Импорт проекта
 
+### Админ-панель
+- 📊 Дашборд: пользователи, новеллы, загрузки, активность (24ч / 7д / 30д)
+- 👥 Управление пользователями: поиск, детали, роли, начисление алмазов/билетов, удаление
+- 📚 Управление новеллами: список всех (включая скрытые), publish/unpublish, загрузка ZIP, удаление
+- 🔐 Защита: JWT + роль admin, middleware проверки
+
 ### Локализация
 - 🇷🇺 Русский
 - 🇬🇧 Английский
@@ -145,6 +164,8 @@ PORT=3000
 UPLOAD_DIR=./uploads
 JWT_SECRET=your-secret-key
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+ADMIN_EMAIL=admin@amoria.app
+ADMIN_PASSWORD=admin123
 ```
 
 ## Лицензия
