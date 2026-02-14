@@ -43,6 +43,74 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   Future<void> _loadNovel() async {
+    // Проверяем и тратим билет
+    final currency = ref.read(currencyServiceProvider.notifier);
+    if (!currency.spendTicket()) {
+      if (mounted) {
+        _showNoTicketsDialog();
+      }
+      return;
+    }
+
+    await ref.read(sceneEngineProvider.notifier).startNovel(
+      widget.novelId,
+      forceNew: widget.forceNew,
+    );
+    _saveService = ref.read(saveServiceProvider);
+    setState(() => _isLoading = false);
+    _fadeController.forward();
+  }
+
+  void _showNoTicketsDialog() {
+    final currency = ref.read(currencyServiceProvider.notifier);
+    final timeLeft = currency.timeToNextTicket;
+    final min = timeLeft.inMinutes;
+    final sec = timeLeft.inSeconds % 60;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16213E),
+        title: const Text('Нет билетов ⚡', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Билеты закончились.\nСледующий через $min м $sec с.\n\nИли потрать 💎 10 алмазов.',
+          style: const TextStyle(color: Colors.white70, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Назад', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              final cs = ref.read(currencyServiceProvider.notifier);
+              if (cs.canAfford(10)) {
+                cs.spendDiamonds(10);
+                Navigator.pop(ctx);
+                _loadNovelAfterTicket();
+              } else {
+                Navigator.pop(ctx);
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Не хватает алмазов 💎'),
+                    backgroundColor: Color(0xFF16213E),
+                  ),
+                );
+              }
+            },
+            child: const Text('💎 10 алмазов', style: TextStyle(color: Color(0xFFE91E63))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadNovelAfterTicket() async {
     await ref.read(sceneEngineProvider.notifier).startNovel(
       widget.novelId,
       forceNew: widget.forceNew,
