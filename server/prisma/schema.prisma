@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Novel {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @default("")
+  author      String   @default("")
+  coverUrl    String?  @map("cover_url")
+  tags        String[] @default([])
+  version     Int      @default(1)
+  chaptersCount Int    @default(0) @map("chapters_count")
+  zipFilename String?  @map("zip_filename")
+  fileSize    Int      @default(0) @map("file_size")
+  downloads   Int      @default(0)
+  isPublished Boolean  @default(true) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("novels")
+}

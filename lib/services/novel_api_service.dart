@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:archive/archive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -114,18 +115,24 @@ class NovelApiService {
       final novelDir = Directory('${appDir.path}/novels/$novelId');
       await novelDir.create(recursive: true);
 
-      // Распаковка ZIP (используем Process)
-      final result = await Process.run('unzip', [
-        '-o',
-        zipPath,
-        '-d',
-        novelDir.path,
-      ]);
+      final bytes = await File(zipPath).readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      for (final file in archive) {
+        final filePath = '${novelDir.path}/${file.name}';
+        if (file.isFile) {
+          final outFile = File(filePath);
+          await outFile.create(recursive: true);
+          await outFile.writeAsBytes(file.content as List<int>);
+        } else {
+          await Directory(filePath).create(recursive: true);
+        }
+      }
 
       // Удалить временный файл
       await File(zipPath).delete();
 
-      return result.exitCode == 0;
+      return true;
     } catch (_) {
       return false;
     }
