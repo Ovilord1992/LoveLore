@@ -39,7 +39,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _loadNovel();
+    // Откладываем загрузку, чтобы не модифицировать провайдеры во время build
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadNovel());
   }
 
   Future<void> _loadNovel() async {
