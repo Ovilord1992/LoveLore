@@ -19,7 +19,7 @@ class LocaleNotifier extends StateNotifier<AppLocale> {
   static const _key = 'locale';
 
   LocaleNotifier() : super(AppLocale.ru) {
-    _load();
+    _loadSync();
   }
 
   void setLocale(AppLocale locale) {
@@ -34,14 +34,14 @@ class LocaleNotifier extends StateNotifier<AppLocale> {
 
   Future<void> _save() async {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       await box.put(_key, state.name);
     } catch (_) {}
   }
 
-  Future<void> _load() async {
+  void _loadSync() {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       final data = box.get(_key);
       if (data == 'en') state = AppLocale.en;
     } catch (_) {}

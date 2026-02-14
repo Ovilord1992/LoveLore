@@ -8,6 +8,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await SaveService().init();
+  // Открываем все Hive-боксы заранее
+  await Hive.openBox<String>('app_settings');
+  await Hive.openBox<String>('app_locale');
 
   runApp(
     const ProviderScope(

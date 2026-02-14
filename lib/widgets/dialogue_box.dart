@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/settings_service.dart';
 
 /// Виджет диалогового окна с анимацией печати текста
-class DialogueBox extends StatefulWidget {
+class DialogueBox extends ConsumerStatefulWidget {
   final String? speakerName;
   final Color? speakerColor;
   final String text;
@@ -18,10 +20,10 @@ class DialogueBox extends StatefulWidget {
   });
 
   @override
-  State<DialogueBox> createState() => _DialogueBoxState();
+  ConsumerState<DialogueBox> createState() => _DialogueBoxState();
 }
 
-class _DialogueBoxState extends State<DialogueBox> {
+class _DialogueBoxState extends ConsumerState<DialogueBox> {
   String _displayedText = '';
   int _charIndex = 0;
   bool _isComplete = false;
@@ -44,12 +46,28 @@ class _DialogueBoxState extends State<DialogueBox> {
   }
 
   void _startTyping() {
+    final settings = ref.read(settingsServiceProvider);
+    final charDelay = settings.charDelayMs;
+
+    // Если скорость 0 — мгновенно
+    if (charDelay == 0) {
+      setState(() {
+        _displayedText = widget.text;
+        _charIndex = widget.text.length;
+        _isComplete = true;
+      });
+      widget.onComplete?.call();
+      _scheduleAutoPlay();
+      return;
+    }
+
     Future.doWhile(() async {
-      await Future.delayed(const Duration(milliseconds: 30));
+      await Future.delayed(Duration(milliseconds: charDelay));
       if (!mounted) return false;
       if (_charIndex >= widget.text.length) {
         setState(() => _isComplete = true);
         widget.onComplete?.call();
+        _scheduleAutoPlay();
         return false;
       }
       setState(() {
@@ -60,6 +78,17 @@ class _DialogueBoxState extends State<DialogueBox> {
     });
   }
 
+  void _scheduleAutoPlay() {
+    final settings = ref.read(settingsServiceProvider);
+    if (!settings.autoPlay) return;
+
+    Future.delayed(Duration(seconds: settings.autoPlayDelay), () {
+      if (mounted && _isComplete) {
+        widget.onTap();
+      }
+    });
+  }
+
   void _skipToEnd() {
     setState(() {
       _displayedText = widget.text;
@@ -67,6 +96,7 @@ class _DialogueBoxState extends State<DialogueBox> {
       _isComplete = true;
     });
     widget.onComplete?.call();
+    _scheduleAutoPlay();
   }
 
   @override
