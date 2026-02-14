@@ -6,11 +6,13 @@ import '../models/game_state.dart';
 import '../services/save_service.dart';
 import '../services/currency_service.dart';
 import '../services/user_profile_service.dart';
+import '../services/achievement_service.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/choice_buttons.dart';
 import '../widgets/scene_transitions.dart';
 import '../widgets/relationship_bar.dart';
 import '../widgets/chapter_progress.dart';
+import '../widgets/achievement_popup.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String novelId;
@@ -188,6 +190,26 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
     ref.read(userProfileProvider.notifier).incrementChoicesMade();
     engine.makeChoice(choice);
+
+    // Проверяем достижения после выбора
+    _checkAchievements();
+  }
+
+  void _checkAchievements() {
+    final achievementService = ref.read(achievementServiceProvider);
+    final unlocked = achievementService.checkAndGrant();
+
+    // Проверяем достижения на основе переменных
+    final gameState = ref.read(sceneEngineProvider);
+    if (gameState != null) {
+      final varUnlocked =
+          achievementService.checkVariableAchievements(gameState.variables);
+      unlocked.addAll(varUnlocked);
+    }
+
+    if (unlocked.isNotEmpty && mounted) {
+      AchievementPopup.showAll(context, unlocked);
+    }
   }
 
   Widget _buildRelationships(GameState gameState, SceneEngine engine) {

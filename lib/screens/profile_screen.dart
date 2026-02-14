@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/user_profile_service.dart';
 import '../services/currency_service.dart';
+import 'gallery_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -120,7 +121,21 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Галерея CG
-          _SectionTitle('Галерея'),
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GalleryScreen()),
+              );
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _SectionTitle('Галерея'),
+                const Icon(Icons.chevron_right,
+                    color: Colors.white38, size: 20),
+              ],
+            ),
+          ),
           if (profile.unlockedCGs.isEmpty)
             const _EmptyPlaceholder(
               icon: Icons.photo_library_outlined,
