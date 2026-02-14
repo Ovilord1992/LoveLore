@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../engine/scene_engine.dart';
 import '../models/scene.dart';
+import '../models/game_state.dart';
 import '../services/save_service.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/choice_buttons.dart';
 import '../widgets/scene_transitions.dart';
+import '../widgets/relationship_bar.dart';
+import '../widgets/chapter_progress.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String novelId;
@@ -101,6 +104,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     icon: const Icon(Icons.arrow_back, color: Colors.white70),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
+                  // Прогресс по главе
+                  ChapterProgressIndicator(
+                    currentSceneIndex: engine.currentSceneIndex,
+                    totalScenes: engine.totalScenes,
+                    chapterTitle: engine.currentChapter?.title,
+                  ),
                   IconButton(
                     icon: const Icon(Icons.save_outlined, color: Colors.white70),
                     onPressed: () async {
@@ -118,6 +127,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   ),
                 ],
               ),
+            ),
+
+            // Шкала отношений (справа)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 56,
+              right: 8,
+              child: _buildRelationships(gameState, engine),
             ),
           ],
         ),
@@ -151,6 +167,30 @@ class _GameScreenState extends ConsumerState<GameScreen>
         );
       }).toList(),
     );
+  }
+
+  Widget _buildRelationships(GameState gameState, SceneEngine engine) {
+    // Собираем переменные отношений (содержат _love или _trust)
+    final relationships = <String, RelationshipInfo>{};
+    for (final entry in gameState.variables.entries) {
+      if (entry.key.contains('_love') || entry.key.contains('_trust')) {
+        final charId = entry.key.split('_').first;
+        final character = engine.getCharacter(charId);
+        if (character != null && entry.value is num) {
+          relationships[entry.key] = RelationshipInfo(
+            characterName: character.name,
+            value: entry.value as num,
+            color: character.color != null
+                ? _parseColor(character.color!)
+                : const Color(0xFFE91E63),
+          );
+        }
+      }
+    }
+
+    if (relationships.isEmpty) return const SizedBox.shrink();
+
+    return RelationshipPanel(relationships: relationships);
   }
 
   Widget _buildEventUI(SceneEvent? event, SceneEngine engine) {

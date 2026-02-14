@@ -27,6 +27,16 @@ class SceneEngine extends StateNotifier<GameState?> {
   Chapter? get currentChapter => _currentChapter;
   List<Character> get characters => _characters;
 
+  /// Индекс текущей сцены в списке сцен главы (для прогресс-бара)
+  int get currentSceneIndex {
+    if (_currentChapter == null || _currentScene == null) return 0;
+    final idx = _currentChapter!.scenes.indexWhere((s) => s.id == _currentScene!.id);
+    return idx >= 0 ? idx + 1 : 0;
+  }
+
+  /// Общее количество сцен в текущей главе
+  int get totalScenes => _currentChapter?.scenes.length ?? 0;
+
   SceneEvent? get currentEvent {
     if (_currentScene == null || state == null) return null;
     final idx = state!.currentEventIndex;
