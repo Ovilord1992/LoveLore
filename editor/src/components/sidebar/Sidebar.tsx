@@ -1,0 +1,264 @@
+import { useState } from 'react';
+import { useEditorStore } from '../../store/editorStore';
+import { validateProject, type ValidationError } from '../../utils/validator';
+import { exportAsZip, exportAsJson, importProject } from '../../utils/exporter';
+import { Plus, Trash2, Download, Upload, AlertTriangle, CheckCircle, Users, BookOpen, Settings, Hash } from 'lucide-react';
+import type { Scene } from '../../types/novel';
+import './Sidebar.css';
+
+type Tab = 'meta' | 'characters' | 'chapters' | 'variables' | 'validate';
+
+export function Sidebar() {
+  const [tab, setTab] = useState<Tab>('meta');
+
+  return (
+    <div className="sidebar">
+      <div className="sidebar-tabs">
+        <button className={tab === 'meta' ? 'active' : ''} onClick={() => setTab('meta')} title="Мета"><Settings size={16} /></button>
+        <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')} title="Персонажи"><Users size={16} /></button>
+        <button className={tab === 'chapters' ? 'active' : ''} onClick={() => setTab('chapters')} title="Главы"><BookOpen size={16} /></button>
+        <button className={tab === 'variables' ? 'active' : ''} onClick={() => setTab('variables')} title="Переменные"><Hash size={16} /></button>
+        <button className={tab === 'validate' ? 'active' : ''} onClick={() => setTab('validate')} title="Валидация"><AlertTriangle size={16} /></button>
+      </div>
+      <div className="sidebar-content">
+        {tab === 'meta' && <MetaTab />}
+        {tab === 'characters' && <CharactersTab />}
+        {tab === 'chapters' && <ChaptersTab />}
+        {tab === 'variables' && <VariablesTab />}
+        {tab === 'validate' && <ValidateTab />}
+      </div>
+    </div>
+  );
+}
+
+function MetaTab() {
+  const { project, updateMeta, setProject } = useEditorStore();
+  const { meta } = project;
+
+  const handleImport = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        try {
+          const imported = await importProject(file);
+          setProject(imported);
+        } catch (err) {
+          alert('Ошибка импорта: ' + (err as Error).message);
+        }
+      }
+    };
+    input.click();
+  };
+
+  return (
+    <div className="tab-content">
+      <h3>Метаданные</h3>
+      <label>ID новеллы</label>
+      <input value={meta.id} onChange={(e) => updateMeta({ id: e.target.value })} placeholder="my_novel" />
+      <label>Название</label>
+      <input value={meta.title} onChange={(e) => updateMeta({ title: e.target.value })} placeholder="Название новеллы" />
+      <label>Автор</label>
+      <input value={meta.author} onChange={(e) => updateMeta({ author: e.target.value })} placeholder="Имя автора" />
+      <label>Описание</label>
+      <textarea value={meta.description} onChange={(e) => updateMeta({ description: e.target.value })} rows={3} placeholder="Описание новеллы..." />
+      <label>Теги (через запятую)</label>
+      <input
+        value={meta.tags.join(', ')}
+        onChange={(e) => updateMeta({ tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
+        placeholder="романтика, мистика"
+      />
+
+      <div className="actions-group">
+        <button onClick={() => exportAsZip(project)} className="primary"><Download size={14} /> ZIP для Amoria</button>
+        <button onClick={() => exportAsJson(project)}><Download size={14} /> JSON</button>
+        <button onClick={handleImport}><Upload size={14} /> Импорт</button>
+      </div>
+    </div>
+  );
+}
+
+function CharactersTab() {
+  const { project, addCharacter, updateCharacter, removeCharacter } = useEditorStore();
+
+  const handleAdd = () => {
+    const id = `char_${Date.now()}`;
+    addCharacter({
+      id,
+      name: 'Новый персонаж',
+      color: '#E91E63',
+      sprites: [{ id: 'neutral', image: 'neutral.png', label: 'Спокойный' }],
+    });
+  };
+
+  return (
+    <div className="tab-content">
+      <div className="tab-header">
+        <h3>Персонажи</h3>
+        <button onClick={handleAdd} className="add-btn"><Plus size={14} /></button>
+      </div>
+      {project.characters.map((char) => (
+        <div key={char.id} className="character-card">
+          <div className="char-header">
+            <input
+              className="char-color"
+              type="color"
+              value={char.color}
+              onChange={(e) => updateCharacter(char.id, { color: e.target.value })}
+            />
+            <input
+              value={char.name}
+              onChange={(e) => updateCharacter(char.id, { name: e.target.value })}
+              placeholder="Имя"
+            />
+            <button onClick={() => removeCharacter(char.id)} className="delete"><Trash2 size={12} /></button>
+          </div>
+          <input
+            value={char.id}
+            onChange={(e) => updateCharacter(char.id, { id: e.target.value })}
+            className="char-id"
+            placeholder="ID"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChaptersTab() {
+  const { project, selectedChapterIndex, selectChapter, addChapter, removeChapter, addScene, selectScene, selectedSceneId } = useEditorStore();
+
+  const handleAddScene = () => {
+    const chapter = project.chapters[selectedChapterIndex];
+    const sceneId = `${chapter.id}_scene_${chapter.scenes.length + 1}`;
+    const scene: Scene = {
+      id: sceneId,
+      charactersOnScreen: [],
+      events: [{ type: 'narration', text: '' }],
+    };
+    addScene(scene);
+  };
+
+  return (
+    <div className="tab-content">
+      <div className="tab-header">
+        <h3>Главы</h3>
+        <button onClick={addChapter} className="add-btn"><Plus size={14} /></button>
+      </div>
+      {project.chapters.map((ch, i) => (
+        <div key={ch.id} className={`chapter-card ${i === selectedChapterIndex ? 'selected' : ''}`}>
+          <div className="chapter-header" onClick={() => selectChapter(i)}>
+            <span>{ch.title}</span>
+            <span className="scene-count">{ch.scenes.length} сцен</span>
+            {project.chapters.length > 1 && (
+              <button onClick={(e) => { e.stopPropagation(); removeChapter(i); }} className="delete"><Trash2 size={12} /></button>
+            )}
+          </div>
+          {i === selectedChapterIndex && (
+            <div className="scenes-list">
+              {ch.scenes.map((s) => (
+                <div
+                  key={s.id}
+                  className={`scene-item ${s.id === selectedSceneId ? 'selected' : ''}`}
+                  onClick={() => selectScene(s.id)}
+                >
+                  <span>{s.id}</span>
+                  <span className="event-count">{s.events.length} соб.</span>
+                </div>
+              ))}
+              <button className="add-scene" onClick={handleAddScene}>
+                <Plus size={12} /> Сцена
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VariablesTab() {
+  const { project, setVariable, removeVariable } = useEditorStore();
+  const [newKey, setNewKey] = useState('');
+
+  const handleAdd = () => {
+    if (newKey.trim()) {
+      setVariable(newKey.trim(), 0);
+      setNewKey('');
+    }
+  };
+
+  return (
+    <div className="tab-content">
+      <h3>Переменные</h3>
+      <div className="var-add">
+        <input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="Имя переменной" onKeyDown={(e) => e.key === 'Enter' && handleAdd()} />
+        <button onClick={handleAdd} className="add-btn"><Plus size={14} /></button>
+      </div>
+      {Object.entries(project.variables).map(([key, value]) => (
+        <div key={key} className="var-item">
+          <span className="var-key">{key}</span>
+          <input
+            value={String(value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              const num = Number(v);
+              setVariable(key, isNaN(num) ? (v === 'true' ? true : v === 'false' ? false : v) : num);
+            }}
+            className="var-value"
+          />
+          <button onClick={() => removeVariable(key)} className="delete"><Trash2 size={12} /></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ValidateTab() {
+  const { project } = useEditorStore();
+  const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [validated, setValidated] = useState(false);
+
+  const handleValidate = () => {
+    setErrors(validateProject(project));
+    setValidated(true);
+  };
+
+  const errorCount = errors.filter((e) => e.type === 'error').length;
+  const warnCount = errors.filter((e) => e.type === 'warning').length;
+
+  return (
+    <div className="tab-content">
+      <h3>Валидация</h3>
+      <button onClick={handleValidate} className="primary validate-btn">
+        <AlertTriangle size={14} /> Проверить сценарий
+      </button>
+
+      {validated && errors.length === 0 && (
+        <div className="validation-ok">
+          <CheckCircle size={20} />
+          <span>Всё в порядке!</span>
+        </div>
+      )}
+
+      {validated && errors.length > 0 && (
+        <>
+          <div className="validation-summary">
+            {errorCount > 0 && <span className="error-count">❌ {errorCount} ошибок</span>}
+            {warnCount > 0 && <span className="warn-count">⚠️ {warnCount} предупреждений</span>}
+          </div>
+          <div className="validation-list">
+            {errors.map((err, i) => (
+              <div key={i} className={`validation-item ${err.type}`}>
+                <span>{err.type === 'error' ? '❌' : '⚠️'}</span>
+                <span>{err.message}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

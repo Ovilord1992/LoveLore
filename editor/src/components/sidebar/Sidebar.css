@@ -1,0 +1,59 @@
+.sidebar { display: flex; height: 100%; background: #12121f; border-right: 1px solid #2a2a3e; }
+.sidebar-tabs { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; border-right: 1px solid #2a2a3e; }
+.sidebar-tabs button { background: none; border: none; color: #666; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.sidebar-tabs button:hover { background: #1a1a2e; color: #ccc; }
+.sidebar-tabs button.active { background: #1a1a2e; color: #e91e63; }
+.sidebar-content { flex: 1; overflow-y: auto; min-width: 240px; }
+
+.tab-content { padding: 16px; }
+.tab-content h3 { margin: 0 0 12px; font-size: 14px; color: #e91e63; font-weight: 600; }
+.tab-content label { display: block; font-size: 11px; color: #888; margin: 8px 0 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.tab-content input, .tab-content textarea { width: 100%; padding: 8px 10px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 6px; color: #fff; font-size: 13px; font-family: inherit; box-sizing: border-box; }
+.tab-content input:focus, .tab-content textarea:focus { border-color: #e91e63; outline: none; }
+.tab-content textarea { resize: vertical; }
+
+.tab-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.tab-header h3 { margin: 0; }
+.add-btn { background: none; border: 1px solid #2a2a3e; color: #e91e63; padding: 6px; border-radius: 6px; cursor: pointer; display: flex; }
+.add-btn:hover { background: #e91e63; color: #fff; }
+
+.character-card { background: #16213e; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+.char-header { display: flex; gap: 6px; align-items: center; }
+.char-color { width: 28px; height: 28px; border: none; cursor: pointer; background: none; padding: 0; }
+.char-id { margin-top: 6px; font-size: 11px; color: #888; }
+.delete { background: none; border: none; color: #666; cursor: pointer; padding: 4px; flex-shrink: 0; }
+.delete:hover { color: #e91e63; }
+
+.chapter-card { background: #16213e; border-radius: 8px; margin-bottom: 6px; overflow: hidden; border: 1px solid transparent; }
+.chapter-card.selected { border-color: #2a2a3e; }
+.chapter-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
+.chapter-header span:first-child { flex: 1; font-size: 13px; color: #fff; }
+.scene-count, .event-count { font-size: 11px; color: #666; }
+.scenes-list { padding: 4px 8px 8px; }
+.scene-item { display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #ccc; }
+.scene-item:hover { background: #1a1a2e; }
+.scene-item.selected { background: #2d1854; color: #e91e63; }
+.add-scene { display: flex; align-items: center; gap: 4px; background: none; border: 1px dashed #2a2a3e; color: #666; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; width: 100%; margin-top: 4px; }
+.add-scene:hover { border-color: #e91e63; color: #e91e63; }
+
+.var-add { display: flex; gap: 6px; margin-bottom: 12px; }
+.var-add input { flex: 1; }
+.var-item { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.var-key { font-size: 12px; color: #e91e63; min-width: 80px; word-break: break-all; }
+.var-value { flex: 1; font-size: 12px; }
+
+.actions-group { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+.actions-group button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 1px solid #2a2a3e; border-radius: 8px; color: #ccc; background: #16213e; cursor: pointer; font-size: 12px; }
+.actions-group button:hover { border-color: #e91e63; color: #e91e63; }
+.actions-group button.primary { background: #e91e63; border-color: #e91e63; color: #fff; }
+.actions-group button.primary:hover { background: #c2185b; }
+
+.validate-btn { width: 100%; margin-bottom: 12px; }
+.validation-ok { display: flex; align-items: center; gap: 8px; color: #4caf50; padding: 12px; background: rgba(76,175,80,0.1); border-radius: 8px; font-size: 13px; }
+.validation-summary { display: flex; gap: 12px; margin-bottom: 8px; font-size: 12px; }
+.error-count { color: #f44336; }
+.warn-count { color: #ff9800; }
+.validation-list { display: flex; flex-direction: column; gap: 4px; }
+.validation-item { display: flex; gap: 6px; padding: 8px; border-radius: 6px; font-size: 12px; color: #ccc; line-height: 1.4; }
+.validation-item.error { background: rgba(244,67,54,0.1); }
+.validation-item.warning { background: rgba(255,152,0,0.1); }

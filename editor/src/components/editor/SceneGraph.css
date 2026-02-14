@@ -1,0 +1,6 @@
+.scene-graph { width: 100%; height: 100%; }
+.scene-graph.empty { display: flex; align-items: center; justify-content: center; color: #666; }
+.scene-node-content { text-align: left; }
+.scene-node-id { font-weight: 600; font-size: 12px; color: #e91e63; margin-bottom: 4px; }
+.scene-node-info { font-size: 11px; color: #888; }
+.scene-node-bg { font-size: 10px; color: #666; margin-top: 4px; }

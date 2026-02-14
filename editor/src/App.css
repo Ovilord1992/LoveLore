@@ -1,0 +1,30 @@
+.app { display: flex; flex-direction: column; height: 100vh; background: #0f0f1a; color: #fff; }
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 48px;
+  background: #12121f;
+  border-bottom: 1px solid #2a2a3e;
+  flex-shrink: 0;
+}
+.header-logo { display: flex; align-items: center; gap: 8px; }
+.logo-icon { color: #e91e63; font-size: 18px; }
+.logo-text { font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #e91e63, #9c27b0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header-info { display: flex; align-items: center; gap: 8px; }
+.project-name { font-size: 13px; color: #888; }
+.unsaved-badge { color: #e91e63; font-size: 18px; line-height: 1; }
+
+/* Body */
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+/* Center panel */
+.center-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.graph-panel { flex: 1; min-height: 200px; border-bottom: 1px solid #2a2a3e; }
+.editor-panel { height: 45%; overflow-y: auto; border-top: 1px solid #2a2a3e; background: #12121f; }
+
+/* Preview panel */
+.preview-panel { width: 320px; border-left: 1px solid #2a2a3e; background: #0f0f1a; flex-shrink: 0; }

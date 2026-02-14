@@ -1,0 +1,73 @@
+.scene-preview { display: flex; align-items: center; justify-content: center; height: 100%; padding: 16px; }
+.scene-preview.empty { }
+
+.phone-frame {
+  width: 280px;
+  height: 560px;
+  border: 3px solid #333;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  color: #fff;
+  font-size: 13px;
+}
+.phone-screen > p { text-align: center; color: #666; margin: auto; }
+
+.preview-characters {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 16px 8px;
+}
+.preview-character { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.preview-character.left { margin-right: auto; }
+.preview-character.right { margin-left: auto; }
+.character-placeholder {
+  width: 60px;
+  height: 100px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.character-name { font-size: 10px; color: rgba(255,255,255,0.5); }
+
+.preview-event { padding: 12px 16px 16px; background: linear-gradient(transparent, rgba(0,0,0,0.7)); }
+.preview-dialogue, .preview-narration { background: rgba(0,0,0,0.5); border-radius: 10px; padding: 10px 12px; }
+.preview-speaker { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+.preview-text { font-size: 12px; line-height: 1.5; color: rgba(255,255,255,0.9); }
+.preview-text.italic { font-style: italic; color: rgba(255,255,255,0.7); }
+
+.preview-choices { display: flex; flex-direction: column; gap: 6px; }
+.preview-choice {
+  background: rgba(26,26,46,0.8);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  text-align: center;
+  cursor: default;
+}
+.preview-choice.premium {
+  background: linear-gradient(135deg, rgba(156,39,176,0.4), rgba(233,30,99,0.4));
+  border-color: #e91e63;
+}
+.preview-choice .diamond { margin-right: 6px; }
+
+.preview-nav { display: flex; gap: 4px; justify-content: center; padding: 8px; }
+.preview-nav-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+.preview-nav-dot.active { background: #e91e63; }
