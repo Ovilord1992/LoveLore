@@ -238,10 +238,20 @@ class NovelDetailScreen extends ConsumerWidget {
                 style: TextStyle(color: Colors.white54)),
           ),
           TextButton(
-            onPressed: () {
-              ref.read(saveServiceProvider).deleteSave(novel.id);
-              Navigator.pop(ctx);
-              _startGame(context, false);
+            onPressed: () async {
+              await ref.read(saveServiceProvider).deleteSave(novel.id);
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (context.mounted) {
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    pageBuilder: (_, _, _) => GameScreen(novelId: novel.id, forceNew: true),
+                    transitionsBuilder: (_, animation, _, child) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    transitionDuration: const Duration(milliseconds: 400),
+                  ),
+                );
+              }
             },
             child: const Text('Начать заново',
                 style: TextStyle(color: Color(0xFFE91E63))),

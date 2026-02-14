@@ -16,8 +16,9 @@ import '../widgets/achievement_popup.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String novelId;
+  final bool forceNew;
 
-  const GameScreen({super.key, required this.novelId});
+  const GameScreen({super.key, required this.novelId, this.forceNew = false});
 
   @override
   ConsumerState<GameScreen> createState() => _GameScreenState();
@@ -27,6 +28,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
     with TickerProviderStateMixin {
   bool _isLoading = true;
   late AnimationController _fadeController;
+  // Кешируем ссылки для безопасного сохранения в deactivate
+  SaveService? _saveService;
+  GameState? _lastState;
 
   @override
   void initState() {
@@ -39,7 +43,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   Future<void> _loadNovel() async {
-    await ref.read(sceneEngineProvider.notifier).startNovel(widget.novelId);
+    await ref.read(sceneEngineProvider.notifier).startNovel(
+      widget.novelId,
+      forceNew: widget.forceNew,
+    );
+    _saveService = ref.read(saveServiceProvider);
     setState(() => _isLoading = false);
     _fadeController.forward();
   }
@@ -52,8 +60,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   @override
+  void deactivate() {
+    // Сохраняем до того как ref будет уничтожен
+    _lastState = ref.read(sceneEngineProvider);
+    if (_lastState != null && _saveService != null) {
+      _saveService!.saveGame(_lastState!);
+    }
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
-    _autoSave();
     _fadeController.dispose();
     super.dispose();
   }

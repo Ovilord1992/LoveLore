@@ -1,12 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/novel_loader.dart';
+import '../services/save_service.dart';
 import 'variable_engine.dart';
 import 'condition_evaluator.dart';
 
 /// Основной провайдер движка игры
 final sceneEngineProvider =
-    StateNotifierProvider.autoDispose<SceneEngine, GameState?>((ref) {
+    StateNotifierProvider<SceneEngine, GameState?>((ref) {
   return SceneEngine(ref);
 });
 
@@ -49,11 +50,27 @@ class SceneEngine extends StateNotifier<GameState?> {
     return state!.currentEventIndex < _currentScene!.events.length - 1;
   }
 
-  /// Начать новеллу
-  Future<void> startNovel(String novelId) async {
+  /// Начать новеллу (или продолжить с сохранения)
+  Future<void> startNovel(String novelId, {bool forceNew = false}) async {
     final loader = _ref.read(novelLoaderProvider);
     await loader.loadNovelMeta(novelId);
     _characters = await loader.loadCharacters(novelId);
+
+    // Попытаться загрузить сохранение
+    final saveService = _ref.read(saveServiceProvider);
+    final savedState = forceNew ? null : saveService.loadGame(novelId);
+
+    if (savedState != null) {
+      // Восстановить главу и сцену из сохранения
+      _currentChapter = await loader.loadChapter(novelId, savedState.currentChapterId);
+      if (_currentChapter != null) {
+        _currentScene = _currentChapter!.getScene(savedState.currentSceneId);
+        state = savedState;
+        return;
+      }
+    }
+
+    // Новая игра
     _currentChapter = await loader.loadChapter(novelId, 'chapter_1');
 
     if (_currentChapter == null) return;
