@@ -24,8 +24,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', version: '1.0.0' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Amoria Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Amoria Server running on http://0.0.0.0:${PORT}`);
 });
 
 export default app;

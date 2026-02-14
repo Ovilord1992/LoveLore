@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'api_config.dart';
 
 /// Состояние авторизации
 class AuthState {
@@ -51,11 +52,11 @@ final authServiceProvider =
   return AuthService();
 });
 
-/// Сервис авторизации (JWT + email/пароль)
+/// Сервис авторизации (JWT + email/пароль + Google + Apple)
 class AuthService extends StateNotifier<AuthState> {
   static const _boxName = 'app_settings';
   static const _tokenKey = 'auth_token';
-  static const _baseUrl = 'http://localhost:3000/v1';
+  static const _baseUrl = ApiConfig.baseUrl;
 
   AuthService() : super(const AuthState()) {
     _loadToken();

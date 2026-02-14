@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../models/novel.dart';
+import 'api_config.dart';
 
 /// Статус загрузки
 enum DownloadStatus { idle, downloading, completed, error }
@@ -50,8 +51,7 @@ final novelApiServiceProvider =
 
 /// Сервис для работы с API каталога новелл
 class NovelApiService {
-  // TODO: заменить на реальный URL сервера
-  static const _baseUrl = 'https://api.amoria.app/v1';
+  static const _baseUrl = ApiConfig.baseUrl;
 
   /// Получить каталог доступных новелл
   Future<List<NovelMeta>> fetchCatalog() async {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import 'api_config.dart';
 import 'auth_service.dart';
 import 'save_service.dart';
 import 'user_profile_service.dart';
@@ -12,7 +13,7 @@ final syncServiceProvider = Provider<SyncService>((ref) {
 
 /// Сервис синхронизации данных с сервером
 class SyncService {
-  static const _baseUrl = 'http://localhost:3000/v1';
+  static const _baseUrl = ApiConfig.baseUrl;
   final Ref _ref;
 
   SyncService(this._ref);
