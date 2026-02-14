@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { novelsRouter } from './routes/novels';
+import { authRouter } from './routes/auth';
+import { syncRouter } from './routes/sync';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -13,7 +15,9 @@ app.use(express.json());
 app.use('/covers', express.static(path.join(__dirname, '../uploads/covers')));
 
 // API v1
+app.use('/v1/auth', authRouter);
 app.use('/v1/novels', novelsRouter);
+app.use('/v1/sync', syncRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

@@ -135,4 +135,18 @@ class CurrencyService extends StateNotifier<CurrencyState> {
       }
     } catch (_) {}
   }
+
+  /// Мерж данных с сервера (берём максимум алмазов)
+  void mergeFromServer(Map<String, dynamic> serverData) {
+    final serverCurrency = CurrencyState.fromJson(serverData);
+    state = state.copyWith(
+      diamonds: state.diamonds > serverCurrency.diamonds
+          ? state.diamonds
+          : serverCurrency.diamonds,
+      tickets: state.tickets > serverCurrency.tickets
+          ? state.tickets
+          : serverCurrency.tickets,
+    );
+    _save();
+  }
 }

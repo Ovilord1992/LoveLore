@@ -7,6 +7,65 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @default("Читатель") @map("display_name")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  saves    GameSave[]
+  profile  UserProfileData?
+  currency CurrencyData?
+
+  @@map("users")
+}
+
+model GameSave {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  novelId   String   @map("novel_id")
+  data      Json     // полный GameState как JSON
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, novelId])
+  @@map("game_saves")
+}
+
+model UserProfileData {
+  id                   String   @id @default(uuid())
+  userId               String   @unique @map("user_id")
+  displayName          String   @default("Читатель") @map("display_name")
+  avatarIndex          Int      @default(0) @map("avatar_index")
+  totalNovelsStarted   Int      @default(0) @map("total_novels_started")
+  totalNovelsCompleted Int      @default(0) @map("total_novels_completed")
+  totalChoicesMade     Int      @default(0) @map("total_choices_made")
+  totalChaptersRead    Int      @default(0) @map("total_chapters_read")
+  unlockedCGs          String[] @default([]) @map("unlocked_cgs")
+  achievements         String[] @default([])
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model CurrencyData {
+  id               String    @id @default(uuid())
+  userId           String    @unique @map("user_id")
+  diamonds         Int       @default(50)
+  tickets          Int       @default(5)
+  lastTicketRefill DateTime? @map("last_ticket_refill")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("currency")
+}
+
 model Novel {
   id          String   @id @default(uuid())
   title       String

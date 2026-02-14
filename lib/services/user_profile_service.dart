@@ -177,4 +177,28 @@ class UserProfileService extends StateNotifier<UserProfile> {
       }
     } catch (_) {}
   }
+
+  /// Мерж данных с сервера (берём максимальные значения статистики)
+  void mergeFromServer(Map<String, dynamic> serverData) {
+    final serverProfile = UserProfile.fromJson(serverData);
+    state = state.copyWith(
+      displayName: serverProfile.displayName,
+      avatarIndex: serverProfile.avatarIndex,
+      totalNovelsStarted: state.totalNovelsStarted > serverProfile.totalNovelsStarted
+          ? state.totalNovelsStarted
+          : serverProfile.totalNovelsStarted,
+      totalNovelsCompleted: state.totalNovelsCompleted > serverProfile.totalNovelsCompleted
+          ? state.totalNovelsCompleted
+          : serverProfile.totalNovelsCompleted,
+      totalChoicesMade: state.totalChoicesMade > serverProfile.totalChoicesMade
+          ? state.totalChoicesMade
+          : serverProfile.totalChoicesMade,
+      totalChaptersRead: state.totalChaptersRead > serverProfile.totalChaptersRead
+          ? state.totalChaptersRead
+          : serverProfile.totalChaptersRead,
+      unlockedCGs: state.unlockedCGs.union(serverProfile.unlockedCGs),
+      achievements: state.achievements.union(serverProfile.achievements),
+    );
+    _save();
+  }
 }

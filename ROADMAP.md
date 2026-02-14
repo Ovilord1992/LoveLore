@@ -184,6 +184,16 @@ lib/
 - [x] Версионирование новелл (инкремент при обновлении)
 - [x] Счётчик загрузок
 - [x] Исправлена клиентская распаковка ZIP: Process.run('unzip') → пакет archive (работает на mobile)
+- [x] Авторизация (JWT + email/пароль): POST /v1/auth/register, /login, GET /me
+- [x] Серверная синхронизация прогресса: saves, profile, currency
+- [x] GET/PUT /v1/sync/saves/:novelId — сохранения игры
+- [x] GET/PUT /v1/sync/profile — профиль пользователя
+- [x] GET/PUT /v1/sync/currency — валюта (алмазы, билеты)
+- [x] GET /v1/sync/all — полная синхронизация (pull all)
+- [x] Flutter AuthService (login, register, token хранение в Hive)
+- [x] Flutter SyncService (push/pull данных с сервером)
+- [x] Экран авторизации (login/register, тёмная тема)
+- [x] Мерж данных при синхронизации (max статистики, union CG/достижений)
 
 ### Фаза 9: Публикация ⬜ НЕ НАЧАТА
 - [ ] Подготовка скриншотов для сторов
