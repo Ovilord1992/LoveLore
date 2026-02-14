@@ -108,7 +108,7 @@ class UserProfileService extends StateNotifier<UserProfile> {
   static const _key = 'profile';
 
   UserProfileService() : super(const UserProfile()) {
-    _load();
+    _loadSync();
   }
 
   void setDisplayName(String name) {
@@ -162,14 +162,14 @@ class UserProfileService extends StateNotifier<UserProfile> {
 
   Future<void> _save() async {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       await box.put(_key, jsonEncode(state.toJson()));
     } catch (_) {}
   }
 
-  Future<void> _load() async {
+  void _loadSync() {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       final data = box.get(_key);
       if (data != null) {
         state =

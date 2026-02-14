@@ -91,7 +91,7 @@ class WardrobeService extends StateNotifier<WardrobeState> {
   static const _key = 'state';
 
   WardrobeService() : super(const WardrobeState()) {
-    _load();
+    _loadSync();
   }
 
   /// Разблокировать наряд
@@ -131,14 +131,14 @@ class WardrobeService extends StateNotifier<WardrobeState> {
 
   Future<void> _save() async {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       await box.put(_key, jsonEncode(state.toJson()));
     } catch (_) {}
   }
 
-  Future<void> _load() async {
+  void _loadSync() {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       final data = box.get(_key);
       if (data != null) {
         state =

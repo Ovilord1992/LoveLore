@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/novel_loader.dart';
 import '../services/save_service.dart';
+import '../services/user_profile_service.dart';
 import 'variable_engine.dart';
 import 'condition_evaluator.dart';
 
@@ -85,6 +86,9 @@ class SceneEngine extends StateNotifier<GameState?> {
       firstSceneId: _currentChapter!.firstSceneId,
       initialVariables: initialVars,
     );
+
+    // Статистика: новая новелла начата
+    _ref.read(userProfileProvider.notifier).incrementNovelsStarted();
   }
 
   /// Загрузить сохранённое состояние
@@ -102,6 +106,9 @@ class SceneEngine extends StateNotifier<GameState?> {
       state = state!.copyWith(currentEventIndex: nextIndex);
     } else if (_currentScene!.nextSceneId != null) {
       _goToScene(_currentScene!.nextSceneId!);
+    } else {
+      // Конец главы — нет следующей сцены
+      _ref.read(userProfileProvider.notifier).incrementChaptersRead();
     }
   }
 

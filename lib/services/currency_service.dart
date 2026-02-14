@@ -54,7 +54,7 @@ class CurrencyService extends StateNotifier<CurrencyState> {
   static const ticketRefillMinutes = 30; // одна ⚡ раз в 30 минут
 
   CurrencyService() : super(const CurrencyState()) {
-    _load();
+    _loadSync();
   }
 
   /// Хватает ли алмазов на покупку
@@ -119,19 +119,19 @@ class CurrencyService extends StateNotifier<CurrencyState> {
 
   Future<void> _save() async {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       await box.put(_key, jsonEncode(state.toJson()));
     } catch (_) {}
   }
 
-  Future<void> _load() async {
+  void _loadSync() {
     try {
-      final box = await Hive.openBox<String>(_boxName);
+      final box = Hive.box<String>(_boxName);
       final data = box.get(_key);
       if (data != null) {
         state =
             CurrencyState.fromJson(jsonDecode(data) as Map<String, dynamic>);
-        _refillTickets(); // пополнить билеты при запуске
+        _refillTickets();
       }
     } catch (_) {}
   }
