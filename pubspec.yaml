@@ -42,6 +42,9 @@ dependencies:
   path_provider: ^2.1.5
   http: ^1.2.2
   archive: ^4.0.7
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^7.0.1
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

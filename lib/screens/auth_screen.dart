@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
@@ -46,13 +47,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     if (success && mounted) {
-      // Синхронизируем данные после входа
       final syncService = ref.read(syncServiceProvider);
       await syncService.pullAll();
+      if (mounted) Navigator.of(context).pop(true);
+    }
+  }
 
-      if (mounted) {
-        Navigator.of(context).pop(true);
-      }
+  Future<void> _loginWithGoogle() async {
+    final authService = ref.read(authServiceProvider.notifier);
+    final success = await authService.loginWithGoogle();
+    if (success && mounted) {
+      final syncService = ref.read(syncServiceProvider);
+      await syncService.pullAll();
+      if (mounted) Navigator.of(context).pop(true);
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    final authService = ref.read(authServiceProvider.notifier);
+    final success = await authService.loginWithApple();
+    if (success && mounted) {
+      final syncService = ref.read(syncServiceProvider);
+      await syncService.pullAll();
+      if (mounted) Navigator.of(context).pop(true);
     }
   }
 
@@ -197,6 +214,61 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
               ),
 
+              const SizedBox(height: 24),
+
+              // Разделитель
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.white24)),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text('или', style: TextStyle(color: Colors.white38)),
+                  ),
+                  Expanded(child: Divider(color: Colors.white24)),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Google Sign-In
+              SizedBox(
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: authState.isLoading ? null : _loginWithGoogle,
+                  icon: const Text('G', style: TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  )),
+                  label: const Text('Войти через Google'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Apple Sign-In (только iOS)
+              if (Platform.isIOS || Platform.isMacOS) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: authState.isLoading ? null : _loginWithApple,
+                    icon: const Icon(Icons.apple, color: Colors.white),
+                    label: const Text('Войти через Apple'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      side: const BorderSide(color: Colors.white24),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Кнопка «без аккаунта»

@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 /// Состояние авторизации
 class AuthState {
@@ -179,6 +182,121 @@ class AuthService extends StateNotifier<AuthState> {
         isLoading: false,
         error: 'Connection error: $e',
       );
+      return false;
+    }
+  }
+
+  /// Вход через Google
+  Future<bool> loginWithGoogle() async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final googleSignIn = GoogleSignIn.instance;
+      await googleSignIn.initialize();
+
+      final account = await googleSignIn.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        state = state.copyWith(isLoading: false, error: 'Google token error');
+        return false;
+      }
+
+      return _socialLogin(
+        provider: 'google',
+        idToken: idToken,
+        email: account.email,
+        displayName: account.displayName,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Google Sign-In error: $e');
+      return false;
+    }
+  }
+
+  /// Вход через Apple
+  Future<bool> loginWithApple() async {
+    if (!Platform.isIOS && !Platform.isMacOS) {
+      state = state.copyWith(error: 'Apple Sign-In доступен только на iOS');
+      return false;
+    }
+
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        state = state.copyWith(isLoading: false, error: 'Apple token error');
+        return false;
+      }
+
+      final name = [credential.givenName, credential.familyName]
+          .where((s) => s != null && s.isNotEmpty)
+          .join(' ');
+
+      return _socialLogin(
+        provider: 'apple',
+        idToken: idToken,
+        email: credential.email,
+        displayName: name.isNotEmpty ? name : null,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Apple Sign-In error: $e');
+      return false;
+    }
+  }
+
+  /// Общий метод для соцсетей — отправляет токен на сервер
+  Future<bool> _socialLogin({
+    required String provider,
+    required String idToken,
+    String? email,
+    String? displayName,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/social'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(<String, dynamic>{
+          'provider': provider,
+          'idToken': idToken,
+          // ignore: use_null_aware_elements
+          if (email != null) 'email': email,
+          // ignore: use_null_aware_elements
+          if (displayName != null) 'displayName': displayName,
+        }),
+      );
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final token = body['token'] as String;
+        final user = body['user'] as Map<String, dynamic>;
+
+        await _saveToken(token);
+        state = AuthState(
+          isLoggedIn: true,
+          token: token,
+          userId: user['id'] as String,
+          email: user['email'] as String,
+          displayName: user['displayName'] as String?,
+        );
+        return true;
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          error: body['error'] as String? ?? 'Social login failed',
+        );
+        return false;
+      }
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'Connection error: $e');
       return false;
     }
   }
