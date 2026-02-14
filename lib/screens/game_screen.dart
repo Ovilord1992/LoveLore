@@ -4,6 +4,8 @@ import '../engine/scene_engine.dart';
 import '../models/scene.dart';
 import '../models/game_state.dart';
 import '../services/save_service.dart';
+import '../services/currency_service.dart';
+import '../services/user_profile_service.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/choice_buttons.dart';
 import '../widgets/scene_transitions.dart';
@@ -169,6 +171,25 @@ class _GameScreenState extends ConsumerState<GameScreen>
     );
   }
 
+  void _handleChoice(Choice choice, SceneEngine engine) {
+    if (choice.premium && choice.cost > 0) {
+      final currency = ref.read(currencyServiceProvider.notifier);
+      if (!currency.canAfford(choice.cost)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Не хватает алмазов (нужно ${choice.cost} 💎)'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF16213E),
+          ),
+        );
+        return;
+      }
+      currency.spendDiamonds(choice.cost);
+    }
+    ref.read(userProfileProvider.notifier).incrementChoicesMade();
+    engine.makeChoice(choice);
+  }
+
   Widget _buildRelationships(GameState gameState, SceneEngine engine) {
     // Собираем переменные отношений (содержат _love или _trust)
     final relationships = <String, RelationshipInfo>{};
@@ -212,7 +233,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         final available = engine.getAvailableChoices(event.choices ?? []);
         return ChoiceButtons(
           choices: available,
-          onChoiceSelected: (choice) => engine.makeChoice(choice),
+          onChoiceSelected: (choice) => _handleChoice(choice, engine),
         );
 
       case EventType.dialogue:
