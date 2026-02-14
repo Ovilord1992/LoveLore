@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../engine/scene_engine.dart';
 import '../models/scene.dart';
+import '../services/save_service.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/choice_buttons.dart';
+import '../widgets/scene_transitions.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String novelId;
@@ -35,8 +37,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
     _fadeController.forward();
   }
 
+  Future<void> _autoSave() async {
+    final state = ref.read(sceneEngineProvider);
+    if (state != null) {
+      await ref.read(saveServiceProvider).saveGame(state);
+    }
+  }
+
   @override
   void dispose() {
+    _autoSave();
     _fadeController.dispose();
     super.dispose();
   }
@@ -65,8 +75,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Фон
-            _buildBackground(scene),
+            // Фон с анимированными переходами
+            AnimatedBackground(backgroundKey: scene?.background),
 
             // Персонажи на экране
             if (scene != null) _buildCharacters(scene, engine),
@@ -79,32 +89,36 @@ class _GameScreenState extends ConsumerState<GameScreen>
               child: _buildEventUI(event, engine),
             ),
 
-            // Кнопка "назад"
+            // Верхняя панель
             Positioned(
               top: MediaQuery.of(context).padding.top + 8,
               left: 8,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white70),
-                onPressed: () => Navigator.of(context).pop(),
+              right: 8,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.save_outlined, color: Colors.white70),
+                    onPressed: () async {
+                      await _autoSave();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Сохранено ✓'),
+                            duration: Duration(seconds: 1),
+                            backgroundColor: Color(0xFF16213E),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackground(Scene? scene) {
-    // Пока используем цветной градиент, позже заменим на изображения
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 800),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF0F3460),
-            const Color(0xFF1A1A2E),
           ],
         ),
       ),
@@ -127,28 +141,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
           alignment: alignment,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 200),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Placeholder для спрайта
-                Container(
-                  width: 120,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      character.name[0],
-                      style: const TextStyle(
-                        fontSize: 48,
-                        color: Colors.white24,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            child: AnimatedCharacterSprite(
+              key: ValueKey('${sc.characterId}_${sc.spriteId}'),
+              characterId: sc.characterId,
+              displayLetter: character.name[0],
+              animation: sc.animation,
             ),
           ),
         );

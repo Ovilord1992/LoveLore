@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/novel_loader.dart';
 import '../models/novel.dart';
 import '../widgets/novel_card.dart';
-import 'game_screen.dart';
+import 'novel_detail_screen.dart';
+import 'settings_screen.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -18,25 +19,40 @@ class LibraryScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Amoria',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        foreground: Paint()
-                          ..shader = const LinearGradient(
-                            colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
-                          ).createShader(
-                              const Rect.fromLTWH(0, 0, 150, 40)),
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Amoria',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            foreground: Paint()
+                              ..shader = const LinearGradient(
+                                colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
+                              ).createShader(
+                                  const Rect.fromLTWH(0, 0, 150, 40)),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Твои истории',
+                          style: TextStyle(fontSize: 16, color: Colors.white54),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Твои истории',
-                      style: TextStyle(fontSize: 16, color: Colors.white54),
+                    IconButton(
+                      icon: const Icon(Icons.settings, color: Colors.white38),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const SettingsScreen()),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -110,7 +126,7 @@ class _NovelList extends ConsumerWidget {
   void _openNovel(BuildContext context, NovelMeta novel) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => GameScreen(novelId: novel.id),
+        builder: (_) => NovelDetailScreen(novel: novel),
       ),
     );
   }
