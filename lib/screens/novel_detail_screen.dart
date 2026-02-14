@@ -211,8 +211,8 @@ class NovelDetailScreen extends ConsumerWidget {
   void _startGame(BuildContext context, bool hasSave) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => GameScreen(novelId: novel.id),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => GameScreen(novelId: novel.id),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 400),

@@ -117,9 +117,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   IconButton(
                     icon: const Icon(Icons.save_outlined, color: Colors.white70),
                     onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       await _autoSave();
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text('Сохранено ✓'),
                             duration: Duration(seconds: 1),

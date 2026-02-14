@@ -70,7 +70,7 @@ class RelationshipBar extends StatelessWidget {
                     tween: Tween(begin: 0, end: progress),
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
-                    builder: (_, val, __) {
+                    builder: (_, val, _) {
                       return LinearProgressIndicator(
                         value: val,
                         minHeight: 6,

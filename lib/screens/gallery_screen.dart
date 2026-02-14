@@ -62,8 +62,8 @@ class GalleryScreen extends ConsumerWidget {
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
-        pageBuilder: (_, __, ___) => _FullScreenCG(cgId: cgId),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, _, _) => _FullScreenCG(cgId: cgId),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(opacity: animation, child: child);
         },
       ),

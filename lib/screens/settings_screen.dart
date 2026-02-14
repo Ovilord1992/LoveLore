@@ -249,7 +249,7 @@ class _SwitchTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFFE91E63),
+            activeTrackColor: const Color(0xFFE91E63),
           ),
         ],
       ),
