@@ -212,10 +212,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectChapter: (index) => set({ selectedChapterIndex: index, selectedSceneId: null, selectedEventIndex: null }),
 
   addScene: (scene) => set((state) => {
-    const chapters = [...state.project.chapters];
-    const chapter = { ...chapters[state.selectedChapterIndex] };
-    chapter.scenes = [...chapter.scenes, scene];
-    chapters[state.selectedChapterIndex] = chapter;
+    const chapters = state.project.chapters.map((ch, i) =>
+      i === state.selectedChapterIndex ? { ...ch, scenes: [...ch.scenes, scene] } : ch
+    );
     return { project: { ...state.project, chapters }, isDirty: true };
   }),
 
