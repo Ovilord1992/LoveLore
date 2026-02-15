@@ -50,6 +50,7 @@ navell/
 │   │   │   ├── ad_service.dart   # Rewarded Ads (google_mobile_ads)
 │   │   │   ├── iap_service.dart  # In-App Purchases (покупка алмазов/билетов)
 │   │   │   ├── vip_service.dart  # VIP-подписка (ежедневные алмазы, безлимит)
+│   │   │   ├── daily_reward_service.dart # Ежедневные награды (7-дневный цикл)
 │   │   │   ├── auth_service.dart # Авторизация (JWT, Google, Apple)
 │   │   │   ├── sync_service.dart # Синхронизация с сервером
 │   │   │   └── ...               # wardrobe, profile, audio, locale
@@ -59,7 +60,7 @@ navell/
 │   │   │   ├── shop_screen.dart      # Магазин (IAP + реклама + VIP)
 │   │   │   ├── profile_screen.dart   # Профиль + валюта + реклама
 │   │   │   └── ...               # auth, settings, gallery, wardrobe
-│   │   └── widgets/              # UI-компоненты
+│   │   └── widgets/              # UI-компоненты (DialogueBox, NovelCard, DailyRewardDialog)
 │   ├── assets/                   # Ассеты (novels, backgrounds, ui)
 │   ├── android/                  # Android-проект
 │   ├── ios/                      # iOS-проект
@@ -268,6 +269,11 @@ navell/
   - [x] Ранний доступ к главам, без рекламы
   - [x] Эксклюзивная рамка профиля
   - [x] Хранение в Hive, проверка expiresAt
+- [x] UX монетизации
+  - [x] Бейджи валюты с кнопкой «+» → быстрый переход в магазин
+  - [x] Таймер восстановления билетов (MM:SS) на главном экране
+  - [x] Ежедневные награды (Daily Login): popup при запуске, 7-дневный цикл
+  - [x] Промо-баннер спецпредложения на главном экране
 
 ### Фаза 12: Публикация ⬜ НЕ НАЧАТА
 - [ ] Подготовка скриншотов для сторов
