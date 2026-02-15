@@ -27,19 +27,15 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
 
   Future<void> _checkAvailability() async {
     final loader = ref.read(novelLoaderProvider);
-    // Сначала проверяем скачанные файлы
+    // Проверяем скачанные файлы
     final downloaded = await loader.isDownloaded(widget.novel.id);
     if (downloaded) {
       setState(() { _isAvailableLocally = true; _checking = false; });
       return;
     }
-    // Проверяем встроенные assets
-    try {
-      await loader.loadNovelMeta(widget.novel.id);
-      setState(() { _isAvailableLocally = true; _checking = false; });
-    } catch (_) {
-      setState(() { _isAvailableLocally = false; _checking = false; });
-    }
+    // Проверяем встроенные assets (manifest)
+    final isBuiltIn = await loader.isBuiltInNovel(widget.novel.id);
+    setState(() { _isAvailableLocally = isBuiltIn; _checking = false; });
   }
 
   @override

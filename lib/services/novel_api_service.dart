@@ -118,8 +118,25 @@ class NovelApiService {
       final bytes = await File(zipPath).readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
 
+      // Определяем общий префикс (если файлы внутри подпапки)
+      String prefix = '';
+      final metaEntry = archive.files.firstWhere(
+        (f) => f.name.endsWith('meta.json'),
+        orElse: () => archive.files.first,
+      );
+      if (metaEntry.name.contains('/')) {
+        prefix = metaEntry.name.substring(0, metaEntry.name.lastIndexOf('/') + 1);
+      }
+
       for (final file in archive) {
-        final filePath = '${novelDir.path}/${file.name}';
+        // Убираем общий префикс из пути
+        String name = file.name;
+        if (prefix.isNotEmpty && name.startsWith(prefix)) {
+          name = name.substring(prefix.length);
+        }
+        if (name.isEmpty) continue;
+
+        final filePath = '${novelDir.path}/$name';
         if (file.isFile) {
           final outFile = File(filePath);
           await outFile.create(recursive: true);

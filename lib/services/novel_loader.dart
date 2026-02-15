@@ -125,7 +125,21 @@ class NovelLoader {
   Future<bool> isDownloaded(String novelId) async {
     final dir = await _getDownloadedNovelsDir();
     final novelDir = Directory('${dir.path}/$novelId');
-    return novelDir.existsSync();
+    if (!novelDir.existsSync()) return false;
+    // Проверяем что meta.json реально есть
+    final metaFile = File('${novelDir.path}/meta.json');
+    return metaFile.existsSync();
+  }
+
+  /// Проверить, есть ли новелла во встроенных assets (manifest)
+  Future<bool> isBuiltInNovel(String novelId) async {
+    try {
+      final manifestJson = await _loadAssetJson('assets/novels/manifest.json');
+      final novelIds = List<String>.from(manifestJson['novels'] as List);
+      return novelIds.contains(novelId);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Удалить скачанную новеллу
