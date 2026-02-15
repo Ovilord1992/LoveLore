@@ -45,6 +45,7 @@ class NovelMeta extends Equatable {
   final String description;
   final String author;
   final String? coverImage;
+  final String? coverUrl;
   final List<String> tags;
   final int totalChapters;
 
@@ -54,6 +55,7 @@ class NovelMeta extends Equatable {
     required this.description,
     required this.author,
     this.coverImage,
+    this.coverUrl,
     this.tags = const [],
     this.totalChapters = 0,
   });
@@ -63,5 +65,5 @@ class NovelMeta extends Equatable {
   Map<String, dynamic> toJson() => _$NovelMetaToJson(this);
 
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, tags, totalChapters];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters];
 }

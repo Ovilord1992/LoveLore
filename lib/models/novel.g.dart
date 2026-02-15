@@ -30,6 +30,7 @@ NovelMeta _$NovelMetaFromJson(Map<String, dynamic> json) => NovelMeta(
   description: json['description'] as String,
   author: json['author'] as String,
   coverImage: json['coverImage'] as String?,
+  coverUrl: json['coverUrl'] as String?,
   tags:
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
@@ -42,6 +43,7 @@ Map<String, dynamic> _$NovelMetaToJson(NovelMeta instance) => <String, dynamic>{
   'description': instance.description,
   'author': instance.author,
   'coverImage': instance.coverImage,
+  'coverUrl': instance.coverUrl,
   'tags': instance.tags,
   'totalChapters': instance.totalChapters,
 };

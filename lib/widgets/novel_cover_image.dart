@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import '../services/api_config.dart';
 
-/// Виджет обложки новеллы — загружает из файловой системы или assets
+/// Виджет обложки новеллы — загружает из файловой системы, сервера или assets
 class NovelCoverImage extends StatefulWidget {
   final String novelId;
   final String? coverImage;
+  final String? coverUrl;
   final BoxFit fit;
   final Widget? placeholder;
 
@@ -13,6 +15,7 @@ class NovelCoverImage extends StatefulWidget {
     super.key,
     required this.novelId,
     required this.coverImage,
+    this.coverUrl,
     this.fit = BoxFit.cover,
     this.placeholder,
   });
@@ -23,6 +26,7 @@ class NovelCoverImage extends StatefulWidget {
 
 class _NovelCoverImageState extends State<NovelCoverImage> {
   File? _localFile;
+  String? _networkUrl;
   bool _checked = false;
 
   @override
@@ -32,17 +36,32 @@ class _NovelCoverImageState extends State<NovelCoverImage> {
   }
 
   Future<void> _resolveImage() async {
-    if (widget.coverImage == null) {
+    if (widget.coverImage == null && widget.coverUrl == null) {
       setState(() => _checked = true);
       return;
     }
 
-    // Проверяем скачанную новеллу
-    final appDir = await getApplicationDocumentsDirectory();
-    final localPath = '${appDir.path}/novels/${widget.novelId}/${widget.coverImage}';
-    final file = File(localPath);
-    if (await file.exists()) {
-      if (mounted) setState(() { _localFile = file; _checked = true; });
+    // 1. Проверяем скачанную новеллу
+    if (widget.coverImage != null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      final localPath = '${appDir.path}/novels/${widget.novelId}/${widget.coverImage}';
+      final file = File(localPath);
+      if (await file.exists()) {
+        if (mounted) setState(() { _localFile = file; _checked = true; });
+        return;
+      }
+    }
+
+    // 2. Проверяем встроенный asset
+    if (widget.coverImage != null && widget.coverImage!.startsWith('assets/')) {
+      if (mounted) setState(() => _checked = true);
+      return;
+    }
+
+    // 3. Используем серверный URL обложки
+    if (widget.coverUrl != null) {
+      final baseUrl = ApiConfig.baseUrl.replaceAll('/v1', '');
+      if (mounted) setState(() { _networkUrl = '$baseUrl${widget.coverUrl}'; _checked = true; });
       return;
     }
 
@@ -63,6 +82,15 @@ class _NovelCoverImageState extends State<NovelCoverImage> {
     // Встроенный asset
     if (widget.coverImage != null && widget.coverImage!.startsWith('assets/')) {
       return Image.asset(widget.coverImage!, fit: widget.fit);
+    }
+
+    // Серверная обложка
+    if (_networkUrl != null) {
+      return Image.network(
+        _networkUrl!,
+        fit: widget.fit,
+        errorBuilder: (_, error, stackTrace) => widget.placeholder ?? const SizedBox.shrink(),
+      );
     }
 
     // Плейсхолдер

@@ -46,6 +46,7 @@ class NovelCard extends StatelessWidget {
                 child: NovelCoverImage(
                     novelId: novel.id,
                     coverImage: novel.coverImage,
+                    coverUrl: novel.coverUrl,
                     fit: BoxFit.cover,
                     placeholder: const Center(
                         child: Icon(Icons.auto_stories,

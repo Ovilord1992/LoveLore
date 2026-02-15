@@ -63,6 +63,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                   NovelCoverImage(
                     novelId: novel.id,
                     coverImage: novel.coverImage,
+                    coverUrl: novel.coverUrl,
                     fit: BoxFit.cover,
                     placeholder: Container(
                       decoration: const BoxDecoration(

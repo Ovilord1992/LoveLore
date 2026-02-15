@@ -169,7 +169,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
           fit: StackFit.expand,
           children: [
             // Фон с анимированными переходами
-            AnimatedBackground(backgroundKey: scene?.background),
+            AnimatedBackground(backgroundKey: scene?.background, novelId: widget.novelId),
 
             // Персонажи на экране
             if (scene != null) _buildCharacters(scene, engine),
@@ -238,6 +238,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
         final character = engine.getCharacter(sc.characterId);
         if (character == null) return const SizedBox.shrink();
 
+        // Найти путь к спрайту
+        String? spriteImage;
+        try {
+          final sprite = character.sprites.firstWhere((s) => s.id == sc.spriteId);
+          spriteImage = sprite.image;
+        } catch (_) {}
+
         final alignment = switch (sc.position) {
           CharacterPosition.left => Alignment.bottomLeft,
           CharacterPosition.right => Alignment.bottomRight,
@@ -251,6 +258,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
             child: AnimatedCharacterSprite(
               key: ValueKey('${sc.characterId}_${sc.spriteId}'),
               characterId: sc.characterId,
+              spriteImage: spriteImage,
+              novelId: widget.novelId,
               displayLetter: character.name[0],
               animation: sc.animation,
             ),

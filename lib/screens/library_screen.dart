@@ -484,6 +484,7 @@ class _ContinueCard extends StatelessWidget {
                 child: NovelCoverImage(
                     novelId: novel.id,
                     coverImage: novel.coverImage,
+                    coverUrl: novel.coverUrl,
                     fit: BoxFit.cover,
                     placeholder: Center(
                         child: Text(
@@ -579,6 +580,7 @@ class _LargeNovelCard extends StatelessWidget {
                     NovelCoverImage(
                         novelId: novel.id,
                         coverImage: novel.coverImage,
+                        coverUrl: novel.coverUrl,
                         fit: BoxFit.cover,
                         placeholder: Center(
                             child: Text(
