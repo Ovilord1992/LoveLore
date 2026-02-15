@@ -56,7 +56,7 @@ export interface SceneCharacter {
   animation?: string;
 }
 
-export type EventType = 'dialogue' | 'narration' | 'choice' | 'set_variable' | 'play_sound';
+export type EventType = 'dialogue' | 'narration' | 'choice' | 'set_variable' | 'play_sound' | 'changeBackground' | 'changeSprite';
 
 export interface SceneEvent {
   type: EventType;
@@ -65,6 +65,10 @@ export interface SceneEvent {
   choices?: Choice[];
   variable?: string;
   value?: string | number | boolean;
+  background?: string;
+  characterId?: string;
+  spriteId?: string;
+  sound?: string;
 }
 
 export interface Choice {

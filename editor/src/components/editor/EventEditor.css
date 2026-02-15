@@ -14,6 +14,9 @@
 .event-card.narration { border-left: 3px solid #9c27b0; }
 .event-card.choice { border-left: 3px solid #ff9800; }
 
+.event-card.changeBackground { border-left: 3px solid #4caf50; }
+.event-card.changeSprite { border-left: 3px solid #00bcd4; }
+
 .event-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; }
 .drag-handle { color: #444; cursor: grab; }
 .event-type { font-size: 12px; font-weight: 600; color: #ccc; }
@@ -45,3 +48,20 @@
 .add-event-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #2a2a3e; }
 .add-event-bar button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 8px; color: #ccc; cursor: pointer; font-size: 12px; transition: all 0.2s; }
 .add-event-bar button:hover { border-color: #e91e63; color: #e91e63; }
+
+/* Scene settings */
+.scene-settings-row { display: flex; gap: 6px; align-items: center; }
+.scene-settings-row input { flex: 1; }
+.upload-btn { background: none; border: 1px solid #2a2a3e; color: #666; padding: 6px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; flex-shrink: 0; }
+.upload-btn:hover { border-color: #e91e63; color: #e91e63; }
+.scene-bg-preview { width: 100%; height: 60px; object-fit: cover; border-radius: 6px; margin-top: 6px; }
+
+/* Characters on scene */
+.chars-on-scene { margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2a3e; }
+.chars-on-scene-header { margin-bottom: 6px; }
+.chars-label { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.char-on-scene-item { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+.char-on-scene-name { font-size: 11px; font-weight: 600; min-width: 60px; }
+.char-on-scene-item select { flex: 1; padding: 4px 6px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 4px; color: #fff; font-size: 11px; }
+.add-char-select { width: 100%; padding: 6px 8px; background: #1a1a2e; border: 1px dashed #2a2a3e; border-radius: 6px; color: #666; font-size: 11px; margin-top: 4px; cursor: pointer; }
+.add-char-select:hover { border-color: #e91e63; color: #e91e63; }

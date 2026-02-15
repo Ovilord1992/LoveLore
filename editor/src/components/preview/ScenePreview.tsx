@@ -3,6 +3,7 @@ import './ScenePreview.css';
 
 export function ScenePreview() {
   const { project, selectedChapterIndex, selectedSceneId, selectedEventIndex } = useEditorStore();
+  const imageUrls = useEditorStore((s) => s.imageUrls);
 
   const chapter = project.chapters[selectedChapterIndex];
   const scene = chapter?.scenes.find((s) => s.id === selectedSceneId);
@@ -20,22 +21,33 @@ export function ScenePreview() {
   }
 
   const event = selectedEventIndex !== null ? scene.events[selectedEventIndex] : scene.events[0];
-  const bgGradient = getBackgroundGradient(scene.background);
+
+  // Фон: сначала ищем загруженное изображение, потом градиент
+  const bgImageUrl = scene.background ? imageUrls.get(`backgrounds/${scene.background}`) : undefined;
+  const bgStyle: React.CSSProperties = bgImageUrl
+    ? { backgroundImage: `url(${bgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: getBackgroundGradient(scene.background) };
 
   return (
     <div className="scene-preview">
       <div className="phone-frame">
-        <div className="phone-screen" style={{ background: bgGradient }}>
+        <div className="phone-screen" style={bgStyle}>
           {/* Персонажи */}
           <div className="preview-characters">
             {scene.charactersOnScreen.map((sc) => {
               const char = project.characters.find((c) => c.id === sc.characterId);
+              const sprite = char?.sprites.find((sp) => sp.id === sc.spriteId);
+              const spriteUrl = sprite ? imageUrls.get(sprite.image) : undefined;
               return (
                 <div key={sc.characterId} className={`preview-character ${sc.position}`}>
-                  <div className="character-placeholder">
-                    {char?.name?.[0] || '?'}
-                  </div>
-                  <span className="character-name">{char?.name || sc.characterId}</span>
+                  {spriteUrl ? (
+                    <img src={spriteUrl} alt={char?.name || sc.characterId} className="character-sprite" />
+                  ) : (
+                    <div className="character-placeholder">
+                      {char?.name?.[0] || '?'}
+                    </div>
+                  )}
+                  <span className="character-name" style={{ color: char?.color }}>{char?.name || sc.characterId}</span>
                 </div>
               );
             })}
@@ -69,6 +81,18 @@ export function ScenePreview() {
                       {choice.text || 'Вариант...'}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {event.type === 'changeBackground' && (
+                <div className="preview-narration">
+                  <div className="preview-text italic">🖼 Смена фона → {event.background || '...'}</div>
+                </div>
+              )}
+
+              {event.type === 'changeSprite' && (
+                <div className="preview-narration">
+                  <div className="preview-text italic">🎭 Смена спрайта → {event.characterId} / {event.spriteId || '...'}</div>
                 </div>
               )}
             </div>

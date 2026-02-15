@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { NovelProject, Character, Chapter, Scene, SceneEvent, NovelMeta } from '../types/novel';
+import type { NovelProject, Character, Chapter, Scene, SceneEvent, SceneCharacter, NovelMeta } from '../types/novel';
 
 const defaultMeta: NovelMeta = {
   id: 'new_novel',
@@ -26,8 +26,11 @@ const defaultChapter: Chapter = {
   scenes: [defaultScene],
 };
 
+// images: Map<путь_в_ZIP, File>  (напр. "backgrounds/city.png" → File)
 interface EditorState {
   project: NovelProject;
+  images: Map<string, File>;
+  imageUrls: Map<string, string>;
   selectedChapterIndex: number;
   selectedSceneId: string | null;
   selectedEventIndex: number | null;
@@ -36,6 +39,13 @@ interface EditorState {
   // Проект
   setProject: (project: NovelProject) => void;
   updateMeta: (meta: Partial<NovelMeta>) => void;
+
+  // Изображения
+  addImage: (zipPath: string, file: File) => void;
+  removeImage: (zipPath: string) => void;
+  getImageUrl: (zipPath: string) => string | undefined;
+  clearImages: () => void;
+  setImages: (images: Map<string, File>) => void;
 
   // Персонажи
   addCharacter: (character: Character) => void;
@@ -57,6 +67,11 @@ interface EditorState {
   removeScene: (sceneId: string) => void;
   selectScene: (sceneId: string | null) => void;
 
+  // Персонажи на сцене
+  addCharacterToScene: (sceneId: string, sc: SceneCharacter) => void;
+  updateCharacterOnScene: (sceneId: string, charId: string, updates: Partial<SceneCharacter>) => void;
+  removeCharacterFromScene: (sceneId: string, charId: string) => void;
+
   // События
   addEvent: (sceneId: string, event: SceneEvent) => void;
   updateEvent: (sceneId: string, eventIndex: number, event: SceneEvent) => void;
@@ -65,13 +80,15 @@ interface EditorState {
   selectEvent: (index: number | null) => void;
 }
 
-export const useEditorStore = create<EditorState>((set) => ({
+export const useEditorStore = create<EditorState>((set, get) => ({
   project: {
     meta: defaultMeta,
     characters: [],
     variables: {},
     chapters: [defaultChapter],
   },
+  images: new Map(),
+  imageUrls: new Map(),
   selectedChapterIndex: 0,
   selectedSceneId: 'scene_1',
   selectedEventIndex: null,
@@ -83,6 +100,42 @@ export const useEditorStore = create<EditorState>((set) => ({
     project: { ...state.project, meta: { ...state.project.meta, ...meta } },
     isDirty: true,
   })),
+
+  // --- Изображения ---
+  addImage: (zipPath, file) => set((state) => {
+    const images = new Map(state.images);
+    const imageUrls = new Map(state.imageUrls);
+    // Освобождаем старый URL
+    const oldUrl = imageUrls.get(zipPath);
+    if (oldUrl) URL.revokeObjectURL(oldUrl);
+    images.set(zipPath, file);
+    imageUrls.set(zipPath, URL.createObjectURL(file));
+    return { images, imageUrls, isDirty: true };
+  }),
+
+  removeImage: (zipPath) => set((state) => {
+    const images = new Map(state.images);
+    const imageUrls = new Map(state.imageUrls);
+    const url = imageUrls.get(zipPath);
+    if (url) URL.revokeObjectURL(url);
+    images.delete(zipPath);
+    imageUrls.delete(zipPath);
+    return { images, imageUrls, isDirty: true };
+  }),
+
+  getImageUrl: (zipPath) => get().imageUrls.get(zipPath),
+
+  clearImages: () => set((state) => {
+    state.imageUrls.forEach((url) => URL.revokeObjectURL(url));
+    return { images: new Map(), imageUrls: new Map() };
+  }),
+
+  setImages: (images) => set((state) => {
+    state.imageUrls.forEach((url) => URL.revokeObjectURL(url));
+    const imageUrls = new Map<string, string>();
+    images.forEach((file, path) => imageUrls.set(path, URL.createObjectURL(file)));
+    return { images, imageUrls };
+  }),
 
   addCharacter: (character) => set((state) => ({
     project: { ...state.project, characters: [...state.project.characters, character] },
@@ -187,6 +240,46 @@ export const useEditorStore = create<EditorState>((set) => ({
   }),
 
   selectScene: (sceneId) => set({ selectedSceneId: sceneId, selectedEventIndex: null }),
+
+  // --- Персонажи на сцене ---
+  addCharacterToScene: (sceneId, sc) => set((state) => {
+    const chapters = state.project.chapters.map((ch) => ({
+      ...ch,
+      scenes: ch.scenes.map((s) => {
+        if (s.id !== sceneId) return s;
+        if (s.charactersOnScreen.some((c) => c.characterId === sc.characterId)) return s;
+        return { ...s, charactersOnScreen: [...s.charactersOnScreen, sc] };
+      }),
+    }));
+    return { project: { ...state.project, chapters }, isDirty: true };
+  }),
+
+  updateCharacterOnScene: (sceneId, charId, updates) => set((state) => {
+    const chapters = state.project.chapters.map((ch) => ({
+      ...ch,
+      scenes: ch.scenes.map((s) => {
+        if (s.id !== sceneId) return s;
+        return {
+          ...s,
+          charactersOnScreen: s.charactersOnScreen.map((c) =>
+            c.characterId === charId ? { ...c, ...updates } : c
+          ),
+        };
+      }),
+    }));
+    return { project: { ...state.project, chapters }, isDirty: true };
+  }),
+
+  removeCharacterFromScene: (sceneId, charId) => set((state) => {
+    const chapters = state.project.chapters.map((ch) => ({
+      ...ch,
+      scenes: ch.scenes.map((s) => {
+        if (s.id !== sceneId) return s;
+        return { ...s, charactersOnScreen: s.charactersOnScreen.filter((c) => c.characterId !== charId) };
+      }),
+    }));
+    return { project: { ...state.project, chapters }, isDirty: true };
+  }),
 
   addEvent: (sceneId, event) => set((state) => {
     const chapters = state.project.chapters.map((ch) => ({

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 import { validateProject, type ValidationError } from '../../utils/validator';
-import { exportAsZip, exportAsJson, importProject } from '../../utils/exporter';
-import { Plus, Trash2, Download, Upload, AlertTriangle, CheckCircle, Users, BookOpen, Settings, Hash } from 'lucide-react';
-import type { Scene } from '../../types/novel';
+import { exportAsZip, exportAsJson, importProject, importProjectFromZip } from '../../utils/exporter';
+import { Plus, Trash2, Download, Upload, AlertTriangle, CheckCircle, Users, BookOpen, Settings, Hash, Image } from 'lucide-react';
+import type { Scene, CharacterSprite } from '../../types/novel';
 import './Sidebar.css';
 
 type Tab = 'meta' | 'characters' | 'chapters' | 'variables' | 'validate';
@@ -32,22 +32,45 @@ export function Sidebar() {
 }
 
 function MetaTab() {
-  const { project, updateMeta, setProject } = useEditorStore();
+  const { project, images, updateMeta, setProject, addImage, clearImages, setImages } = useEditorStore();
   const { meta } = project;
+
+  const coverPath = meta.coverImage || 'cg/cover.png';
+  const coverUrl = useEditorStore((s) => s.imageUrls.get(coverPath));
 
   const handleImport = async () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.json,.zip';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        try {
+      if (!file) return;
+      try {
+        if (file.name.endsWith('.zip')) {
+          const { project: imported, images: importedImages } = await importProjectFromZip(file);
+          clearImages();
+          setProject(imported);
+          setImages(importedImages);
+        } else {
           const imported = await importProject(file);
           setProject(imported);
-        } catch (err) {
-          alert('Ошибка импорта: ' + (err as Error).message);
         }
+      } catch (err) {
+        alert('Ошибка импорта: ' + (err as Error).message);
+      }
+    };
+    input.click();
+  };
+
+  const handleCoverUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        addImage('cg/cover.png', file);
+        updateMeta({ coverImage: 'cg/cover.png' });
       }
     };
     input.click();
@@ -56,6 +79,20 @@ function MetaTab() {
   return (
     <div className="tab-content">
       <h3>Метаданные</h3>
+
+      {/* Обложка */}
+      <label>Обложка</label>
+      <div className="cover-upload" onClick={handleCoverUpload}>
+        {coverUrl ? (
+          <img src={coverUrl} alt="cover" className="cover-preview" />
+        ) : (
+          <div className="cover-placeholder">
+            <Image size={24} />
+            <span>Загрузить обложку</span>
+          </div>
+        )}
+      </div>
+
       <label>ID новеллы</label>
       <input value={meta.id} onChange={(e) => updateMeta({ id: e.target.value })} placeholder="my_novel" />
       <label>Название</label>
@@ -72,16 +109,16 @@ function MetaTab() {
       />
 
       <div className="actions-group">
-        <button onClick={() => exportAsZip(project)} className="primary"><Download size={14} /> ZIP для Amoria</button>
+        <button onClick={() => exportAsZip(project, images)} className="primary"><Download size={14} /> ZIP для Amoria</button>
         <button onClick={() => exportAsJson(project)}><Download size={14} /> JSON</button>
-        <button onClick={handleImport}><Upload size={14} /> Импорт</button>
+        <button onClick={handleImport}><Upload size={14} /> Импорт (JSON/ZIP)</button>
       </div>
     </div>
   );
 }
 
 function CharactersTab() {
-  const { project, addCharacter, updateCharacter, removeCharacter } = useEditorStore();
+  const { project, addCharacter, updateCharacter, removeCharacter, addImage, removeImage } = useEditorStore();
 
   const handleAdd = () => {
     const id = `char_${Date.now()}`;
@@ -89,8 +126,51 @@ function CharactersTab() {
       id,
       name: 'Новый персонаж',
       color: '#E91E63',
-      sprites: [{ id: 'neutral', image: 'neutral.png', label: 'Спокойный' }],
+      sprites: [{ id: 'neutral', image: `sprites/${id}/${id}_neutral.png`, label: 'Спокойный' }],
     });
+  };
+
+  const handleAddSprite = (charId: string) => {
+    const char = project.characters.find((c) => c.id === charId);
+    if (!char) return;
+    const spriteId = `sprite_${Date.now()}`;
+    const sprites: CharacterSprite[] = [...char.sprites, { id: spriteId, image: `sprites/${charId}/${charId}_${spriteId}.png`, label: 'Новый' }];
+    updateCharacter(charId, { sprites });
+  };
+
+  const handleUpdateSprite = (charId: string, spriteIndex: number, updates: Partial<CharacterSprite>) => {
+    const char = project.characters.find((c) => c.id === charId);
+    if (!char) return;
+    const sprites = char.sprites.map((s, i) => i === spriteIndex ? { ...s, ...updates } : s);
+    updateCharacter(charId, { sprites });
+  };
+
+  const handleRemoveSprite = (charId: string, spriteIndex: number) => {
+    const char = project.characters.find((c) => c.id === charId);
+    if (!char || char.sprites.length <= 1) return;
+    const removed = char.sprites[spriteIndex];
+    removeImage(removed.image);
+    const sprites = char.sprites.filter((_, i) => i !== spriteIndex);
+    updateCharacter(charId, { sprites });
+  };
+
+  const handleSpriteUpload = (charId: string, spriteIndex: number) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const char = project.characters.find((c) => c.id === charId);
+      if (!char) return;
+      const sprite = char.sprites[spriteIndex];
+      // Путь: sprites/{charId}/{charId}_{spriteId}.png
+      const ext = file.name.split('.').pop() || 'png';
+      const zipPath = `sprites/${charId}/${charId}_${sprite.id}.${ext}`;
+      addImage(zipPath, file);
+      handleUpdateSprite(charId, spriteIndex, { image: zipPath });
+    };
+    input.click();
   };
 
   return (
@@ -100,29 +180,75 @@ function CharactersTab() {
         <button onClick={handleAdd} className="add-btn"><Plus size={14} /></button>
       </div>
       {project.characters.map((char) => (
-        <div key={char.id} className="character-card">
-          <div className="char-header">
-            <input
-              className="char-color"
-              type="color"
-              value={char.color}
-              onChange={(e) => updateCharacter(char.id, { color: e.target.value })}
-            />
-            <input
-              value={char.name}
-              onChange={(e) => updateCharacter(char.id, { name: e.target.value })}
-              placeholder="Имя"
-            />
-            <button onClick={() => removeCharacter(char.id)} className="delete"><Trash2 size={12} /></button>
-          </div>
-          <input
-            value={char.id}
-            onChange={(e) => updateCharacter(char.id, { id: e.target.value })}
-            className="char-id"
-            placeholder="ID"
-          />
-        </div>
+        <CharacterCard
+          key={char.id}
+          char={char}
+          onUpdate={(updates) => updateCharacter(char.id, updates)}
+          onRemove={() => removeCharacter(char.id)}
+          onAddSprite={() => handleAddSprite(char.id)}
+          onUpdateSprite={(i, u) => handleUpdateSprite(char.id, i, u)}
+          onRemoveSprite={(i) => handleRemoveSprite(char.id, i)}
+          onUploadSprite={(i) => handleSpriteUpload(char.id, i)}
+        />
       ))}
+    </div>
+  );
+}
+
+function CharacterCard({ char, onUpdate, onRemove, onAddSprite, onUpdateSprite, onRemoveSprite, onUploadSprite }: {
+  char: { id: string; name: string; color: string; sprites: CharacterSprite[] };
+  onUpdate: (updates: Record<string, unknown>) => void;
+  onRemove: () => void;
+  onAddSprite: () => void;
+  onUpdateSprite: (index: number, updates: Partial<CharacterSprite>) => void;
+  onRemoveSprite: (index: number) => void;
+  onUploadSprite: (index: number) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const imageUrls = useEditorStore((s) => s.imageUrls);
+
+  return (
+    <div className="character-card">
+      <div className="char-header">
+        <input className="char-color" type="color" value={char.color} onChange={(e) => onUpdate({ color: e.target.value })} />
+        <input value={char.name} onChange={(e) => onUpdate({ name: e.target.value })} placeholder="Имя" />
+        <button onClick={() => setExpanded(!expanded)} className="expand-btn" title="Спрайты">{expanded ? '▲' : '▼'}</button>
+        <button onClick={onRemove} className="delete"><Trash2 size={12} /></button>
+      </div>
+      <input
+        value={char.id}
+        onChange={(e) => onUpdate({ id: e.target.value })}
+        className="char-id"
+        placeholder="ID"
+      />
+
+      {expanded && (
+        <div className="sprites-section">
+          <div className="sprites-header">
+            <span className="sprites-label">Спрайты ({char.sprites.length})</span>
+            <button onClick={onAddSprite} className="add-btn small"><Plus size={12} /></button>
+          </div>
+          {char.sprites.map((sprite, i) => {
+            const spriteUrl = imageUrls.get(sprite.image);
+            return (
+              <div key={sprite.id} className="sprite-item">
+                <div className="sprite-thumb" onClick={() => onUploadSprite(i)} title="Загрузить изображение">
+                  {spriteUrl ? (
+                    <img src={spriteUrl} alt={sprite.label} />
+                  ) : (
+                    <Image size={14} />
+                  )}
+                </div>
+                <input value={sprite.id} onChange={(e) => onUpdateSprite(i, { id: e.target.value })} placeholder="ID" className="sprite-id-input" />
+                <input value={sprite.label} onChange={(e) => onUpdateSprite(i, { label: e.target.value })} placeholder="Название" className="sprite-label-input" />
+                {char.sprites.length > 1 && (
+                  <button onClick={() => onRemoveSprite(i)} className="delete"><Trash2 size={10} /></button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

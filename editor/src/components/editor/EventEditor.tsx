@@ -1,6 +1,6 @@
 import { useEditorStore } from '../../store/editorStore';
 import type { Scene, SceneEvent as SceneEventType, Choice } from '../../types/novel';
-import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp } from 'lucide-react';
+import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette } from 'lucide-react';
 import './EventEditor.css';
 
 export function EventEditor() {
@@ -18,6 +18,8 @@ export function EventEditor() {
     if (type === 'dialogue') { event.speaker = ''; event.text = ''; }
     if (type === 'narration') { event.text = ''; }
     if (type === 'choice') { event.choices = [{ text: '', nextSceneId: '', effects: {} }]; }
+    if (type === 'changeBackground') { event.background = ''; }
+    if (type === 'changeSprite') { event.characterId = ''; event.spriteId = ''; }
     addEvent(scene.id, event);
   };
 
@@ -26,6 +28,7 @@ export function EventEditor() {
       <div className="event-editor-header">
         <h3>Сцена: {scene.id}</h3>
         <SceneSettings scene={scene} />
+        <CharactersOnScene scene={scene} />
       </div>
 
       <div className="events-list">
@@ -55,20 +58,46 @@ export function EventEditor() {
         <button onClick={() => handleAddEvent('choice')} title="Выбор">
           <GitBranch size={16} /> Выбор
         </button>
+        <button onClick={() => handleAddEvent('changeBackground')} title="Сменить фон">
+          <Image size={16} /> Фон
+        </button>
+        <button onClick={() => handleAddEvent('changeSprite')} title="Сменить спрайт">
+          <Palette size={16} /> Спрайт
+        </button>
       </div>
     </div>
   );
 }
 
 function SceneSettings({ scene }: { scene: Scene }) {
-  const { updateScene } = useEditorStore();
+  const { updateScene, addImage } = useEditorStore();
+  const bgUrl = useEditorStore((s) => scene.background ? s.imageUrls.get(`backgrounds/${scene.background}`) : undefined);
+
+  const handleBgUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const name = file.name.replace(/\s+/g, '_').toLowerCase();
+      addImage(`backgrounds/${name}`, file);
+      updateScene(scene.id, { background: name });
+    };
+    input.click();
+  };
+
   return (
     <div className="scene-settings">
-      <input
-        placeholder="Фон (background.png)"
-        value={scene.background || ''}
-        onChange={(e) => updateScene(scene.id, { background: e.target.value || undefined })}
-      />
+      <div className="scene-settings-row">
+        <input
+          placeholder="Фон (background.png)"
+          value={scene.background || ''}
+          onChange={(e) => updateScene(scene.id, { background: e.target.value || undefined })}
+        />
+        <button className="upload-btn" onClick={handleBgUpload} title="Загрузить фон"><Image size={14} /></button>
+      </div>
+      {bgUrl && <img src={bgUrl} alt="bg" className="scene-bg-preview" />}
       <input
         placeholder="Музыка (track.mp3)"
         value={scene.music || ''}
@@ -79,6 +108,58 @@ function SceneSettings({ scene }: { scene: Scene }) {
         value={scene.nextSceneId || ''}
         onChange={(e) => updateScene(scene.id, { nextSceneId: e.target.value || undefined })}
       />
+    </div>
+  );
+}
+
+function CharactersOnScene({ scene }: { scene: Scene }) {
+  const { project, addCharacterToScene, updateCharacterOnScene, removeCharacterFromScene } = useEditorStore();
+
+  const availableChars = project.characters.filter(
+    (c) => !scene.charactersOnScreen.some((sc) => sc.characterId === c.id)
+  );
+
+  return (
+    <div className="chars-on-scene">
+      <div className="chars-on-scene-header">
+        <span className="chars-label"><Users size={12} /> Персонажи на сцене ({scene.charactersOnScreen.length})</span>
+      </div>
+      {scene.charactersOnScreen.map((sc) => {
+        const char = project.characters.find((c) => c.id === sc.characterId);
+        return (
+          <div key={sc.characterId} className="char-on-scene-item">
+            <span className="char-on-scene-name" style={{ color: char?.color }}>{char?.name || sc.characterId}</span>
+            <select value={sc.spriteId} onChange={(e) => updateCharacterOnScene(scene.id, sc.characterId, { spriteId: e.target.value })}>
+              {char?.sprites.map((sp) => <option key={sp.id} value={sp.id}>{sp.label}</option>)}
+            </select>
+            <select value={sc.position} onChange={(e) => updateCharacterOnScene(scene.id, sc.characterId, { position: e.target.value as 'left' | 'center' | 'right' })}>
+              <option value="left">Лево</option>
+              <option value="center">Центр</option>
+              <option value="right">Право</option>
+            </select>
+            <button onClick={() => removeCharacterFromScene(scene.id, sc.characterId)} className="delete"><Trash2 size={12} /></button>
+          </div>
+        );
+      })}
+      {availableChars.length > 0 && (
+        <select
+          className="add-char-select"
+          value=""
+          onChange={(e) => {
+            if (!e.target.value) return;
+            const char = project.characters.find((c) => c.id === e.target.value);
+            addCharacterToScene(scene.id, {
+              characterId: e.target.value,
+              spriteId: char?.sprites[0]?.id || 'neutral',
+              position: 'center',
+            });
+            e.target.value = '';
+          }}
+        >
+          <option value="">+ Добавить персонажа...</option>
+          {availableChars.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      )}
     </div>
   );
 }
@@ -96,13 +177,29 @@ interface EventCardProps {
 }
 
 function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, onRemove, onMoveUp, onMoveDown }: EventCardProps) {
-  const { project } = useEditorStore();
+  const { project, addImage } = useEditorStore();
   const typeLabels: Record<string, string> = {
     dialogue: '💬 Диалог',
     narration: '📖 Нарратив',
     choice: '🔀 Выбор',
     set_variable: '⚙️ Переменная',
     play_sound: '🔊 Звук',
+    changeBackground: '🖼 Смена фона',
+    changeSprite: '🎭 Смена спрайта',
+  };
+
+  const handleBgEventUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const name = file.name.replace(/\s+/g, '_').toLowerCase();
+      addImage(`backgrounds/${name}`, file);
+      onUpdate({ ...event, background: name });
+    };
+    input.click();
   };
 
   return (
@@ -151,6 +248,44 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
 
       {event.type === 'choice' && (
         <ChoiceEditor event={event} onUpdate={onUpdate} />
+      )}
+
+      {event.type === 'changeBackground' && (
+        <div className="event-body">
+          <div className="scene-settings-row">
+            <input
+              placeholder="Имя фона (city_night.png)"
+              value={event.background || ''}
+              onChange={(e) => onUpdate({ ...event, background: e.target.value })}
+            />
+            <button className="upload-btn" onClick={handleBgEventUpload} title="Загрузить"><Image size={14} /></button>
+          </div>
+        </div>
+      )}
+
+      {event.type === 'changeSprite' && (
+        <div className="event-body">
+          <select
+            value={event.characterId || ''}
+            onChange={(e) => onUpdate({ ...event, characterId: e.target.value || undefined })}
+          >
+            <option value="">— Персонаж —</option>
+            {project.characters.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          {event.characterId && (
+            <select
+              value={event.spriteId || ''}
+              onChange={(e) => onUpdate({ ...event, spriteId: e.target.value || undefined })}
+            >
+              <option value="">— Спрайт —</option>
+              {project.characters.find((c) => c.id === event.characterId)?.sprites.map((sp) => (
+                <option key={sp.id} value={sp.id}>{sp.label}</option>
+              ))}
+            </select>
+          )}
+        </div>
       )}
     </div>
   );
