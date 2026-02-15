@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -278,6 +279,9 @@ class RemoteConfigService extends StateNotifier<RemoteConfig> {
   static const _boxName = 'app_settings';
   static const _cacheKey = 'remote_config';
 
+  /// Текущий конфиг (для чтения из main.dart)
+  RemoteConfig get config => state;
+
   RemoteConfigService() : super(_defaultConfig) {
     _loadCached();
   }
@@ -286,18 +290,27 @@ class RemoteConfigService extends StateNotifier<RemoteConfig> {
   Future<void> fetch() async {
     try {
       final url = '${ApiConfig.baseUrl}/config?v=${state.version}';
+      debugPrint('[RemoteConfig] Fetching: $url');
       final response = await http.get(Uri.parse(url)).timeout(
         const Duration(seconds: 5),
       );
 
-      if (response.statusCode == 304) return; // не изменился
-      if (response.statusCode != 200) return;
+      debugPrint('[RemoteConfig] Status: ${response.statusCode}');
+      if (response.statusCode == 304) {
+        debugPrint('[RemoteConfig] Not modified, using cached v${state.version}');
+        return;
+      }
+      if (response.statusCode != 200) {
+        debugPrint('[RemoteConfig] Error body: ${response.body}');
+        return;
+      }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       state = RemoteConfig.fromJson(json);
+      debugPrint('[RemoteConfig] Loaded v${state.version} from server');
       _saveCache();
-    } catch (_) {
-      // оффлайн — используем кеш или defaults
+    } catch (e) {
+      debugPrint('[RemoteConfig] Fetch failed: $e (using cache/defaults)');
     }
   }
 

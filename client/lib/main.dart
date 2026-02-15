@@ -19,9 +19,12 @@ void main() async {
 
   await AdService.initialize();
 
-  // Загружаем Remote Config (non-blocking, fallback на кеш/defaults)
+  // Загружаем Remote Config ДО запуска приложения (с таймаутом 5с)
   final configService = RemoteConfigService();
-  configService.fetch(); // fire-and-forget
+  await configService.fetch();
+  debugPrint('[RemoteConfig] v=${configService.config.version}, '
+      'maxTickets=${configService.config.economy.maxTickets}, '
+      'refill=${configService.config.economy.ticketRefillMinutes}min');
 
   runApp(
     ProviderScope(
