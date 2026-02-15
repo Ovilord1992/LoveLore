@@ -4,8 +4,10 @@ import '../services/user_profile_service.dart';
 import '../services/currency_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../services/ad_service.dart';
 import 'gallery_screen.dart';
 import 'auth_screen.dart';
+import 'shop_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -84,9 +86,34 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
-          // Статистика
+          // Реклама за алмазы
+          _WatchAdButton(ref: ref),
+          const SizedBox(height: 8),
+
+          // Кнопка магазина
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ShopScreen()),
+                );
+              },
+              icon: const Icon(Icons.storefront, size: 18),
+              label: const Text('Открыть магазин'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFE91E63),
+                side: const BorderSide(color: Color(0xFFE91E63)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           _SectionTitle('Статистика'),
           _StatGrid(
             stats: [
@@ -507,6 +534,85 @@ class _EmptyPlaceholder extends StatelessWidget {
             style: const TextStyle(fontSize: 13, color: Colors.white38),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WatchAdButton extends StatelessWidget {
+  final WidgetRef ref;
+  const _WatchAdButton({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final adService = ref.read(adServiceProvider);
+    adService.preloadAd();
+
+    return GestureDetector(
+      onTap: () async {
+        if (!adService.canShowAd) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Лимит рекламы на сегодня исчерпан'),
+              backgroundColor: Color(0xFF16213E),
+            ),
+          );
+          return;
+        }
+
+        final success = await adService.showRewardedAd(
+          rewardType: 'diamonds',
+          onReward: (_, amount) {
+            ref.read(currencyServiceProvider.notifier).addDiamonds(amount);
+          },
+        );
+
+        if (context.mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('+${AdService.diamondReward} 💎 алмазов!'),
+                backgroundColor: const Color(0xFF4CAF50),
+              ),
+            );
+          } else if (!adService.isAdReady) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Реклама загружается, попробуйте позже'),
+                backgroundColor: Color(0xFF16213E),
+              ),
+            );
+          }
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00838F), Color(0xFF00BCD4)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.play_circle_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Смотреть рекламу → +${AdService.diamondReward} 💎',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${adService.adsRemainingToday}/${AdService.maxAdsPerDay}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
   }

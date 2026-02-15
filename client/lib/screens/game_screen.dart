@@ -7,6 +7,8 @@ import '../services/save_service.dart';
 import '../services/currency_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/achievement_service.dart';
+import '../services/ad_service.dart';
+import '../services/vip_service.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/choice_buttons.dart';
 import '../widgets/scene_transitions.dart';
@@ -44,13 +46,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   Future<void> _loadNovel() async {
-    // Проверяем и тратим билет
-    final currency = ref.read(currencyServiceProvider.notifier);
-    if (!currency.spendTicket()) {
-      if (mounted) {
-        _showNoTicketsDialog();
+    // VIP — безлимитные билеты
+    final vip = ref.read(vipServiceProvider);
+    if (!vip.isActive) {
+      final currency = ref.read(currencyServiceProvider.notifier);
+      if (!currency.spendTicket()) {
+        if (mounted) {
+          _showNoTicketsDialog();
+        }
+        return;
       }
-      return;
     }
 
     await ref.read(sceneEngineProvider.notifier).startNovel(
@@ -64,9 +69,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   void _showNoTicketsDialog() {
     final currency = ref.read(currencyServiceProvider.notifier);
+    final adService = ref.read(adServiceProvider);
     final timeLeft = currency.timeToNextTicket;
     final min = timeLeft.inMinutes;
     final sec = timeLeft.inSeconds % 60;
+
+    adService.preloadAd();
 
     showDialog(
       context: context,
@@ -75,7 +83,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         backgroundColor: const Color(0xFF16213E),
         title: const Text('Нет билетов ⚡', style: TextStyle(color: Colors.white)),
         content: Text(
-          'Билеты закончились.\nСледующий через $min м $sec с.\n\nИли потрать 💎 10 алмазов.',
+          'Билеты закончились.\nСледующий через $min м $sec с.',
           style: const TextStyle(color: Colors.white70, height: 1.5),
         ),
         actions: [
@@ -86,6 +94,25 @@ class _GameScreenState extends ConsumerState<GameScreen>
             },
             child: const Text('Назад', style: TextStyle(color: Colors.white54)),
           ),
+          if (adService.canShowAd)
+            TextButton(
+              onPressed: () async {
+                final success = await adService.showRewardedAd(
+                  rewardType: 'tickets',
+                  onReward: (_, amount) {
+                    ref.read(currencyServiceProvider.notifier).addTickets(amount);
+                  },
+                );
+                if (success && ctx.mounted) {
+                  Navigator.pop(ctx);
+                  _loadNovelAfterTicket();
+                }
+              },
+              child: Text(
+                '📺 Реклама → +${AdService.ticketReward} 🎫',
+                style: const TextStyle(color: Color(0xFF00BCD4)),
+              ),
+            ),
           TextButton(
             onPressed: () {
               final cs = ref.read(currencyServiceProvider.notifier);

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'app/app.dart';
+import 'services/ad_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  // Открываем все Hive-боксы заранее
   await Future.wait([
     Hive.openBox<String>('game_saves'),
     Hive.openBox<String>('app_settings'),
@@ -15,6 +15,8 @@ void main() async {
     Hive.openBox<String>('currency'),
     Hive.openBox<String>('wardrobe'),
   ]);
+
+  await AdService.initialize();
 
   runApp(
     const ProviderScope(
