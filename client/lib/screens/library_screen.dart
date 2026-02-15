@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/novel_loader.dart';
-import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/save_service.dart';
 import '../services/iap_service.dart';
@@ -13,7 +12,6 @@ import '../widgets/daily_reward_dialog.dart';
 import 'novel_detail_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
-import 'auth_screen.dart';
 import 'shop_screen.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -76,7 +74,6 @@ class _HomeTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authServiceProvider);
     final currency = ref.watch(currencyServiceProvider);
 
     return SafeArea(
@@ -89,38 +86,12 @@ class _HomeTab extends ConsumerWidget {
 
           return CustomScrollView(
             slivers: [
-              // ── Верхняя панель: аватар + валюта + настройки ──
+              // ── Верхняя панель: валюта + настройки ──
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
                   child: Row(
                     children: [
-                      // Аватар
-                      GestureDetector(
-                        onTap: () {
-                          if (!authState.isLoggedIn) {
-                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuthScreen()));
-                          }
-                        },
-                        child: Container(
-                          width: 40, height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
-                            ),
-                            border: Border.all(color: Colors.white24, width: 1.5),
-                          ),
-                          child: Center(
-                            child: Text(
-                              authState.isLoggedIn
-                                  ? (authState.displayName ?? 'Ч')[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ),
                       const Spacer(),
                       // Валюта с кнопками "+"
                       _CurrencyBadgeTappable(
@@ -387,11 +358,14 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
 
     // Рассчитываем таймер
     String? timerText;
-    if (!isFull && widget.currency.lastTicketRefill != null) {
-      final next = widget.currency.lastTicketRefill!
+    if (!isFull) {
+      final lastRefill = widget.currency.lastTicketRefill ?? DateTime.now();
+      final next = lastRefill
           .add(const Duration(minutes: CurrencyService.ticketRefillMinutes));
       final remaining = next.difference(DateTime.now());
-      if (!remaining.isNegative) {
+      if (remaining.isNegative) {
+        timerText = '00:00';
+      } else {
         timerText = _formatDuration(remaining);
       }
     }
