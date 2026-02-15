@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'remote_config_service.dart';
 
 final dailyRewardProvider =
     StateNotifierProvider<DailyRewardService, DailyRewardState>((ref) {
-  return DailyRewardService();
+  return DailyRewardService(ref);
 });
 
 class DailyRewardState {
@@ -82,7 +83,13 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
   static const _boxName = 'app_settings';
   static const _key = 'daily_reward';
 
-  DailyRewardService() : super(const DailyRewardState()) {
+  final Ref _ref;
+  List<DailyRewardConfig> get _rewards =>
+      _ref.read(remoteConfigProvider).daily.isNotEmpty
+          ? _ref.read(remoteConfigProvider).daily
+          : _defaultDailyRewards;
+
+  DailyRewardService(this._ref) : super(const DailyRewardState()) {
     _load();
   }
 
@@ -91,8 +98,15 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
 
   /// Текущая награда (какой день в серии)
   DailyReward get todayReward {
-    final dayIndex = state.currentStreak % dailyRewards.length;
-    return dailyRewards[dayIndex];
+    final rewards = _rewards;
+    final dayIndex = state.currentStreak % rewards.length;
+    final cfg = rewards[dayIndex];
+    return DailyReward(
+      day: cfg.day,
+      diamonds: cfg.diamonds,
+      tickets: cfg.tickets,
+      label: cfg.label,
+    );
   }
 
   /// Забрать награду. Возвращает {diamonds, tickets}
@@ -100,6 +114,7 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
     final reward = todayReward;
     final today = DateTime.now();
     final lastClaim = state.lastClaimDate;
+    final rewards = _rewards;
 
     // Проверяем серию: если пропустил день — сброс к 0
     int newStreak;
@@ -113,8 +128,8 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
       newStreak = isConsecutive ? state.currentStreak + 1 : 1;
     }
 
-    // Цикл на 7 дней
-    if (newStreak > dailyRewards.length) newStreak = 1;
+    // Цикл на N дней
+    if (newStreak > rewards.length) newStreak = 1;
 
     state = DailyRewardState(
       currentStreak: newStreak,
@@ -147,3 +162,13 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
     } catch (_) {}
   }
 }
+
+const _defaultDailyRewards = [
+  DailyRewardConfig(day: 1, diamonds: 5, label: '5 💎'),
+  DailyRewardConfig(day: 2, tickets: 1, label: '1 ⚡'),
+  DailyRewardConfig(day: 3, diamonds: 10, label: '10 💎'),
+  DailyRewardConfig(day: 4, tickets: 2, label: '2 ⚡'),
+  DailyRewardConfig(day: 5, diamonds: 15, label: '15 💎'),
+  DailyRewardConfig(day: 6, tickets: 3, label: '3 ⚡'),
+  DailyRewardConfig(day: 7, diamonds: 30, label: '30 💎'),
+];

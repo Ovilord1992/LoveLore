@@ -361,14 +361,14 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
 
   @override
   Widget build(BuildContext context) {
-    final isFull = widget.currency.tickets >= CurrencyService.maxTickets;
+    final isFull = widget.currency.tickets >= CurrencyService.defaultMaxTickets;
 
     // Рассчитываем таймер
     String? timerText;
     if (!isFull) {
       final lastRefill = widget.currency.lastTicketRefill ?? DateTime.now();
       final next = lastRefill
-          .add(const Duration(minutes: CurrencyService.ticketRefillMinutes));
+          .add(Duration(minutes: CurrencyService.defaultTicketRefillMinutes));
       final remaining = next.difference(DateTime.now());
       if (remaining.isNegative) {
         timerText = '00:00';
@@ -390,7 +390,7 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
           const Text('⚡', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
           Text(
-            '${widget.currency.tickets}/${CurrencyService.maxTickets}',
+            '${widget.currency.tickets}/${CurrencyService.defaultMaxTickets}',
             style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

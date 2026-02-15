@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/daily_reward_service.dart';
 import '../services/currency_service.dart';
+import '../services/remote_config_service.dart';
 
 /// Показывает popup ежедневной награды, если ещё не собрана сегодня.
 /// Вызывается из LibraryScreen при первой загрузке.
@@ -31,7 +32,9 @@ class _DailyRewardDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dailyState = ref.read(dailyRewardProvider);
-    final currentDay = dailyState.currentStreak % dailyRewards.length;
+    final config = ref.read(remoteConfigProvider);
+    final rewards = config.daily.isNotEmpty ? config.daily : _fallbackRewards;
+    final currentDay = dailyState.currentStreak % rewards.length;
 
     return Center(
       child: Container(
@@ -72,7 +75,7 @@ class _DailyRewardDialog extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'День ${currentDay + 1} из ${dailyRewards.length}',
+                'День ${currentDay + 1} из ${rewards.length}',
                 style: const TextStyle(fontSize: 14, color: Colors.white54),
               ),
               const SizedBox(height: 20),
@@ -82,14 +85,14 @@ class _DailyRewardDialog extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(dailyRewards.length, (i) {
-                    final reward = dailyRewards[i];
+                  children: List.generate(rewards.length, (i) {
+                    final reward = rewards[i];
                     final isCurrent = i == currentDay;
                     final isPast = i < currentDay;
 
                     return Padding(
                       padding: EdgeInsets.only(
-                          right: i < dailyRewards.length - 1 ? 6 : 0),
+                          right: i < rewards.length - 1 ? 6 : 0),
                       child: _DayCell(
                         day: i + 1,
                         label: reward.label,
@@ -221,3 +224,13 @@ class _DayCell extends StatelessWidget {
     );
   }
 }
+
+const _fallbackRewards = [
+  DailyRewardConfig(day: 1, diamonds: 5, label: '5 💎'),
+  DailyRewardConfig(day: 2, tickets: 1, label: '1 ⚡'),
+  DailyRewardConfig(day: 3, diamonds: 10, label: '10 💎'),
+  DailyRewardConfig(day: 4, tickets: 2, label: '2 ⚡'),
+  DailyRewardConfig(day: 5, diamonds: 15, label: '15 💎'),
+  DailyRewardConfig(day: 6, tickets: 3, label: '3 ⚡'),
+  DailyRewardConfig(day: 7, diamonds: 30, label: '30 💎'),
+];

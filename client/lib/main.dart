@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'app/app.dart';
 import 'services/ad_service.dart';
+import 'services/remote_config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,9 +19,16 @@ void main() async {
 
   await AdService.initialize();
 
+  // Загружаем Remote Config (non-blocking, fallback на кеш/defaults)
+  final configService = RemoteConfigService();
+  configService.fetch(); // fire-and-forget
+
   runApp(
-    const ProviderScope(
-      child: NavellApp(),
+    ProviderScope(
+      overrides: [
+        remoteConfigProvider.overrideWith((_) => configService),
+      ],
+      child: const NavellApp(),
     ),
   );
 }

@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import UsersPage from './pages/UsersPage';
 import NovelsPage from './pages/NovelsPage';
+import ConfigPage from './pages/ConfigPage';
 import AdminLayout from './components/AdminLayout';
 
 function AppContent() {
@@ -34,6 +35,7 @@ function AppContent() {
     switch (page) {
       case 'users': return <UsersPage />;
       case 'novels': return <NovelsPage />;
+      case 'config': return <ConfigPage />;
       default: return <DashboardPage />;
     }
   };

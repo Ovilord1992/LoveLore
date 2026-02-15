@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'currency_service.dart';
+import 'remote_config_service.dart';
 
 /// Провайдер VIP-сервиса
 final vipServiceProvider =
@@ -55,8 +56,9 @@ class VipState {
       );
 }
 
-/// VIP-привилегии
+/// VIP-привилегии (из RemoteConfig)
 class VipPerks {
+  // Устаревшие статические поля для обратной совместимости
   static const dailyDiamonds = 5;
   static const unlimitedTickets = true;
   static const earlyAccess = true;
@@ -70,6 +72,7 @@ class VipService extends StateNotifier<VipState> {
   static const _key = 'vip_state';
 
   final Ref _ref;
+  VipConfig get _cfg => _ref.read(remoteConfigProvider).vip;
 
   VipService(this._ref) : super(const VipState()) {
     _load();
@@ -106,7 +109,7 @@ class VipService extends StateNotifier<VipState> {
       return false;
     }
 
-    _ref.read(currencyServiceProvider.notifier).addDiamonds(VipPerks.dailyDiamonds);
+    _ref.read(currencyServiceProvider.notifier).addDiamonds(_cfg.dailyDiamonds);
     state = state.copyWith(
       lastDailyReward: now,
       dailyDiamondsCollected: state.dailyDiamondsCollected + 1,

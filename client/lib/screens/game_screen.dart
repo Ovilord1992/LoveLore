@@ -109,7 +109,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 }
               },
               child: Text(
-                '📺 Реклама → +${AdService.ticketReward} 🎫',
+                '📺 Реклама → +${adService.ticketReward} 🎫',
                 style: const TextStyle(color: Color(0xFF00BCD4)),
               ),
             ),

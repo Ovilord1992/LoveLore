@@ -464,7 +464,7 @@ class _AdRewardCard extends StatelessWidget {
                         fontSize: 15,
                         fontWeight: FontWeight.w600)),
                 Text(
-                  'Смотри рекламу → +${AdService.diamondReward} 💎 (${adService.adsRemainingToday} осталось)',
+                  'Смотри рекламу → +${adService.diamondReward} 💎 (${adService.adsRemainingToday} осталось)',
                   style: const TextStyle(color: Color(0xFF00BCD4), fontSize: 12),
                 ),
               ],
@@ -484,7 +484,7 @@ class _AdRewardCard extends StatelessWidget {
                     if (success && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('+${AdService.diamondReward} 💎!'),
+                          content: Text('+${adService.diamondReward} 💎!'),
                           backgroundColor: const Color(0xFF4CAF50),
                         ),
                       );

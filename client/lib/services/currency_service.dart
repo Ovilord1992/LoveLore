@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'remote_config_service.dart';
 
 /// Провайдер сервиса валюты
 final currencyServiceProvider =
     StateNotifierProvider<CurrencyService, CurrencyState>((ref) {
-  return CurrencyService();
+  return CurrencyService(ref);
 });
 
 /// Состояние валюты пользователя
@@ -50,10 +51,19 @@ class CurrencyState {
 class CurrencyService extends StateNotifier<CurrencyState> {
   static const _boxName = 'currency';
   static const _key = 'state';
-  static const maxTickets = 5;
-  static const ticketRefillMinutes = 30; // одна ⚡ раз в 30 минут
 
-  CurrencyService() : super(const CurrencyState()) {
+  final Ref _ref;
+
+  // Геттеры для конфигурируемых значений
+  EconomyConfig get _economy => _ref.read(remoteConfigProvider).economy;
+  int get maxTickets => _economy.maxTickets;
+  int get ticketRefillMinutes => _economy.ticketRefillMinutes;
+
+  // Для обратной совместимости (статические ссылки в UI)
+  static int get defaultMaxTickets => 5;
+  static int get defaultTicketRefillMinutes => 30;
+
+  CurrencyService(this._ref) : super(const CurrencyState()) {
     _loadSync();
     _refillTickets();
   }

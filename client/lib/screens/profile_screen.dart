@@ -81,7 +81,7 @@ class ProfileScreen extends ConsumerWidget {
                   icon: '⚡',
                   label: 'Билеты',
                   value: currency.tickets,
-                  maxValue: CurrencyService.maxTickets,
+                  maxValue: CurrencyService.defaultMaxTickets,
                 ),
               ],
             ),
@@ -571,7 +571,7 @@ class _WatchAdButton extends StatelessWidget {
           if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('+${AdService.diamondReward} 💎 алмазов!'),
+                content: Text('+${adService.diamondReward} 💎 алмазов!'),
                 backgroundColor: const Color(0xFF4CAF50),
               ),
             );
@@ -599,7 +599,7 @@ class _WatchAdButton extends StatelessWidget {
             const Icon(Icons.play_circle_outline, color: Colors.white, size: 20),
             const SizedBox(width: 8),
             Text(
-              'Смотреть рекламу → +${AdService.diamondReward} 💎',
+              'Смотреть рекламу → +${adService.diamondReward} 💎',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -608,7 +608,7 @@ class _WatchAdButton extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              '${adService.adsRemainingToday}/${AdService.maxAdsPerDay}',
+              '${adService.adsRemainingToday}/${adService.maxAdsPerDay}',
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],

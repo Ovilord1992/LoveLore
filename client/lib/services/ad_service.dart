@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:io';
+import 'remote_config_service.dart';
 
 /// Провайдер сервиса рекламы
-final adServiceProvider = Provider<AdService>((ref) => AdService());
+final adServiceProvider = Provider<AdService>((ref) => AdService(ref));
 
 /// Сервис rewarded-рекламы за алмазы и билеты
 class AdService {
@@ -11,10 +12,14 @@ class AdService {
   bool _isLoading = false;
   int _adsWatchedToday = 0;
   DateTime? _lastResetDate;
+  final Ref _ref;
 
-  static const maxAdsPerDay = 5;
-  static const diamondReward = 3;
-  static const ticketReward = 1;
+  AdsConfig get _cfg => _ref.read(remoteConfigProvider).ads;
+  int get maxAdsPerDay => _cfg.maxAdsPerDay;
+  int get diamondReward => _cfg.diamondReward;
+  int get ticketReward => _cfg.ticketReward;
+
+  AdService(this._ref);
 
   // Тестовые AdUnit ID (заменить на боевые перед релизом)
   static String get _rewardedAdUnitId {

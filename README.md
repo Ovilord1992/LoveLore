@@ -446,6 +446,7 @@ my_novel.zip
 | `VipService` | `vip_service.dart` | VIP-статус, ежедневные алмазы, безлимит билетов |
 | `CurrencyService` | `currency_service.dart` | Алмазы + билеты, рефилл, Hive-персистенция |
 | `DailyRewardService` | `daily_reward_service.dart` | Ежедневные награды, 7-дневный цикл, серия |
+| `RemoteConfigService` | `remote_config_service.dart` | Серверная конфигурация, кеш в Hive, fallback |
 
 ### Настройка перед релизом
 

@@ -109,3 +109,18 @@ model Chapter {
   @@unique([novelId, number])
   @@map("chapters")
 }
+
+model GameConfig {
+  id        String   @id @default("singleton")
+  version   Int      @default(1)
+  economy   Json     @default("{}")
+  ads       Json     @default("{}")
+  iap       Json     @default("{}")
+  vip       Json     @default("{}")
+  daily     Json     @default("{}")
+  achievements Json  @default("[]")
+  localization Json  @default("{}")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("game_config")
+}

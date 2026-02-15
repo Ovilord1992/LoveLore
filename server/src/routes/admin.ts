@@ -319,3 +319,60 @@ adminRouter.patch(
     }
   }
 );
+
+// ─── GET /v1/admin/config ── Получить конфигурацию ───────────────────────────
+adminRouter.get('/config', async (_req: AuthRequest, res: Response) => {
+  try {
+    const config = await prisma.gameConfig.findUnique({
+      where: { id: 'singleton' },
+    });
+    if (!config) {
+      return res.status(404).json({ error: 'Config not found' });
+    }
+    res.json(config);
+  } catch (err) {
+    console.error('Admin config get error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── PUT /v1/admin/config ── Обновить конфигурацию ───────────────────────────
+adminRouter.put('/config', async (req: AuthRequest, res: Response) => {
+  try {
+    const { economy, ads, iap, vip, daily, achievements, localization } = req.body;
+
+    const current = await prisma.gameConfig.findUnique({
+      where: { id: 'singleton' },
+    });
+
+    const config = await prisma.gameConfig.upsert({
+      where: { id: 'singleton' },
+      update: {
+        version: (current?.version ?? 0) + 1,
+        ...(economy !== undefined && { economy }),
+        ...(ads !== undefined && { ads }),
+        ...(iap !== undefined && { iap }),
+        ...(vip !== undefined && { vip }),
+        ...(daily !== undefined && { daily }),
+        ...(achievements !== undefined && { achievements }),
+        ...(localization !== undefined && { localization }),
+      },
+      create: {
+        id: 'singleton',
+        version: 1,
+        economy: economy ?? {},
+        ads: ads ?? {},
+        iap: iap ?? {},
+        vip: vip ?? {},
+        daily: daily ?? [],
+        achievements: achievements ?? [],
+        localization: localization ?? {},
+      },
+    });
+
+    res.json({ message: 'Config updated', version: config.version });
+  } catch (err) {
+    console.error('Admin config update error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});

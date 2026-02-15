@@ -5,6 +5,7 @@ import { novelsRouter } from './routes/novels';
 import { authRouter } from './routes/auth';
 import { syncRouter } from './routes/sync';
 import { adminRouter } from './routes/admin';
+import { configRouter } from './routes/config';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -20,6 +21,7 @@ app.use('/v1/auth', authRouter);
 app.use('/v1/novels', novelsRouter);
 app.use('/v1/sync', syncRouter);
 app.use('/v1/admin', adminRouter);
+app.use('/v1/config', configRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

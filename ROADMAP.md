@@ -275,7 +275,29 @@ navell/
   - [x] Ежедневные награды (Daily Login): popup при запуске, 7-дневный цикл
   - [x] Промо-баннер спецпредложения на главном экране
 
-### Фаза 12: Публикация ⬜ НЕ НАЧАТА
+### Фаза 12: Remote Config — серверная конфигурация ✅ ГОТОВО
+Все параметры игры настраиваются с сервера без перевыпуска приложения.
+- [x] Сервер: модель и API
+  - [x] Prisma: модель `GameConfig` (JSON-колонки по секциям, version)
+  - [x] Seed: начальный конфиг со всеми текущими значениями
+  - [x] `GET /v1/config` — публичный, весь конфиг одним JSON (304 если не изменился)
+  - [x] `PUT /v1/admin/config` — обновление конфига (admin only)
+  - [x] `GET /v1/admin/config` — текущий конфиг для админки
+- [x] Клиент: RemoteConfigService
+  - [x] `remote_config_service.dart` — загрузка, кеш в Hive, fallback оффлайн
+  - [x] Загрузка конфига при старте (`main.dart`)
+  - [x] Версионирование: скачивать только если новее
+  - [x] Типизированные модели: EconomyConfig, AdsConfig, IapConfig, VipConfig, DailyRewardConfig, AchievementConfig
+- [x] Миграция сервисов на RemoteConfig
+  - [x] `CurrencyService` → maxTickets, ticketRefillMinutes из конфига
+  - [x] `AdService` → maxAdsPerDay, diamondReward, ticketReward из конфига
+  - [x] `VipService` → dailyDiamonds, привилегии из конфига
+  - [x] `DailyRewardService` → 7-day rewards из конфига
+- [x] Админка: страница «Конфигурация»
+  - [x] Секции: экономика, реклама, VIP (формы), IAP/Daily/Achievements/Localization (JSON-редактор)
+  - [x] Кнопка «Сохранить» по каждой секции
+
+### Фаза 13: Публикация ⬜ НЕ НАЧАТА
 - [ ] Подготовка скриншотов для сторов
 - [ ] Описание и ключевые слова для ASO
 - [ ] Публикация в Google Play
