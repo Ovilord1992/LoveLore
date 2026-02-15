@@ -81,7 +81,8 @@ class _HomeTab extends ConsumerWidget {
         future: ref.read(novelLoaderProvider).loadAllNovels(),
         builder: (context, snapshot) {
           final novels = snapshot.data ?? [];
-          final saveService = ref.read(saveServiceProvider);
+          ref.watch(saveServiceProvider); // подписка на изменения сохранений
+          final saveService = ref.read(saveServiceProvider.notifier);
           final continuePlaying = novels.where((n) => saveService.hasSave(n.id)).toList();
 
           return CustomScrollView(
@@ -107,6 +108,7 @@ class _HomeTab extends ConsumerWidget {
                         onPlusTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const ShopScreen()),
                         ),
+                        onCheckRefill: () => ref.read(currencyServiceProvider.notifier).checkRefill(),
                       ),
                       // Настройки
                       IconButton(
@@ -319,10 +321,12 @@ class _CurrencyBadgeTappable extends StatelessWidget {
 class _TicketBadgeWithTimer extends StatefulWidget {
   final CurrencyState currency;
   final VoidCallback onPlusTap;
+  final VoidCallback onCheckRefill;
 
   const _TicketBadgeWithTimer({
     required this.currency,
     required this.onPlusTap,
+    required this.onCheckRefill,
   });
 
   @override
@@ -336,7 +340,10 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        widget.onCheckRefill();
+        setState(() {});
+      }
     });
   }
 

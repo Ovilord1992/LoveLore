@@ -62,7 +62,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       widget.novelId,
       forceNew: widget.forceNew,
     );
-    _saveService = ref.read(saveServiceProvider);
+    _saveService = ref.read(saveServiceProvider.notifier);
     setState(() => _isLoading = false);
     _fadeController.forward();
   }
@@ -143,7 +143,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       widget.novelId,
       forceNew: widget.forceNew,
     );
-    _saveService = ref.read(saveServiceProvider);
+    _saveService = ref.read(saveServiceProvider.notifier);
     setState(() => _isLoading = false);
     _fadeController.forward();
   }
@@ -151,7 +151,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Future<void> _autoSave() async {
     final state = ref.read(sceneEngineProvider);
     if (state != null) {
-      await ref.read(saveServiceProvider).saveGame(state);
+      await ref.read(saveServiceProvider.notifier).saveGame(state);
     }
   }
 

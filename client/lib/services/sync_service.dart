@@ -35,7 +35,7 @@ class SyncService {
     final headers = _headers;
     if (headers == null) return;
 
-    final saveService = _ref.read(saveServiceProvider);
+    final saveService = _ref.read(saveServiceProvider.notifier);
     final gameState = saveService.loadGame(novelId);
     if (gameState == null) return;
 
@@ -173,7 +173,7 @@ class SyncService {
       // Восстанавливаем сохранения
       final saves = body['saves'] as List?;
       if (saves != null) {
-        final saveService = _ref.read(saveServiceProvider);
+        final saveService = _ref.read(saveServiceProvider.notifier);
         for (final save in saves) {
           final s = save as Map<String, dynamic>;
           final novelId = s['novelId'] as String;
@@ -181,7 +181,7 @@ class SyncService {
           // Импортируем если нет локального сохранения
           if (!saveService.hasSave(novelId)) {
             final gameState =
-                _ref.read(saveServiceProvider).loadGame(novelId);
+                _ref.read(saveServiceProvider.notifier).loadGame(novelId);
             if (gameState == null) {
               // Создаём GameState из серверных данных
               await _importSave(novelId, data);
@@ -216,7 +216,7 @@ class SyncService {
   }
 
   Future<void> _pushAllSaves() async {
-    final saveService = _ref.read(saveServiceProvider);
+    final saveService = _ref.read(saveServiceProvider.notifier);
     final novelIds = saveService.getSavedNovelIds();
     for (final novelId in novelIds) {
       await pushSave(novelId);
@@ -225,7 +225,7 @@ class SyncService {
 
   Future<void> _importSave(String novelId, Map<String, dynamic> data) async {
     try {
-      final saveService = _ref.read(saveServiceProvider);
+      final saveService = _ref.read(saveServiceProvider.notifier);
       final gameState = _createGameStateFromJson(novelId, data);
       if (gameState != null) {
         await saveService.saveGame(gameState);
@@ -238,8 +238,8 @@ class SyncService {
     try {
       // Используем GameState.fromJson напрямую
       return _ref
-          .read(saveServiceProvider)
-          .loadGame(novelId); // fallback — уже импортирован
+          .read(saveServiceProvider.notifier)
+          .loadGame(novelId);
     } catch (_) {
       return null;
     }

@@ -69,7 +69,7 @@ class SceneEngine extends StateNotifier<GameState?> {
     _characters = await loader.loadCharacters(novelId);
 
     // Попытаться загрузить сохранение
-    final saveService = _ref.read(saveServiceProvider);
+    final saveService = _ref.read(saveServiceProvider.notifier);
     final savedState = forceNew ? null : saveService.loadGame(novelId);
 
     if (savedState != null) {

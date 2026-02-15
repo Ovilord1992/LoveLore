@@ -41,7 +41,8 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final saveService = ref.read(saveServiceProvider);
+    ref.watch(saveServiceProvider); // реактивность при изменении сохранений
+    final saveService = ref.read(saveServiceProvider.notifier);
     final hasSave = saveService.hasSave(widget.novel.id);
     final novel = widget.novel;
     final downloadState = ref.watch(downloadStateProvider(novel.id));
@@ -305,7 +306,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
-              await ref.read(saveServiceProvider).deleteSave(widget.novel.id);
+              await ref.read(saveServiceProvider.notifier).deleteSave(widget.novel.id);
               if (ctx.mounted) Navigator.pop(ctx);
               if (context.mounted) {
                 Navigator.of(context).push(

@@ -55,6 +55,12 @@ class CurrencyService extends StateNotifier<CurrencyState> {
 
   CurrencyService() : super(const CurrencyState()) {
     _loadSync();
+    _refillTickets();
+  }
+
+  /// Вызвать пересчёт билетов (для внешнего вызова, напр. из таймера)
+  void checkRefill() {
+    _refillTickets();
   }
 
   /// Хватает ли алмазов на покупку
