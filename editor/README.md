@@ -1,73 +1,156 @@
-# React + TypeScript + Vite
+# Amoria Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Визуальный веб-редактор для создания интерактивных новелл для платформы Amoria. Позволяет авторам создавать сценарии с ветвлениями, не написав ни строчки кода.
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19 + TypeScript** — UI
+- **Vite** — сборка и dev-сервер
+- **Zustand** — управление состоянием проекта
+- **@xyflow/react** — визуальный граф сцен (drag & drop)
+- **JSZip + FileSaver** — экспорт в ZIP
+- **Lucide React** — иконки
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Быстрый старт
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev                    # http://localhost:5173
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Редактор работает полностью автономно (не требует сервера для создания новелл).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Структура
+
 ```
+editor/
+├── src/
+│   ├── App.tsx               # Главный компонент: 3-панельный layout
+│   ├── main.tsx              # Точка входа
+│   ├── store/
+│   │   └── editorStore.ts    # Zustand: CRUD для проекта, сцен, событий
+│   ├── types/
+│   │   └── novel.ts          # TypeScript типы (совпадают с Dart-моделями)
+│   └── components/           # UI-компоненты редактора
+├── package.json
+├── vite.config.ts
+└── tsconfig.json
+```
+
+---
+
+## Функциональность
+
+### Визуальный граф сцен
+
+- Каждая сцена — узел на канве (@xyflow/react)
+- Связи между сценами — стрелки (nextSceneId из выборов)
+- Drag & drop для расположения сцен
+- Визуальное представление ветвлений сценария
+
+### Редактор событий
+
+Для каждой сцены можно добавлять события:
+
+| Тип события | Описание |
+|-------------|----------|
+| `dialogue` | Реплика персонажа (speaker + text) |
+| `narration` | Описание, мысли (text) |
+| `choice` | Выбор игрока (варианты с эффектами, условиями, премиум) |
+| `set_variable` | Изменение переменной |
+| `play_sound` | Воспроизведение звука |
+
+### Управление контентом
+
+- **Метаданные проекта**: название, описание, автор, теги
+- **Персонажи**: id, имя, цвет, спрайты (id + image + label)
+- **Главы**: заголовок, номер, начальная сцена
+- **Переменные**: начальные значения (отношения, флаги)
+
+### Превью
+
+- Мобильный фрейм справа показывает как сцена будет выглядеть
+- Фон, персонажи, диалоги — всё в реальном времени
+
+### Валидация
+
+- BFS-обход графа сцен: проверка достижимости всех сцен
+- Обнаружение битых ссылок (nextSceneId → несуществующая сцена)
+- Проверка на пустые тексты
+
+### Экспорт / Импорт
+
+- **Экспорт JSON** — весь проект одним файлом
+- **Экспорт ZIP** — готовый пакет для загрузки на сервер Amoria:
+  ```
+  my_novel.zip
+  ├── meta.json
+  ├── characters.json
+  ├── variables.json
+  └── chapters/
+      ├── chapter_1.json
+      └── chapter_2.json
+  ```
+- **Импорт JSON** — загрузка ранее сохранённого проекта
+
+---
+
+## Формат данных
+
+Редактор генерирует JSON в формате, полностью совместимом с движком Amoria (Flutter-приложение). Типы определены в `src/types/novel.ts` и совпадают с Dart-моделями в `lib/models/`.
+
+### Ключевые типы
+
+```typescript
+interface NovelProject {
+  meta: NovelMeta;           // id, title, description, author, tags
+  characters: Character[];    // Персонажи со спрайтами
+  chapters: Chapter[];        // Главы со сценами
+  variables: Record<string, any>; // Начальные переменные
+}
+
+interface Scene {
+  id: string;
+  background?: string;
+  music?: string;
+  charactersOnScreen: SceneCharacter[];
+  events: SceneEvent[];
+}
+
+interface Choice {
+  text: string;
+  nextSceneId: string;
+  effects?: Record<string, string>;  // { "alex_love": "+3" }
+  condition?: Condition;
+  premium?: boolean;
+  cost?: number;                     // Стоимость в алмазах
+}
+```
+
+---
+
+## Рабочий процесс
+
+1. Создай новый проект → заполни метаданные
+2. Добавь персонажей (имя, цвет, спрайты)
+3. Определи начальные переменные (отношения, флаги)
+4. Создай главы → добавь сцены на граф
+5. Наполни сцены событиями (диалоги, выборы, переходы)
+6. Проверь валидацию (достижимость, ссылки)
+7. Экспортируй ZIP
+8. Загрузи через админку или API: `POST /v1/novels/upload`
+
+---
+
+## Скрипты
+
+| Команда | Описание |
+|---------|----------|
+| `npm run dev` | Dev-сервер (Vite, порт 5173) |
+| `npm run build` | Production-сборка → `dist/` |
+| `npm run preview` | Превью production-сборки |
+| `npm run lint` | ESLint |

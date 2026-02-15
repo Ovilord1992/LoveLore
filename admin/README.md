@@ -1,73 +1,125 @@
-# React + TypeScript + Vite
+# Amoria Admin Panel
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Веб-панель администрирования для управления пользователями, новеллами и мониторинга платформы Amoria.
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 18 + TypeScript** — UI
+- **Vite** — сборка и dev-сервер
+- **Ant Design** — UI-компоненты (тёмная тема, русская локаль)
+- **Axios** — HTTP-клиент с JWT-интерцептором
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Быстрый старт
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev                    # http://localhost:5174
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+> **Требуется** работающий сервер (`cd ../server && npm run dev`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Вход
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+По умолчанию: `admin@amoria.app` / `admin123`  
+(настраивается через `ADMIN_EMAIL` / `ADMIN_PASSWORD` в `server/.env`)
+
+Доступ имеют только пользователи с ролью `admin`.
+
+---
+
+## Структура
+
 ```
+admin/
+├── src/
+│   ├── App.tsx               # Роутинг, ConfigProvider (ruRU), AntApp
+│   ├── main.tsx              # Точка входа
+│   ├── services/
+│   │   └── api.ts            # Axios: baseURL + JWT interceptor + auto-logout
+│   ├── pages/
+│   │   ├── LoginPage.tsx     # Страница входа (email + пароль, проверка роли)
+│   │   ├── DashboardPage.tsx # Дашборд: карточки статистики
+│   │   ├── UsersPage.tsx     # Таблица пользователей (поиск, детали, CRUD)
+│   │   └── NovelsPage.tsx    # Таблица новелл (publish/unpublish, загрузка ZIP)
+│   └── components/
+│       └── AdminLayout.tsx   # Sidebar + header layout
+├── .env                      # VITE_API_URL
+├── package.json
+├── vite.config.ts
+└── tsconfig.json
+```
+
+---
+
+## Функциональность
+
+### Дашборд
+
+Карточки со статистикой:
+- 👥 Всего пользователей
+- 📚 Всего новелл (опубликованных)
+- 📥 Всего загрузок
+- 📊 Активность: за 24 часа / 7 дней / 30 дней
+
+### Управление пользователями
+
+- Таблица с пагинацией и поиском по email/имени
+- Детали пользователя: профиль, валюта, список сохранений
+- Редактирование: роль (user/admin), начисление алмазов и билетов
+- Удаление пользователя (с подтверждением, нельзя удалить себя)
+
+### Управление новеллами
+
+- Таблица всех новелл (включая скрытые/неопубликованные)
+- Переключатель **Publish/Unpublish** — скрытие из каталога приложения
+- Загрузка ZIP: кнопка «Загрузить ZIP» → выбор файла → автоматическое извлечение meta.json + обложки
+- Удаление новеллы (удаляет ZIP, обложку и запись из БД)
+- Информация: название, автор, главы, загрузки, размер файла, версия
+
+---
+
+## Настройка
+
+### .env
+
+```env
+VITE_API_URL=http://localhost:3000/v1
+```
+
+Для production замени на реальный URL сервера.
+
+### API-интерцептор
+
+JWT-токен хранится в `localStorage`. При 401 ошибке автоматически очищается и редиректится на логин.
+
+---
+
+## Скрипты
+
+| Команда | Описание |
+|---------|----------|
+| `npm run dev` | Dev-сервер (Vite, порт 5174) |
+| `npm run build` | Production-сборка → `dist/` |
+| `npm run preview` | Превью production-сборки |
+| `npm run lint` | ESLint |
+
+---
+
+## API-эндпоинты (используемые)
+
+Все запросы идут через `VITE_API_URL` с заголовком `Authorization: Bearer <token>`.
+
+| Эндпоинт | Что делает в админке |
+|----------|---------------------|
+| `POST /auth/login` | Вход (проверка `role === 'admin'`) |
+| `GET /admin/stats` | Данные для дашборда |
+| `GET /admin/users` | Таблица пользователей |
+| `GET /admin/users/:id` | Модал с деталями |
+| `PATCH /admin/users/:id` | Редактирование роли/валюты |
+| `DELETE /admin/users/:id` | Удаление |
+| `GET /admin/novels` | Таблица новелл |
+| `PATCH /admin/novels/:id` | Publish/unpublish, метаданные |
+| `POST /novels/upload` | Загрузка ZIP |
+| `DELETE /novels/:id` | Удаление новеллы |
