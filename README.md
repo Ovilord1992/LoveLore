@@ -456,6 +456,130 @@ my_novel.zip
 2. **IAP:** создать продукты в App Store Connect / Google Play Console с ID из `ProductIds`
 3. **VIP:** настроить auto-renewable subscription в обоих сторах
 
+### Remote Config — серверная конфигурация
+
+Все параметры игры управляются с сервера через админ-панель (`#/config`).
+Клиент загружает конфиг при старте, кеширует в Hive, при оффлайне использует кеш/defaults.
+
+**API:**
+- `GET /v1/config?v=<version>` — весь конфиг (304 если не изменился)
+- `GET /v1/admin/config` — для админки
+- `PUT /v1/admin/config` — обновить одну или несколько секций
+
+**Вкладки в админке:**
+
+#### 💰 Экономика (формы)
+Управляет балансом энергии и стартовыми ресурсами.
+```json
+{
+  "maxTickets": 5,
+  "ticketRefillMinutes": 30,
+  "startDiamonds": 50,
+  "startTickets": 5,
+  "diamondCostPerTicket": 10
+}
+```
+- `maxTickets` — максимальное кол-во билетов (энергии)
+- `ticketRefillMinutes` — одна ⚡ восстанавливается раз в N минут
+- `startDiamonds` / `startTickets` — стартовый баланс нового игрока
+- `diamondCostPerTicket` — цена покупки билета за алмазы
+
+#### 📺 Реклама (формы)
+Настройки rewarded-рекламы.
+```json
+{
+  "maxAdsPerDay": 5,
+  "diamondReward": 3,
+  "ticketReward": 1
+}
+```
+- `maxAdsPerDay` — сколько раз в день можно смотреть рекламу
+- `diamondReward` — алмазы за один просмотр
+- `ticketReward` — билеты за просмотр (в game_screen)
+
+#### 👑 VIP (формы)
+Привилегии подписчиков.
+```json
+{
+  "dailyDiamonds": 5,
+  "unlimitedTickets": true,
+  "earlyAccess": true,
+  "noAds": true,
+  "exclusiveFrame": true
+}
+```
+
+#### 🛒 IAP (JSON)
+Маппинг product ID → награды. Ключи должны совпадать с `ProductIds` в коде.
+```json
+{
+  "diamonds_20":    { "diamonds": 20 },
+  "diamonds_60":    { "diamonds": 60 },
+  "diamonds_150":   { "diamonds": 150 },
+  "diamonds_500":   { "diamonds": 500 },
+  "tickets_5":      { "tickets": 5 },
+  "starter_bundle": { "diamonds": 100, "tickets": 10 }
+}
+```
+
+#### 🎁 Daily (JSON)
+Массив наград по дням (7-дневный цикл). Каждый элемент:
+```json
+[
+  { "day": 1, "diamonds": 5,  "tickets": 0, "label": "5 💎" },
+  { "day": 2, "diamonds": 0,  "tickets": 1, "label": "1 ⚡" },
+  { "day": 3, "diamonds": 10, "tickets": 0, "label": "10 💎" },
+  { "day": 4, "diamonds": 0,  "tickets": 2, "label": "2 ⚡" },
+  { "day": 5, "diamonds": 15, "tickets": 0, "label": "15 💎" },
+  { "day": 6, "diamonds": 0,  "tickets": 3, "label": "3 ⚡" },
+  { "day": 7, "diamonds": 30, "tickets": 0, "label": "30 💎" }
+]
+```
+- `day` — номер дня в цикле
+- `diamonds` / `tickets` — награда
+- `label` — текст в UI ячейке
+
+#### 🏆 Достижения (JSON)
+Массив определений достижений:
+```json
+[
+  { "id": "first_story",   "title": "Первая история", "icon": "auto_stories", "diamondReward": 10, "description": "Начни первую новеллу" },
+  { "id": "five_chapters", "title": "5 глав",         "icon": "menu_book",    "diamondReward": 15, "description": "Прочитай 5 глав" },
+  { "id": "completionist", "title": "Прохождение",    "icon": "emoji_events", "diamondReward": 25, "description": "Пройди новеллу до конца" }
+]
+```
+- `id` — уникальный идентификатор (используется в коде)
+- `icon` — имя Material Icon
+- `diamondReward` — награда за разблокировку
+
+#### 🌍 Локализация (JSON)
+Словари строк по языкам:
+```json
+{
+  "ru": {
+    "app_title": "Amoria",
+    "tab_home": "Главная",
+    "tab_catalog": "Каталог",
+    "btn_play": "Начать историю",
+    "btn_continue": "Продолжить",
+    "no_tickets_title": "Нет билетов",
+    "daily_title": "Ежедневная награда",
+    "daily_claim": "Забрать награду!"
+  },
+  "en": {
+    "app_title": "Amoria",
+    "tab_home": "Home",
+    "tab_catalog": "Catalog",
+    "btn_play": "Start Story",
+    "btn_continue": "Continue",
+    "no_tickets_title": "No Tickets",
+    "daily_title": "Daily Reward",
+    "daily_claim": "Claim Reward!"
+  }
+}
+```
+Можно добавлять новые языки (например `"de"`, `"fr"`) без перевыпуска.
+
 ---
 
 ## Возможности
