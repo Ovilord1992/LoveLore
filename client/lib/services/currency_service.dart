@@ -78,7 +78,12 @@ class CurrencyService extends StateNotifier<CurrencyState> {
   bool spendTicket() {
     _refillTickets();
     if (state.tickets <= 0) return false;
-    state = state.copyWith(tickets: state.tickets - 1);
+    final wasFull = state.tickets >= maxTickets;
+    state = state.copyWith(
+      tickets: state.tickets - 1,
+      // Запускаем таймер рефилла при расходе из полного запаса
+      lastTicketRefill: wasFull ? DateTime.now() : state.lastTicketRefill ?? DateTime.now(),
+    );
     _save();
     return true;
   }

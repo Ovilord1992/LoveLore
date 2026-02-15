@@ -89,10 +89,10 @@ class _HomeTab extends ConsumerWidget {
 
           return CustomScrollView(
             slivers: [
-              // ── Верхняя панель: приветствие + валюта ──
+              // ── Верхняя панель: аватар + валюта + настройки ──
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
                   child: Row(
                     children: [
                       // Аватар
@@ -103,7 +103,7 @@ class _HomeTab extends ConsumerWidget {
                           }
                         },
                         child: Container(
-                          width: 44, height: 44,
+                          width: 40, height: 40,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: const LinearGradient(
@@ -116,27 +116,12 @@ class _HomeTab extends ConsumerWidget {
                               authState.isLoggedIn
                                   ? (authState.displayName ?? 'Ч')[0].toUpperCase()
                                   : '?',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // Приветствие
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              authState.isLoggedIn
-                                  ? 'Привет, ${authState.displayName ?? 'Читатель'}!'
-                                  : 'Добро пожаловать!',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
-                            ),
-                            const Text('Выбери свою историю', style: TextStyle(fontSize: 13, color: Colors.white38)),
-                          ],
-                        ),
-                      ),
+                      const Spacer(),
                       // Валюта с кнопками "+"
                       _CurrencyBadgeTappable(
                         icon: '💎',
@@ -155,6 +140,8 @@ class _HomeTab extends ConsumerWidget {
                       // Настройки
                       IconButton(
                         icon: const Icon(Icons.settings_rounded, color: Colors.white30, size: 22),
+                        padding: const EdgeInsets.only(left: 4),
+                        constraints: const BoxConstraints(),
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const SettingsScreen()),
                         ),
@@ -377,7 +364,7 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
   }
@@ -398,6 +385,17 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
   Widget build(BuildContext context) {
     final isFull = widget.currency.tickets >= CurrencyService.maxTickets;
 
+    // Рассчитываем таймер
+    String? timerText;
+    if (!isFull && widget.currency.lastTicketRefill != null) {
+      final next = widget.currency.lastTicketRefill!
+          .add(const Duration(minutes: CurrencyService.ticketRefillMinutes));
+      final remaining = next.difference(DateTime.now());
+      if (!remaining.isNegative) {
+        timerText = _formatDuration(remaining);
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.only(left: 10, top: 4, bottom: 4, right: 2),
       decoration: BoxDecoration(
@@ -410,34 +408,20 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
         children: [
           const Text('⚡', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${widget.currency.tickets}/${CurrencyService.maxTickets}',
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white),
-              ),
-              if (!isFull)
-                Builder(builder: (_) {
-                  // Рассчитываем таймер вручную
-                  final lastRefill =
-                      widget.currency.lastTicketRefill ?? DateTime.now();
-                  final next = lastRefill.add(
-                      const Duration(minutes: CurrencyService.ticketRefillMinutes));
-                  var remaining = next.difference(DateTime.now());
-                  if (remaining.isNegative) remaining = Duration.zero;
-                  return Text(
-                    _formatDuration(remaining),
-                    style: const TextStyle(
-                        fontSize: 9, color: Color(0xFF00BCD4)),
-                  );
-                }),
-            ],
+          Text(
+            '${widget.currency.tickets}/${CurrencyService.maxTickets}',
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white),
           ),
+          if (timerText != null) ...[
+            const SizedBox(width: 4),
+            Text(
+              timerText,
+              style: const TextStyle(fontSize: 10, color: Color(0xFF00BCD4)),
+            ),
+          ],
           const SizedBox(width: 2),
           GestureDetector(
             onTap: widget.onPlusTap,
