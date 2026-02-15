@@ -74,6 +74,50 @@ class NovelApiService {
     }
   }
 
+  /// Получить список глав новеллы
+  Future<List<ChapterInfo>> fetchChaptersList(String novelId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/novels/$novelId/chapters'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final list = data['chapters'] as List;
+        return list
+            .map((j) => ChapterInfo.fromJson(j as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Скачать JSON одной главы с сервера
+  Future<bool> downloadChapter(String novelId, int chapterNumber) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/novels/$novelId/chapters/$chapterNumber/download'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200) return false;
+
+      final appDir = await getApplicationDocumentsDirectory();
+      final chapterFile = File(
+        '${appDir.path}/novels/$novelId/chapters/chapter_$chapterNumber.json',
+      );
+      await chapterFile.create(recursive: true);
+      await chapterFile.writeAsString(response.body);
+
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Скачать контент-пак новеллы (ZIP)
   Future<String?> downloadNovelPack(
     String novelId, {

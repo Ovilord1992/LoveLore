@@ -148,11 +148,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Widget build(BuildContext context) {
     final gameState = ref.watch(sceneEngineProvider);
     final engine = ref.read(sceneEngineProvider.notifier);
+    final chapterTransition = ref.watch(chapterTransitionProvider);
 
     if (_isLoading || gameState == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
+    }
+
+    // Показываем UI перехода между главами
+    if (chapterTransition != ChapterTransition.none) {
+      return _buildChapterTransitionScreen(chapterTransition, engine);
     }
 
     final scene = engine.currentScene;
@@ -381,5 +387,126 @@ class _GameScreenState extends ConsumerState<GameScreen>
     hex = hex.replaceFirst('#', '');
     if (hex.length == 6) hex = 'FF$hex';
     return Color(int.parse(hex, radix: 16));
+  }
+
+  Widget _buildChapterTransitionScreen(
+    ChapterTransition transition,
+    SceneEngine engine,
+  ) {
+    final nextNum = engine.nextChapterNumber;
+
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0F3460), Color(0xFF1A1A2E)],
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Иконка
+                Icon(
+                  transition == ChapterTransition.completed
+                      ? Icons.auto_stories
+                      : transition == ChapterTransition.notReleased
+                          ? Icons.lock_clock
+                          : transition == ChapterTransition.loading
+                              ? Icons.downloading
+                              : Icons.download,
+                  size: 64,
+                  color: const Color(0xFFE91E63),
+                ),
+                const SizedBox(height: 24),
+
+                // Заголовок
+                Text(
+                  transition == ChapterTransition.completed
+                      ? 'Конец истории'
+                      : transition == ChapterTransition.notReleased
+                          ? 'Продолжение следует...'
+                          : transition == ChapterTransition.loading
+                              ? 'Загрузка...'
+                              : 'Глава $nextNum',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Подзаголовок
+                Text(
+                  transition == ChapterTransition.completed
+                      ? 'Спасибо за прохождение! 💖'
+                      : transition == ChapterTransition.notReleased
+                          ? 'Глава $nextNum ещё не вышла.\nСледите за обновлениями!'
+                          : transition == ChapterTransition.loading
+                              ? 'Загружаем следующую главу...'
+                              : 'Следующая глава доступна!',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Кнопки
+                if (transition == ChapterTransition.loading)
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation(Color(0xFFE91E63)),
+                  ),
+
+                if (transition == ChapterTransition.needsDownload)
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await engine.downloadAndStartNextChapter();
+                    },
+                    icon: const Icon(Icons.download),
+                    label: Text('Скачать главу $nextNum'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE91E63),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
+
+                if (transition == ChapterTransition.completed ||
+                    transition == ChapterTransition.notReleased)
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white12,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text('Вернуться в библиотеку'),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

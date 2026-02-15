@@ -179,7 +179,9 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                     children: [
                       _InfoChip(
                         icon: Icons.menu_book,
-                        label: '${novel.totalChapters} глав',
+                        label: novel.releasedChapters > 0
+                            ? '${novel.releasedChapters}/${novel.totalChapters} глав'
+                            : '${novel.totalChapters} глав',
                       ),
                       const SizedBox(width: 12),
                       if (hasSave)

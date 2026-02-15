@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../db';
 import { upload } from '../middleware/upload';
-import { extractMetaFromZip, extractCoverFromZip } from '../utils/zip';
+import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip } from '../utils/zip';
 
 export const novelsRouter = Router();
 
@@ -24,6 +24,7 @@ novelsRouter.get('/', async (_req: Request, res: Response) => {
         tags: true,
         version: true,
         chaptersCount: true,
+        releasedChapters: true,
         fileSize: true,
         downloads: true,
         createdAt: true,
@@ -134,16 +135,11 @@ novelsRouter.post(
 
       // Считаем главы (chapters/ в ZIP)
       let chaptersCount = 0;
+      const chapterInfos: { number: number; title: string }[] = [];
       try {
-        const AdmZip = require('adm-zip');
-        const zip = new AdmZip(zipPath);
-        chaptersCount = zip
-          .getEntries()
-          .filter(
-            (e: { entryName: string }) =>
-              e.entryName.includes('chapters/') &&
-              e.entryName.endsWith('.json')
-          ).length;
+        const extracted = extractChaptersFromZip(zipPath);
+        chaptersCount = extracted.length;
+        chapterInfos.push(...extracted);
       } catch {
         // ignore
       }
@@ -168,6 +164,7 @@ novelsRouter.post(
           tags: (meta.tags as string[]) || [],
           version: existing ? existing.version + 1 : 1,
           chaptersCount,
+          releasedChapters: chaptersCount,
           zipFilename,
           fileSize,
           coverUrl,
@@ -180,11 +177,31 @@ novelsRouter.post(
           tags: (meta.tags as string[]) || [],
           version: 1,
           chaptersCount,
+          releasedChapters: chaptersCount,
           zipFilename,
           fileSize,
           coverUrl,
         },
       });
+
+      // Создаём записи Chapter для каждой главы из ZIP
+      for (const ch of chapterInfos) {
+        await prisma.chapter.upsert({
+          where: {
+            novelId_number: { novelId, number: ch.number },
+          },
+          update: {
+            title: ch.title,
+          },
+          create: {
+            novelId,
+            number: ch.number,
+            title: ch.title,
+            isReleased: true,
+            releasedAt: new Date(),
+          },
+        });
+      }
 
       res.status(201).json({
         message: 'Novel uploaded successfully',
@@ -232,3 +249,92 @@ novelsRouter.delete('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ─── GET /v1/novels/:id/chapters ── Список глав ─────────────────────────────
+novelsRouter.get('/:id/chapters', async (req: Request, res: Response) => {
+  try {
+    const novel = await prisma.novel.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!novel) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    const chapters = await prisma.chapter.findMany({
+      where: { novelId: req.params.id },
+      orderBy: { number: 'asc' },
+      select: {
+        number: true,
+        title: true,
+        isReleased: true,
+        releasedAt: true,
+      },
+    });
+
+    res.json({
+      novelId: req.params.id,
+      totalChapters: novel.chaptersCount,
+      releasedChapters: novel.releasedChapters,
+      chapters,
+    });
+  } catch (err) {
+    console.error('Error fetching chapters:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/novels/:id/chapters/:number/download ── Скачать JSON главы ─────
+novelsRouter.get(
+  '/:id/chapters/:number/download',
+  async (req: Request, res: Response) => {
+    try {
+      const chapterNumber = parseInt(req.params.number);
+      if (isNaN(chapterNumber)) {
+        res.status(400).json({ error: 'Invalid chapter number' });
+        return;
+      }
+
+      const novel = await prisma.novel.findUnique({
+        where: { id: req.params.id },
+      });
+
+      if (!novel || !novel.zipFilename) {
+        res.status(404).json({ error: 'Novel not found' });
+        return;
+      }
+
+      // Проверяем что глава выпущена
+      const chapter = await prisma.chapter.findUnique({
+        where: {
+          novelId_number: { novelId: req.params.id, number: chapterNumber },
+        },
+      });
+
+      if (!chapter || !chapter.isReleased) {
+        res.status(404).json({ error: 'Chapter not available' });
+        return;
+      }
+
+      // Извлекаем JSON главы из ZIP
+      const zipPath = path.resolve(uploadDir, 'packs', novel.zipFilename);
+      if (!fs.existsSync(zipPath)) {
+        res.status(404).json({ error: 'Novel file not found on server' });
+        return;
+      }
+
+      const chapterJson = extractChapterJsonFromZip(zipPath, chapterNumber);
+      if (!chapterJson) {
+        res.status(404).json({ error: 'Chapter not found in novel pack' });
+        return;
+      }
+
+      res.setHeader('Content-Type', 'application/json');
+      res.send(chapterJson);
+    } catch (err) {
+      console.error('Error downloading chapter:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);

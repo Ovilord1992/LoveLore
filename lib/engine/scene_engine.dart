@@ -1,16 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/novel_loader.dart';
+import '../services/novel_api_service.dart';
 import '../services/save_service.dart';
 import '../services/user_profile_service.dart';
 import 'variable_engine.dart';
 import 'condition_evaluator.dart';
+
+/// Состояние перехода между главами
+enum ChapterTransition { none, loading, needsDownload, notReleased, completed }
 
 /// Основной провайдер движка игры
 final sceneEngineProvider =
     StateNotifierProvider<SceneEngine, GameState?>((ref) {
   return SceneEngine(ref);
 });
+
+/// Провайдер состояния перехода между главами
+final chapterTransitionProvider = StateProvider<ChapterTransition>(
+  (ref) => ChapterTransition.none,
+);
 
 /// Движок проигрывания сцен
 class SceneEngine extends StateNotifier<GameState?> {
@@ -21,6 +30,7 @@ class SceneEngine extends StateNotifier<GameState?> {
   Chapter? _currentChapter;
   Scene? _currentScene;
   List<Character> _characters = [];
+  int _nextChapterNumber = 0;
 
   SceneEngine(this._ref) : super(null);
 
@@ -28,6 +38,7 @@ class SceneEngine extends StateNotifier<GameState?> {
   Scene? get currentScene => _currentScene;
   Chapter? get currentChapter => _currentChapter;
   List<Character> get characters => _characters;
+  int get nextChapterNumber => _nextChapterNumber;
 
   /// Индекс текущей сцены в списке сцен главы (для прогресс-бара)
   int get currentSceneIndex {
@@ -117,27 +128,83 @@ class SceneEngine extends StateNotifier<GameState?> {
   Future<void> _goToNextChapter() async {
     if (state == null || _currentChapter == null) return;
 
-    final nextChapterNumber = _currentChapter!.number + 1;
-    final nextChapterId = 'chapter_$nextChapterNumber';
+    _nextChapterNumber = _currentChapter!.number + 1;
+    final nextChapterId = 'chapter_$_nextChapterNumber';
 
     final loader = _ref.read(novelLoaderProvider);
+
+    // Пробуем загрузить локально
     final nextChapter = await loader.loadChapter(state!.novelId, nextChapterId);
 
-    if (nextChapter == null) {
-      // Нет следующей главы — конец новеллы
+    if (nextChapter != null) {
+      _currentChapter = nextChapter;
+      _currentScene = nextChapter.getScene(nextChapter.firstSceneId);
+      state = state!.copyWith(
+        currentChapterId: nextChapterId,
+        currentSceneId: nextChapter.firstSceneId,
+        currentEventIndex: 0,
+        lastPlayed: DateTime.now(),
+      );
+      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.none;
+      return;
+    }
+
+    // Главы нет локально — проверяем на сервере
+    final api = _ref.read(novelApiServiceProvider);
+    final chapters = await api.fetchChaptersList(state!.novelId);
+    final serverChapter = chapters.where((c) => c.number == _nextChapterNumber).firstOrNull;
+
+    if (serverChapter == null) {
+      // Главы нет вообще — конец новеллы
+      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.completed;
       _ref.read(userProfileProvider.notifier).incrementNovelsCompleted();
       return;
     }
 
+    if (!serverChapter.isReleased) {
+      // Глава не вышла ещё
+      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.notReleased;
+      return;
+    }
+
+    // Глава вышла, нужно скачать
+    _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.needsDownload;
+  }
+
+  /// Скачать и начать следующую главу (вызывается из UI)
+  Future<bool> downloadAndStartNextChapter() async {
+    if (state == null) return false;
+
+    _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.loading;
+
+    final api = _ref.read(novelApiServiceProvider);
+    final success = await api.downloadChapter(state!.novelId, _nextChapterNumber);
+
+    if (!success) {
+      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.needsDownload;
+      return false;
+    }
+
+    // Загружаем скачанную главу
+    final loader = _ref.read(novelLoaderProvider);
+    final nextChapterId = 'chapter_$_nextChapterNumber';
+    final nextChapter = await loader.loadChapter(state!.novelId, nextChapterId);
+
+    if (nextChapter == null) {
+      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.needsDownload;
+      return false;
+    }
+
     _currentChapter = nextChapter;
     _currentScene = nextChapter.getScene(nextChapter.firstSceneId);
-
     state = state!.copyWith(
       currentChapterId: nextChapterId,
       currentSceneId: nextChapter.firstSceneId,
       currentEventIndex: 0,
       lastPlayed: DateTime.now(),
     );
+    _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.none;
+    return true;
   }
 
   /// Сделать выбор

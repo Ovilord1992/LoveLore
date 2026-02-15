@@ -73,20 +73,39 @@ model CurrencyData {
 }
 
 model Novel {
-  id          String   @id @default(uuid())
-  title       String
-  description String   @default("")
-  author      String   @default("")
-  coverUrl    String?  @map("cover_url")
-  tags        String[] @default([])
-  version     Int      @default(1)
-  chaptersCount Int    @default(0) @map("chapters_count")
-  zipFilename String?  @map("zip_filename")
-  fileSize    Int      @default(0) @map("file_size")
-  downloads   Int      @default(0)
-  isPublished Boolean  @default(true) @map("is_published")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  title            String
+  description      String   @default("")
+  author           String   @default("")
+  coverUrl         String?  @map("cover_url")
+  tags             String[] @default([])
+  version          Int      @default(1)
+  chaptersCount    Int      @default(0) @map("chapters_count")
+  releasedChapters Int      @default(0) @map("released_chapters")
+  zipFilename      String?  @map("zip_filename")
+  fileSize         Int      @default(0) @map("file_size")
+  downloads        Int      @default(0)
+  isPublished      Boolean  @default(true) @map("is_published")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  chapters Chapter[]
 
   @@map("novels")
+}
+
+model Chapter {
+  id         String    @id @default(uuid())
+  novelId    String    @map("novel_id")
+  number     Int
+  title      String    @default("")
+  isReleased Boolean   @default(true) @map("is_released")
+  releasedAt DateTime? @map("released_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  novel Novel @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  @@unique([novelId, number])
+  @@map("chapters")
 }

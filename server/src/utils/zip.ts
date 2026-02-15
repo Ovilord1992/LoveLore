@@ -52,3 +52,59 @@ export function extractCoverFromZip(
     return null;
   }
 }
+
+/** Извлечь информацию о главах из ZIP */
+export function extractChaptersFromZip(
+  zipPath: string
+): { number: number; title: string }[] {
+  try {
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+    const chapters: { number: number; title: string }[] = [];
+
+    for (const entry of entries) {
+      if (
+        entry.entryName.includes('chapters/') &&
+        entry.entryName.endsWith('.json') &&
+        !entry.isDirectory
+      ) {
+        try {
+          const content = JSON.parse(entry.getData().toString('utf-8'));
+          const num = content.number ?? parseInt(entry.entryName.match(/(\d+)/)?.[1] || '0');
+          chapters.push({
+            number: num,
+            title: content.title || `Глава ${num}`,
+          });
+        } catch {
+          // skip invalid JSON
+        }
+      }
+    }
+
+    return chapters.sort((a, b) => a.number - b.number);
+  } catch {
+    return [];
+  }
+}
+
+/** Извлечь JSON одной главы из ZIP */
+export function extractChapterJsonFromZip(
+  zipPath: string,
+  chapterNumber: number
+): string | null {
+  try {
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+
+    const chapterEntry = entries.find(
+      (e) =>
+        e.entryName.includes(`chapters/chapter_${chapterNumber}.json`) ||
+        e.entryName.includes(`chapters/ch${chapterNumber}.json`)
+    );
+
+    if (!chapterEntry) return null;
+    return chapterEntry.getData().toString('utf-8');
+  } catch {
+    return null;
+  }
+}

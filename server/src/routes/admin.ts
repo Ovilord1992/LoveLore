@@ -253,3 +253,69 @@ adminRouter.patch('/novels/:id', async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ─── GET /v1/admin/novels/:id/chapters ── Список глав (admin) ────────────────
+adminRouter.get('/novels/:id/chapters', async (req: AuthRequest, res: Response) => {
+  try {
+    const chapters = await prisma.chapter.findMany({
+      where: { novelId: req.params.id },
+      orderBy: { number: 'asc' },
+    });
+
+    res.json({ chapters });
+  } catch (err) {
+    console.error('Admin chapters error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── PATCH /v1/admin/novels/:id/chapters/:number ── Выпустить/скрыть главу ───
+adminRouter.patch(
+  '/novels/:id/chapters/:number',
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const chapterNumber = parseInt(req.params.number);
+      const { isReleased, releasedAt, title } = req.body;
+
+      const chapter = await prisma.chapter.findUnique({
+        where: {
+          novelId_number: { novelId: req.params.id, number: chapterNumber },
+        },
+      });
+
+      if (!chapter) {
+        res.status(404).json({ error: 'Chapter not found' });
+        return;
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (isReleased !== undefined) {
+        updateData.isReleased = Boolean(isReleased);
+        if (isReleased && !chapter.releasedAt) {
+          updateData.releasedAt = new Date();
+        }
+      }
+      if (releasedAt !== undefined) updateData.releasedAt = new Date(releasedAt);
+      if (title !== undefined) updateData.title = title;
+
+      const updated = await prisma.chapter.update({
+        where: { id: chapter.id },
+        data: updateData,
+      });
+
+      // Пересчитать releasedChapters
+      const releasedCount = await prisma.chapter.count({
+        where: { novelId: req.params.id, isReleased: true },
+      });
+      await prisma.novel.update({
+        where: { id: req.params.id },
+        data: { releasedChapters: releasedCount },
+      });
+
+      res.json({ chapter: updated });
+    } catch (err) {
+      console.error('Admin chapter update error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);

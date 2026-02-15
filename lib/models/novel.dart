@@ -48,6 +48,7 @@ class NovelMeta extends Equatable {
   final String? coverUrl;
   final List<String> tags;
   final int totalChapters;
+  final int releasedChapters;
 
   const NovelMeta({
     required this.id,
@@ -58,6 +59,7 @@ class NovelMeta extends Equatable {
     this.coverUrl,
     this.tags = const [],
     this.totalChapters = 0,
+    this.releasedChapters = 0,
   });
 
   factory NovelMeta.fromJson(Map<String, dynamic> json) =>
@@ -65,5 +67,31 @@ class NovelMeta extends Equatable {
   Map<String, dynamic> toJson() => _$NovelMetaToJson(this);
 
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters];
+}
+
+/// Информация о главе с сервера
+class ChapterInfo {
+  final int number;
+  final String title;
+  final bool isReleased;
+  final DateTime? releasedAt;
+  bool isDownloaded;
+
+  ChapterInfo({
+    required this.number,
+    required this.title,
+    this.isReleased = false,
+    this.releasedAt,
+    this.isDownloaded = false,
+  });
+
+  factory ChapterInfo.fromJson(Map<String, dynamic> json) => ChapterInfo(
+        number: json['number'] as int,
+        title: (json['title'] as String?) ?? 'Глава ${json['number']}',
+        isReleased: json['isReleased'] as bool? ?? false,
+        releasedAt: json['releasedAt'] != null
+            ? DateTime.parse(json['releasedAt'] as String)
+            : null,
+      );
 }
