@@ -18,33 +18,33 @@
 
 ```
 navell/
-├── lib/                      # Flutter-приложение (движок новелл)
-│   ├── app/                  # MaterialApp, тема, роутинг
-│   ├── engine/               # Ядро: SceneEngine, VariableEngine, ConditionEvaluator
-│   ├── models/               # Модели: Novel, Scene, Character, GameState
-│   ├── screens/              # Экраны: библиотека, игра, профиль, настройки, авторизация
-│   ├── services/             # Сервисы: сохранения, валюта, профиль, API, авторизация
-│   └── widgets/              # Виджеты: DialogueBox, ChoiceButtons, NovelCard
+├── client/                   # Flutter-приложение (движок новелл)
+│   ├── lib/                  # Исходный код
+│   │   ├── app/              # MaterialApp, тема, роутинг
+│   │   ├── engine/           # Ядро: SceneEngine, VariableEngine, ConditionEvaluator
+│   │   ├── models/           # Модели: Novel, Scene, Character, GameState
+│   │   ├── screens/          # Экраны: библиотека, игра, профиль, настройки, авторизация
+│   │   ├── services/         # Сервисы: сохранения, валюта, профиль, API, авторизация
+│   │   └── widgets/          # Виджеты: DialogueBox, ChoiceButtons, NovelCard
+│   ├── assets/               # Ассеты мобильного приложения
+│   │   ├── novels/           # Встроенные новеллы (JSON + manifest)
+│   │   ├── backgrounds/      # Фоны сцен
+│   │   ├── characters/       # Спрайты персонажей
+│   │   └── audio/            # Музыка и звуковые эффекты
+│   ├── android/              # Android-проект
+│   ├── ios/                  # iOS-проект
+│   ├── test/                 # Тесты
+│   └── pubspec.yaml          # Зависимости Flutter
 ├── server/                   # REST API сервер (→ см. server/README.md)
 │   ├── src/                  # Express роуты, middleware, утилиты
 │   ├── prisma/               # Схема БД, миграции, seed
-│   └── uploads/              # Загруженные ZIP-паки и обложки (создаётся при запуске)
-│       ├── packs/            # ZIP-файлы новелл
-│       └── covers/           # Извлечённые обложки
+│   └── uploads/              # Загруженные ZIP-паки и обложки
 ├── admin/                    # Веб-админка (→ см. admin/README.md)
-│   └── src/                  # React + Ant Design: логин, дашборд, юзеры, новеллы
+│   └── src/                  # React + Ant Design
 ├── editor/                   # Веб-редактор для авторов (→ см. editor/README.md)
 │   └── src/                  # React + Zustand + @xyflow/react
-├── assets/                   # Ассеты мобильного приложения
-│   ├── novels/               # Встроенные новеллы (JSON + manifest)
-│   │   ├── manifest.json     # Реестр встроенных новелл
-│   │   └── demo_novel/       # Демо-новелла «Тени Петербурга»
-│   ├── backgrounds/          # Фоны сцен
-│   ├── characters/           # Спрайты персонажей
-│   └── audio/                # Музыка и звуковые эффекты
 ├── AI_PROMPTS.md             # Промпты для ИИ-генерации контента
-├── ROADMAP.md                # Дорожная карта разработки
-└── test/                     # Тесты
+└── ROADMAP.md                # Дорожная карта разработки
 ```
 
 ---
@@ -82,13 +82,13 @@ npm run dev                       # http://localhost:3000
 ### 3. Мобильное приложение
 
 ```bash
-# В корне проекта
+cd client
 flutter pub get
 flutter run                       # Запуск на подключённом устройстве/эмуляторе
 ```
 
 > **Важно:** Для работы с сервером с реального устройства измени IP в  
-> `lib/services/api_config.dart` на IP своей машины в локальной сети.  
+> `client/lib/services/api_config.dart` на IP своей машины в локальной сети.  
 > Эмулятор Android: используй `10.0.2.2` вместо `localhost`.
 
 ### 4. Админ-панель
@@ -117,7 +117,7 @@ npm run dev                       # http://localhost:5173
 
 Приложение загружает новеллы из трёх мест (в порядке приоритета):
 
-1. **Встроенные assets** — новеллы из `assets/novels/`, прописанные в `manifest.json` и `pubspec.yaml`. Доступны офлайн сразу.
+1. **Встроенные assets** — новеллы из `client/assets/novels/`, прописанные в `manifest.json` и `pubspec.yaml`. Доступны офлайн сразу.
 2. **Скачанные файлы** — новеллы, загруженные с сервера. Хранятся в `Documents/novels/<novelId>/` на устройстве.
 3. **Каталог сервера** — `GET /v1/novels`. Новеллы, которых нет локально, показываются с кнопкой «Скачать».
 
@@ -313,15 +313,15 @@ my_novel/
 
 ### Способ 1: Встроенная (в assets)
 
-1. Создай папку `assets/novels/my_novel/`
+1. Создай папку `client/assets/novels/my_novel/`
 2. Добавь `meta.json`, `characters.json`, `variables.json`
 3. Создай `chapters/chapter_1.json`
-4. Положи ассеты в `assets/backgrounds/`, `assets/characters/`, `assets/audio/`
-5. Добавь id в `assets/novels/manifest.json`:
+4. Положи ассеты в `client/assets/backgrounds/`, `client/assets/characters/`, `client/assets/audio/`
+5. Добавь id в `client/assets/novels/manifest.json`:
    ```json
    { "novels": ["demo_novel", "my_novel"] }
    ```
-6. Зарегистрируй ассеты в `pubspec.yaml` (секция `flutter.assets`)
+6. Зарегистрируй ассеты в `client/pubspec.yaml` (секция `flutter.assets`)
 7. Пересобери приложение (`flutter run`)
 
 ### Способ 2: Через редактор → сервер
@@ -453,7 +453,7 @@ my_novel.zip
 2. Включи Google Sign-In API
 3. Создай OAuth 2.0 Client ID (Web + Android + iOS)
 4. Пропиши `GOOGLE_CLIENT_ID` в `server/.env`
-5. Настрой `ios/Runner/Info.plist` и `android/app/src/main/res/values/strings.xml`
+5. Настрой `client/ios/Runner/Info.plist` и `client/android/app/src/main/res/values/strings.xml`
 
 ### Apple Sign-In
 
@@ -482,6 +482,7 @@ ADMIN_PASSWORD=admin123
 ### Flutter
 
 ```bash
+cd client
 flutter pub get                          # Установка зависимостей
 flutter run                              # Запуск на устройстве
 flutter run --release                    # Release-сборка
