@@ -1,0 +1,149 @@
+import 'dart:convert';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+final dailyRewardProvider =
+    StateNotifierProvider<DailyRewardService, DailyRewardState>((ref) {
+  return DailyRewardService();
+});
+
+class DailyRewardState {
+  final int currentStreak; // 1–7
+  final DateTime? lastClaimDate;
+  final bool claimedToday;
+
+  const DailyRewardState({
+    this.currentStreak = 0,
+    this.lastClaimDate,
+    this.claimedToday = false,
+  });
+
+  DailyRewardState copyWith({
+    int? currentStreak,
+    DateTime? lastClaimDate,
+    bool? claimedToday,
+  }) =>
+      DailyRewardState(
+        currentStreak: currentStreak ?? this.currentStreak,
+        lastClaimDate: lastClaimDate ?? this.lastClaimDate,
+        claimedToday: claimedToday ?? this.claimedToday,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'currentStreak': currentStreak,
+        'lastClaimDate': lastClaimDate?.toIso8601String(),
+      };
+
+  factory DailyRewardState.fromJson(Map<String, dynamic> json) {
+    final lastClaim = json['lastClaimDate'] != null
+        ? DateTime.parse(json['lastClaimDate'] as String)
+        : null;
+    final streak = json['currentStreak'] as int? ?? 0;
+    final today = DateTime.now();
+    final claimedToday = lastClaim != null &&
+        lastClaim.year == today.year &&
+        lastClaim.month == today.month &&
+        lastClaim.day == today.day;
+
+    return DailyRewardState(
+      currentStreak: streak,
+      lastClaimDate: lastClaim,
+      claimedToday: claimedToday,
+    );
+  }
+}
+
+/// Награды по дням (7-дневный цикл)
+class DailyReward {
+  final int day;
+  final int diamonds;
+  final int tickets;
+  final String label;
+
+  const DailyReward({
+    required this.day,
+    this.diamonds = 0,
+    this.tickets = 0,
+    required this.label,
+  });
+}
+
+const dailyRewards = [
+  DailyReward(day: 1, diamonds: 5, label: '5 💎'),
+  DailyReward(day: 2, tickets: 1, label: '1 ⚡'),
+  DailyReward(day: 3, diamonds: 10, label: '10 💎'),
+  DailyReward(day: 4, tickets: 2, label: '2 ⚡'),
+  DailyReward(day: 5, diamonds: 15, label: '15 💎'),
+  DailyReward(day: 6, tickets: 3, label: '3 ⚡'),
+  DailyReward(day: 7, diamonds: 30, label: '30 💎'),
+];
+
+class DailyRewardService extends StateNotifier<DailyRewardState> {
+  static const _boxName = 'app_settings';
+  static const _key = 'daily_reward';
+
+  DailyRewardService() : super(const DailyRewardState()) {
+    _load();
+  }
+
+  /// Нужно ли показать popup ежедневной награды
+  bool get shouldShowReward => !state.claimedToday;
+
+  /// Текущая награда (какой день в серии)
+  DailyReward get todayReward {
+    final dayIndex = state.currentStreak % dailyRewards.length;
+    return dailyRewards[dayIndex];
+  }
+
+  /// Забрать награду. Возвращает {diamonds, tickets}
+  Map<String, int> claimReward() {
+    final reward = todayReward;
+    final today = DateTime.now();
+    final lastClaim = state.lastClaimDate;
+
+    // Проверяем серию: если пропустил день — сброс к 0
+    int newStreak;
+    if (lastClaim == null) {
+      newStreak = 1;
+    } else {
+      final yesterday = DateTime(today.year, today.month, today.day - 1);
+      final isConsecutive = lastClaim.year == yesterday.year &&
+          lastClaim.month == yesterday.month &&
+          lastClaim.day == yesterday.day;
+      newStreak = isConsecutive ? state.currentStreak + 1 : 1;
+    }
+
+    // Цикл на 7 дней
+    if (newStreak > dailyRewards.length) newStreak = 1;
+
+    state = DailyRewardState(
+      currentStreak: newStreak,
+      lastClaimDate: today,
+      claimedToday: true,
+    );
+    _save();
+
+    return {
+      if (reward.diamonds > 0) 'diamonds': reward.diamonds,
+      if (reward.tickets > 0) 'tickets': reward.tickets,
+    };
+  }
+
+  Future<void> _save() async {
+    try {
+      final box = Hive.box<String>(_boxName);
+      await box.put(_key, jsonEncode(state.toJson()));
+    } catch (_) {}
+  }
+
+  void _load() {
+    try {
+      final box = Hive.box<String>(_boxName);
+      final data = box.get(_key);
+      if (data != null) {
+        state =
+            DailyRewardState.fromJson(jsonDecode(data) as Map<String, dynamic>);
+      }
+    } catch (_) {}
+  }
+}

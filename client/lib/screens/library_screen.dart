@@ -1,16 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/novel_loader.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/save_service.dart';
+import '../services/iap_service.dart';
 import '../models/novel.dart';
 import '../widgets/novel_card.dart';
 import '../widgets/novel_cover_image.dart';
+import '../widgets/daily_reward_dialog.dart';
 import 'novel_detail_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'auth_screen.dart';
+import 'shop_screen.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -21,9 +25,18 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   int _currentTab = 0;
+  bool _dailyChecked = false;
 
   @override
   Widget build(BuildContext context) {
+    // Показываем daily reward popup при первом открытии
+    if (!_dailyChecked) {
+      _dailyChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDailyRewardDialog(context, ref);
+      });
+    }
+
     return Scaffold(
       body: IndexedStack(
         index: _currentTab,
@@ -124,10 +137,21 @@ class _HomeTab extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      // Валюта
-                      _CurrencyBadge(icon: '💎', value: currency.diamonds),
-                      const SizedBox(width: 8),
-                      _CurrencyBadge(icon: '⚡', value: currency.tickets),
+                      // Валюта с кнопками "+"
+                      _CurrencyBadgeTappable(
+                        icon: '💎',
+                        value: currency.diamonds,
+                        onPlusTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ShopScreen()),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      _TicketBadgeWithTimer(
+                        currency: currency,
+                        onPlusTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ShopScreen()),
+                        ),
+                      ),
                       // Настройки
                       IconButton(
                         icon: const Icon(Icons.settings_rounded, color: Colors.white30, size: 22),
@@ -145,6 +169,15 @@ class _HomeTab extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: _FeaturedBanner(novels: novels),
                 ),
+
+              // ── Промо-баннер (стартовый набор / спецпредложение) ──
+              SliverToBoxAdapter(
+                child: _PromoBanner(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ShopScreen()),
+                  ),
+                ),
+              ),
 
               // ── Продолжить чтение ──
               if (continuePlaying.isNotEmpty) ...[
@@ -272,17 +305,22 @@ class _FullNovelList extends ConsumerWidget {
   }
 }
 
-// ─── Виджет валюты в шапке ──────────────────────────────────────────────────
-class _CurrencyBadge extends StatelessWidget {
+// ─── Бейдж валюты с кнопкой "+" ──────────────────────────────────────────────
+class _CurrencyBadgeTappable extends StatelessWidget {
   final String icon;
   final int value;
+  final VoidCallback onPlusTap;
 
-  const _CurrencyBadge({required this.icon, required this.value});
+  const _CurrencyBadgeTappable({
+    required this.icon,
+    required this.value,
+    required this.onPlusTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.only(left: 10, top: 4, bottom: 4, right: 2),
       decoration: BoxDecoration(
         color: const Color(0xFF16213E),
         borderRadius: BorderRadius.circular(20),
@@ -293,8 +331,204 @@ class _CurrencyBadge extends StatelessWidget {
         children: [
           Text(icon, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
-          Text('$value', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+          Text('$value',
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white)),
+          const SizedBox(width: 2),
+          GestureDetector(
+            onTap: onPlusTap,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
+                ),
+              ),
+              child: const Icon(Icons.add, size: 14, color: Colors.white),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Бейдж билетов с таймером и "+" ─────────────────────────────────────────
+class _TicketBadgeWithTimer extends StatefulWidget {
+  final CurrencyState currency;
+  final VoidCallback onPlusTap;
+
+  const _TicketBadgeWithTimer({
+    required this.currency,
+    required this.onPlusTap,
+  });
+
+  @override
+  State<_TicketBadgeWithTimer> createState() => _TicketBadgeWithTimerState();
+}
+
+class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isFull = widget.currency.tickets >= CurrencyService.maxTickets;
+
+    return Container(
+      padding: const EdgeInsets.only(left: 10, top: 4, bottom: 4, right: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16213E),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('⚡', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 4),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${widget.currency.tickets}/${CurrencyService.maxTickets}',
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white),
+              ),
+              if (!isFull)
+                Builder(builder: (_) {
+                  // Рассчитываем таймер вручную
+                  final lastRefill =
+                      widget.currency.lastTicketRefill ?? DateTime.now();
+                  final next = lastRefill.add(
+                      const Duration(minutes: CurrencyService.ticketRefillMinutes));
+                  var remaining = next.difference(DateTime.now());
+                  if (remaining.isNegative) remaining = Duration.zero;
+                  return Text(
+                    _formatDuration(remaining),
+                    style: const TextStyle(
+                        fontSize: 9, color: Color(0xFF00BCD4)),
+                  );
+                }),
+            ],
+          ),
+          const SizedBox(width: 2),
+          GestureDetector(
+            onTap: widget.onPlusTap,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFF00838F), Color(0xFF00BCD4)],
+                ),
+              ),
+              child: const Icon(Icons.add, size: 14, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Промо-баннер спецпредложения ────────────────────────────────────────────
+class _PromoBanner extends ConsumerWidget {
+  final VoidCallback onTap;
+  const _PromoBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final iap = ref.watch(iapServiceProvider);
+    // Скрываем если стартовый бандл уже куплен
+    if (iap.starterBundlePurchased) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE91E63).withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Text('🎁', style: TextStyle(fontSize: 28)),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Стартовый набор',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    '500💎 + 5⚡ — выгода x10!',
+                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                '\$0.99',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFE91E63),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
