@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/novel.dart';
+import 'novel_cover_image.dart';
 
 /// Карточка новеллы в библиотеке
 class NovelCard extends StatelessWidget {
@@ -42,12 +43,15 @@ class NovelCard extends StatelessWidget {
                 height: 200,
                 width: double.infinity,
                 color: const Color(0xFF0F3460),
-                child: novel.coverImage != null
-                    ? Image.asset(novel.coverImage!, fit: BoxFit.cover)
-                    : const Center(
+                child: NovelCoverImage(
+                    novelId: novel.id,
+                    coverImage: novel.coverImage,
+                    fit: BoxFit.cover,
+                    placeholder: const Center(
                         child: Icon(Icons.auto_stories,
                             size: 60, color: Colors.white24),
                       ),
+                  ),
               ),
             ),
             // Информация

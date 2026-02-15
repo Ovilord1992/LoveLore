@@ -4,6 +4,7 @@ import '../models/novel.dart';
 import '../services/save_service.dart';
 import '../services/novel_loader.dart';
 import '../services/novel_api_service.dart';
+import '../widgets/novel_cover_image.dart';
 import 'game_screen.dart';
 
 class NovelDetailScreen extends ConsumerStatefulWidget {
@@ -59,31 +60,34 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                 fit: StackFit.expand,
                 children: [
                   // Обложка или плейсхолдер
-                  novel.coverImage != null
-                      ? Image.asset(novel.coverImage!, fit: BoxFit.cover)
-                      : Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF2D1854),
-                                Color(0xFFE91E63),
-                                Color(0xFF9C27B0),
-                              ],
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              novel.title[0],
-                              style: const TextStyle(
-                                fontSize: 80,
-                                fontWeight: FontWeight.w200,
-                                color: Colors.white24,
-                              ),
-                            ),
+                  NovelCoverImage(
+                    novelId: novel.id,
+                    coverImage: novel.coverImage,
+                    fit: BoxFit.cover,
+                    placeholder: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF2D1854),
+                            Color(0xFFE91E63),
+                            Color(0xFF9C27B0),
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          novel.title[0],
+                          style: const TextStyle(
+                            fontSize: 80,
+                            fontWeight: FontWeight.w200,
+                            color: Colors.white24,
                           ),
                         ),
+                      ),
+                    ),
+                  ),
                   // Градиентное затемнение снизу
                   const DecoratedBox(
                     decoration: BoxDecoration(

@@ -6,6 +6,7 @@ import '../services/currency_service.dart';
 import '../services/save_service.dart';
 import '../models/novel.dart';
 import '../widgets/novel_card.dart';
+import '../widgets/novel_cover_image.dart';
 import 'novel_detail_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
@@ -480,14 +481,17 @@ class _ContinueCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                child: novel.coverImage != null
-                    ? Image.asset(novel.coverImage!, fit: BoxFit.cover)
-                    : Center(
+                child: NovelCoverImage(
+                    novelId: novel.id,
+                    coverImage: novel.coverImage,
+                    fit: BoxFit.cover,
+                    placeholder: Center(
                         child: Text(
                           novel.title[0],
                           style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w200, color: Colors.white24),
                         ),
                       ),
+                  ),
               ),
             ),
             Padding(
@@ -572,14 +576,17 @@ class _LargeNovelCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    novel.coverImage != null
-                        ? Image.asset(novel.coverImage!, fit: BoxFit.cover)
-                        : Center(
+                    NovelCoverImage(
+                        novelId: novel.id,
+                        coverImage: novel.coverImage,
+                        fit: BoxFit.cover,
+                        placeholder: Center(
                             child: Text(
                               novel.title[0],
                               style: const TextStyle(fontSize: 60, fontWeight: FontWeight.w200, color: Colors.white24),
                             ),
                           ),
+                      ),
                     // Градиент снизу
                     Positioned(
                       bottom: 0, left: 0, right: 0,
