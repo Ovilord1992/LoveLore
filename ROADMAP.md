@@ -32,33 +32,43 @@ novel/
     └── audio/         # музыка и звуки
 ```
 
-### Структура Flutter-проекта
+### Структура проекта
 ```
-lib/
-├── main.dart                     # Точка входа
-├── app/
-│   ├── app.dart                  # MaterialApp, роутинг
-│   └── theme.dart                # Глобальная тема (тёмная, розово-фиолетовая)
-├── models/                       # Модели данных
-│   ├── models.dart               # Экспорт всех моделей
-│   ├── novel.dart                # NovelMeta, Chapter
-│   ├── scene.dart                # Scene, SceneEvent, Choice, Condition, SceneCharacter
-│   ├── character.dart            # Character, CharacterSprite
-│   └── game_state.dart           # GameState (прогресс игрока)
-├── engine/                       # Ядро движка
-│   ├── scene_engine.dart         # Логика проигрывания сцен, переходы, выборы
-│   ├── variable_engine.dart      # Управление переменными (инкремент, присвоение, toggle)
-│   └── condition_evaluator.dart  # Проверка условий (>=, <=, ==, !=, >, <)
-├── services/                     # Сервисы
-│   ├── novel_loader.dart         # Загрузка новелл из assets (JSON → модели)
-│   └── save_service.dart         # Сохранение/загрузка прогресса (Hive)
-├── screens/                      # Экраны
-│   ├── library_screen.dart       # Библиотека новелл (главный экран)
-│   └── game_screen.dart          # Игровой экран (фон, персонажи, диалоги, выборы)
-└── widgets/                      # UI-компоненты
-    ├── dialogue_box.dart         # Окно диалога с анимацией печати текста
-    ├── choice_buttons.dart       # Кнопки выбора с анимацией нажатия + премиум
-    └── novel_card.dart           # Карточка новеллы в библиотеке
+navell/
+├── client/                       # Flutter-приложение (движок новелл)
+│   ├── lib/
+│   │   ├── main.dart             # Точка входа (Hive + AdMob init)
+│   │   ├── app/
+│   │   │   ├── app.dart          # MaterialApp, роутинг
+│   │   │   └── theme.dart        # Глобальная тема (тёмная, розово-фиолетовая)
+│   │   ├── models/               # Модели данных
+│   │   ├── engine/               # Ядро движка (SceneEngine, VariableEngine, ConditionEvaluator)
+│   │   ├── services/             # Сервисы
+│   │   │   ├── novel_loader.dart # Загрузка новелл из assets/файлов
+│   │   │   ├── save_service.dart # Сохранение прогресса (Hive)
+│   │   │   ├── currency_service.dart # Алмазы, билеты, рефилл
+│   │   │   ├── ad_service.dart   # Rewarded Ads (google_mobile_ads)
+│   │   │   ├── iap_service.dart  # In-App Purchases (покупка алмазов/билетов)
+│   │   │   ├── vip_service.dart  # VIP-подписка (ежедневные алмазы, безлимит)
+│   │   │   ├── auth_service.dart # Авторизация (JWT, Google, Apple)
+│   │   │   ├── sync_service.dart # Синхронизация с сервером
+│   │   │   └── ...               # wardrobe, profile, audio, locale
+│   │   ├── screens/              # Экраны
+│   │   │   ├── library_screen.dart   # Библиотека новелл
+│   │   │   ├── game_screen.dart      # Игровой экран
+│   │   │   ├── shop_screen.dart      # Магазин (IAP + реклама + VIP)
+│   │   │   ├── profile_screen.dart   # Профиль + валюта + реклама
+│   │   │   └── ...               # auth, settings, gallery, wardrobe
+│   │   └── widgets/              # UI-компоненты
+│   ├── assets/                   # Ассеты (novels, backgrounds, ui)
+│   ├── android/                  # Android-проект
+│   ├── ios/                      # iOS-проект
+│   └── pubspec.yaml              # Зависимости
+├── server/                       # REST API (Node.js + Express + Prisma)
+├── admin/                        # Веб-админка (React + Ant Design)
+├── editor/                       # Веб-редактор новелл (React + Zustand + @xyflow/react)
+├── README.md
+└── ROADMAP.md
 ```
 
 ### Формат сцены (пример JSON)
@@ -235,7 +245,31 @@ lib/
 - [x] NovelCoverImage: умный виджет (файл → asset → сервер → плейсхолдер)
 - [x] Автопереход между главами при наличии следующей
 
-### Фаза 11: Публикация ⬜ НЕ НАЧАТА
+### Фаза 11: Монетизация ✅ ЗАВЕРШЕНА
+- [x] Rewarded Ads (google_mobile_ads)
+  - [x] AdService: rewarded-реклама с лимитом 5/день, предзагрузка
+  - [x] Кнопка «📺 Реклама → +3💎» в профиле
+  - [x] Кнопка «📺 Реклама → +1🎫» в диалоге «Нет билетов»
+  - [x] AdMob тестовые ID в AndroidManifest.xml и Info.plist (iOS SKAdNetwork)
+- [x] In-App Purchases (in_app_purchase)
+  - [x] IapService: consumables + subscriptions, purchaseStream
+  - [x] 5 продуктов: 20💎 $0.99, 60💎 $2.99, 150💎 $5.99, 500💎 $14.99, 5🎫 $0.99
+  - [x] Стартовый бандл: 100💎 + 10⚡ за $0.99 (разовый, x10 ценность)
+- [x] Магазин (ShopScreen)
+  - [x] Стартовый бандл с градиентом и «Только один раз!»
+  - [x] Карточки алмазов/билетов с ценами из магазина
+  - [x] Карточка VIP-подписки с перечнем привилегий
+  - [x] Бесплатная секция: реклама за алмазы
+  - [x] Баланс валюты в AppBar, кнопка «Восстановить покупки»
+  - [x] Кнопка «Открыть магазин» в профиле
+- [x] VIP-подписка (VipService, $4.99/мес)
+  - [x] Ежедневно +5💎 (collectDailyDiamonds)
+  - [x] Безлимитные билеты (пропуск spendTicket в GameScreen)
+  - [x] Ранний доступ к главам, без рекламы
+  - [x] Эксклюзивная рамка профиля
+  - [x] Хранение в Hive, проверка expiresAt
+
+### Фаза 12: Публикация ⬜ НЕ НАЧАТА
 - [ ] Подготовка скриншотов для сторов
 - [ ] Описание и ключевые слова для ASO
 - [ ] Публикация в Google Play
@@ -258,11 +292,11 @@ lib/
 ---
 
 ## Как добавить новую новеллу
-1. Создай папку `assets/novels/my_novel/`
+1. Создай папку `client/assets/novels/my_novel/`
 2. Добавь `meta.json` (id, title, description, author, tags)
 3. Добавь `characters.json` (персонажи и их спрайты)
 4. Добавь `variables.json` (начальные переменные)
 5. Создай `chapters/chapter_1.json` (сцены с событиями)
-6. Положи арт в `assets/backgrounds/`, `assets/characters/`, `assets/audio/`
-7. Добавь id новеллы в `assets/novels/manifest.json`
-8. Зарегистрируй ассеты в `pubspec.yaml`
+6. Положи арт в `client/assets/backgrounds/`, `client/assets/characters/`, `client/assets/audio/`
+7. Добавь id новеллы в `client/assets/novels/manifest.json`
+8. Зарегистрируй ассеты в `client/pubspec.yaml`
