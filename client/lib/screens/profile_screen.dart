@@ -5,6 +5,7 @@ import '../services/currency_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../services/ad_service.dart';
+import '../services/remote_config_service.dart';
 import 'gallery_screen.dart';
 import 'auth_screen.dart';
 import 'shop_screen.dart';
@@ -81,7 +82,7 @@ class ProfileScreen extends ConsumerWidget {
                   icon: '⚡',
                   label: 'Билеты',
                   value: currency.tickets,
-                  maxValue: CurrencyService.defaultMaxTickets,
+                  maxValue: ref.read(remoteConfigProvider).economy.maxTickets,
                 ),
               ],
             ),

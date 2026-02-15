@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'remote_config_service.dart';
 
 /// Провайдер IAP-сервиса
 final iapServiceProvider =
-    StateNotifierProvider<IapService, IapState>((ref) => IapService());
+    StateNotifierProvider<IapService, IapState>((ref) => IapService(ref));
 
 /// ID продуктов (настроить в App Store Connect / Google Play Console)
 class ProductIds {
@@ -84,11 +85,12 @@ class IapState {
 class IapService extends StateNotifier<IapState> {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   final InAppPurchase _iap = InAppPurchase.instance;
+  final Ref _ref;
 
   /// Коллбэк для начисления наград (устанавливается из UI)
   void Function(String productId, Map<String, int> rewards)? onReward;
 
-  IapService() : super(const IapState()) {
+  IapService(this._ref) : super(const IapState()) {
     _init();
   }
 
@@ -161,7 +163,11 @@ class IapService extends StateNotifier<IapState> {
   }
 
   void _deliverProduct(PurchaseDetails purchase) {
-    final rewards = ProductIds.rewards[purchase.productID];
+    // Берём награды из Remote Config, fallback на хардкод
+    final configIap = _ref.read(remoteConfigProvider).iap;
+    final rewards = configIap.getReward(purchase.productID).isNotEmpty
+        ? configIap.getReward(purchase.productID)
+        : ProductIds.rewards[purchase.productID];
     if (rewards != null) {
       onReward?.call(purchase.productID, rewards);
     }

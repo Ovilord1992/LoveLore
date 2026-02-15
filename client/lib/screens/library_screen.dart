@@ -5,6 +5,7 @@ import '../services/novel_loader.dart';
 import '../services/currency_service.dart';
 import '../services/save_service.dart';
 import '../services/iap_service.dart';
+import '../services/remote_config_service.dart';
 import '../models/novel.dart';
 import '../widgets/novel_card.dart';
 import '../widgets/novel_cover_image.dart';
@@ -105,6 +106,8 @@ class _HomeTab extends ConsumerWidget {
                       const SizedBox(width: 6),
                       _TicketBadgeWithTimer(
                         currency: currency,
+                        maxTickets: ref.read(remoteConfigProvider).economy.maxTickets,
+                        refillMinutes: ref.read(remoteConfigProvider).economy.ticketRefillMinutes,
                         onPlusTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const ShopScreen()),
                         ),
@@ -322,11 +325,15 @@ class _TicketBadgeWithTimer extends StatefulWidget {
   final CurrencyState currency;
   final VoidCallback onPlusTap;
   final VoidCallback onCheckRefill;
+  final int maxTickets;
+  final int refillMinutes;
 
   const _TicketBadgeWithTimer({
     required this.currency,
     required this.onPlusTap,
     required this.onCheckRefill,
+    required this.maxTickets,
+    required this.refillMinutes,
   });
 
   @override
@@ -361,14 +368,14 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
 
   @override
   Widget build(BuildContext context) {
-    final isFull = widget.currency.tickets >= CurrencyService.defaultMaxTickets;
+    final isFull = widget.currency.tickets >= widget.maxTickets;
 
     // Рассчитываем таймер
     String? timerText;
     if (!isFull) {
       final lastRefill = widget.currency.lastTicketRefill ?? DateTime.now();
       final next = lastRefill
-          .add(Duration(minutes: CurrencyService.defaultTicketRefillMinutes));
+          .add(Duration(minutes: widget.refillMinutes));
       final remaining = next.difference(DateTime.now());
       if (remaining.isNegative) {
         timerText = '00:00';
@@ -390,7 +397,7 @@ class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
           const Text('⚡', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
           Text(
-            '${widget.currency.tickets}/${CurrencyService.defaultMaxTickets}',
+            '${widget.currency.tickets}/${widget.maxTickets}',
             style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

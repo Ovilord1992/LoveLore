@@ -68,6 +68,12 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     _refillTickets();
   }
 
+  /// Начальное состояние для нового пользователя (из Remote Config)
+  CurrencyState get _initialState => CurrencyState(
+        diamonds: _economy.startDiamonds,
+        tickets: _economy.startTickets,
+      );
+
   /// Вызвать пересчёт билетов (для внешнего вызова, напр. из таймера)
   void checkRefill() {
     _refillTickets();
@@ -153,6 +159,10 @@ class CurrencyService extends StateNotifier<CurrencyState> {
         state =
             CurrencyState.fromJson(jsonDecode(data) as Map<String, dynamic>);
         _refillTickets();
+      } else {
+        // Новый пользователь — берём значения из Remote Config
+        state = _initialState;
+        _save();
       }
     } catch (_) {}
   }
