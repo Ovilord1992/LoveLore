@@ -107,9 +107,37 @@ class SceneEngine extends StateNotifier<GameState?> {
     } else if (_currentScene!.nextSceneId != null) {
       _goToScene(_currentScene!.nextSceneId!);
     } else {
-      // Конец главы — нет следующей сцены
+      // Конец главы — переход к следующей
       _ref.read(userProfileProvider.notifier).incrementChaptersRead();
+      _goToNextChapter();
     }
+  }
+
+  /// Перейти к следующей главе
+  Future<void> _goToNextChapter() async {
+    if (state == null || _currentChapter == null) return;
+
+    final nextChapterNumber = _currentChapter!.number + 1;
+    final nextChapterId = 'chapter_$nextChapterNumber';
+
+    final loader = _ref.read(novelLoaderProvider);
+    final nextChapter = await loader.loadChapter(state!.novelId, nextChapterId);
+
+    if (nextChapter == null) {
+      // Нет следующей главы — конец новеллы
+      _ref.read(userProfileProvider.notifier).incrementNovelsCompleted();
+      return;
+    }
+
+    _currentChapter = nextChapter;
+    _currentScene = nextChapter.getScene(nextChapter.firstSceneId);
+
+    state = state!.copyWith(
+      currentChapterId: nextChapterId,
+      currentSceneId: nextChapter.firstSceneId,
+      currentEventIndex: 0,
+      lastPlayed: DateTime.now(),
+    );
   }
 
   /// Сделать выбор

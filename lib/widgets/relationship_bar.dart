@@ -22,6 +22,7 @@ class RelationshipBar extends StatelessWidget {
     final progress = (value / maxValue).clamp(0.0, 1.0).toDouble();
 
     return Container(
+      width: 180,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.black38,
