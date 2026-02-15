@@ -133,6 +133,37 @@ npm run dev                       # http://localhost:5173
   → Открывает игровой экран
 ```
 
+### Поглавная загрузка
+
+Модель «живого контента» (как в «Клуб Романтики»): новеллы выходят по главам.
+
+- Основной ZIP содержит спрайты, фоны, обложку + все текущие главы
+- Новые главы загружаются отдельно (только JSON сценария, ~5–50 КБ)
+- Сервер управляет флагами `isReleased` и `releasedAt` для каждой главы
+- Админ может запланировать выход главы заранее
+
+```
+Игрок завершает главу N
+  → SceneEngine проверяет: есть ли chapter_{N+1}.json локально?
+  → Да → Автоматически загружает следующую главу
+  → Нет → Запрос к серверу: GET /v1/novels/:id/chapters
+  → Глава вышла → Показывает «Скачать главу N+1» → Загрузка JSON
+  → Глава не вышла → Показывает «Продолжение следует — скоро!»
+  → Глав больше нет → Показывает «Конец истории»
+```
+
+### Загрузка изображений
+
+Изображения загружаются из разных источников в зависимости от типа новеллы:
+
+| Источник | Как загружается | Виджеты |
+|----------|-----------------|---------|
+| **Встроенная** (asset) | `Image.asset()` из `assets/` | AnimatedBackground, AnimatedCharacterSprite |
+| **Скачанная** (файл) | `Image.file()` из `Documents/novels/<id>/` | AnimatedBackground, AnimatedCharacterSprite |
+| **Обложка с сервера** | `Image.network()` из `http://server/covers/` | NovelCoverImage |
+
+`NovelCoverImage` — умный виджет, который автоматически выбирает источник: файл → asset → сервер → плейсхолдер.
+
 ### Локальное хранилище (Hive)
 
 Все данные хранятся в 6 Hive-боксах (инициализируются в `main.dart`):
@@ -167,10 +198,10 @@ my_novel/
 ├── chapters/
 │   ├── chapter_1.json     # Глава 1 (сцены, диалоги, выборы)
 │   └── chapter_2.json     # Глава 2
-└── assets/
-    ├── backgrounds/       # Фоновые изображения
-    ├── characters/        # Спрайты персонажей
-    └── audio/             # Музыка и звуки
+├── backgrounds/           # Фоновые изображения
+├── sprites/               # Спрайты персонажей (по подпапкам: sprites/alex/)
+├── cg/                    # CG-арты (галерея)
+└── audio/                 # Музыка и звуки
 ```
 
 ### meta.json
@@ -317,14 +348,27 @@ ZIP должен содержать `meta.json` с полями `id` и `title` 
 my_novel.zip
 ├── meta.json              # ОБЯЗАТЕЛЬНО: id + title
 ├── characters.json
+├── variables.json         # Начальные переменные (опционально)
 ├── cover.png              # Обложка (извлекается автоматически)
 ├── chapters/
 │   ├── chapter_1.json
 │   └── chapter_2.json
-└── assets/                # Ассеты (фоны, спрайты, музыка)
+├── backgrounds/           # Фоновые изображения сцен
+│   ├── city_night.png
+│   └── park_day.png
+├── sprites/               # Спрайты персонажей
+│   ├── alex/
+│   │   ├── alex_neutral.png
+│   │   └── alex_smile.png
+│   └── maria/
+│       └── maria_neutral.png
+└── cg/                    # CG-арты (галерея)
+    └── cover.png
 ```
 
-> `meta.json` должен быть **в корне** архива, а не внутри вложенной папки.
+> `meta.json` должен быть **в корне** архива, а не внутри вложенной папки.  
+> Спрайты: `sprites/{characterId}/{characterId}_{emotion}.png`.  
+> Фоны: `backgrounds/{name}.png` — должны совпадать с полем `background` в сценах.
 
 ---
 
@@ -337,7 +381,13 @@ my_novel.zip
 | ZIP-файл | `server/uploads/packs/<uuid>.zip` |
 | Обложка | `server/uploads/covers/<novelId>.png` |
 | Метаданные | PostgreSQL, таблица `Novel` |
+| Главы | PostgreSQL, таблица `Chapter` (number, title, isReleased, releasedAt) |
 | Статистика (загрузки) | PostgreSQL, поле `downloads` |
+
+При загрузке ZIP сервер автоматически:
+- Извлекает `meta.json` → создаёт/обновляет запись `Novel`
+- Извлекает обложку (`cover.png/jpg` или `cg/cover.png`) → `uploads/covers/<novelId>.ext`
+- Сканирует `chapters/` → создаёт записи `Chapter` в БД (с `isReleased: true`)
 
 Обложки раздаются статически: `http://localhost:3000/covers/<novelId>.png`
 
@@ -348,6 +398,8 @@ my_novel.zip
 | Что | Где на устройстве |
 |-----|-------------------|
 | Скачанные новеллы | `Documents/novels/<novelId>/` |
+| Отдельные главы | `Documents/novels/<novelId>/chapters/chapter_N.json` |
+| Фоны и спрайты | `Documents/novels/<novelId>/backgrounds/`, `sprites/` |
 | Сохранения | Hive box `game_saves` |
 | Профиль | Hive box `user_profile` |
 | Валюта | Hive box `currency` |
@@ -366,6 +418,8 @@ my_novel.zip
 - 🎵 Фоновая музыка и звуковые эффекты
 - 💾 Автосохранение и восстановление прогресса
 - 🎬 Переходы между сценами (fade, slide, dissolve)
+- 📥 Поглавная загрузка: автопереход, скачивание новых глав, «скоро» / «конец»
+- 🖼️ Загрузка изображений из файлов, ассетов и сервера (NovelCoverImage, AnimatedBackground)
 
 ### Монетизация и геймплей
 - 💎 Алмазы — внутриигровая валюта для премиум-выборов (начальный баланс: 50)

@@ -220,7 +220,22 @@ lib/
 - [x] Пользователи (таблица с поиском, детали, редактирование, удаление)
 - [x] Новеллы (таблица, publish/unpublish switch, загрузка ZIP, удаление)
 
-### Фаза 10: Публикация ⬜ НЕ НАЧАТА
+### Фаза 10: Поглавная загрузка и живой контент ✅ ЗАВЕРШЕНА
+- [x] Prisma: модель Chapter (novelId, number, title, isReleased, releasedAt)
+- [x] Novel: поле releasedChapters (сколько глав вышло vs запланированных)
+- [x] При upload ZIP: автоматическое создание записей Chapter в БД
+- [x] GET /v1/novels/:id/chapters — список глав с флагами isReleased
+- [x] GET /v1/novels/:id/chapters/:number/download — скачать JSON одной главы
+- [x] Admin: PATCH /v1/admin/novels/:id/chapters/:number — выпустить/скрыть главу
+- [x] Клиент: ChapterInfo модель, fetchChaptersList(), downloadChapter()
+- [x] SceneEngine: умный переход между главами (локально → сервер → скачать / скоро / конец)
+- [x] UI: экран перехода «Скачать главу N» / «Продолжение следует» / «Конец истории»
+- [x] novel_detail_screen: отображение released/total глав
+- [x] Реальная загрузка изображений: фоны и спрайты из скачанных файлов (Image.file)
+- [x] NovelCoverImage: умный виджет (файл → asset → сервер → плейсхолдер)
+- [x] Автопереход между главами при наличии следующей
+
+### Фаза 11: Публикация ⬜ НЕ НАЧАТА
 - [ ] Подготовка скриншотов для сторов
 - [ ] Описание и ключевые слова для ASO
 - [ ] Публикация в Google Play

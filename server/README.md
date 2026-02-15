@@ -8,7 +8,7 @@ REST API для каталога и дистрибуции визуальных 
 - **PostgreSQL + Prisma ORM** — база данных
 - **JWT** — авторизация (email/пароль + Google + Apple)
 - **Multer** — загрузка файлов (до 500 МБ)
-- **adm-zip** — извлечение meta.json и обложек из ZIP
+- **adm-zip** — извлечение meta.json, обложек и глав из ZIP
 - **bcryptjs** — хеширование паролей
 - **google-auth-library** — верификация Google OAuth токенов
 
@@ -76,7 +76,7 @@ server/
 │   │   ├── admin.ts          # Проверка роли admin
 │   │   └── upload.ts         # Multer конфигурация (disk storage, 500MB limit)
 │   └── utils/
-│       └── zip.ts            # Извлечение meta.json и cover из ZIP
+│       └── zip.ts            # Извлечение meta.json, cover и глав из ZIP
 ├── prisma/
 │   ├── schema.prisma         # Схема БД
 │   ├── seed.ts               # Тестовые данные
@@ -102,7 +102,8 @@ server/
 2. **Извлекает meta.json** → читает `id`, `title`, `description`, `author`, `tags`
 3. **Извлекает обложку** (cover.png/jpg) → сохраняет в `uploads/covers/<novelId>.ext`
 4. **Считает главы** (файлы в `chapters/` внутри ZIP)
-5. **Создаёт/обновляет** запись в БД (при обновлении инкрементирует `version`)
+5. **Создаёт записи Chapter** в БД для каждой найденной главы (isReleased: true)
+6. **Создаёт/обновляет** запись Novel в БД (при обновлении инкрементирует `version`)
 
 ### Скачивание новеллы (GET /v1/novels/:id/download)
 
@@ -131,6 +132,13 @@ server/
 | `GET` | `/v1/novels/:id/download` | — | Скачать ZIP-пак (инкремент downloads) |
 | `POST` | `/v1/novels/upload` | — | Загрузить новеллу (multipart, поле `file`) |
 | `DELETE` | `/v1/novels/:id` | — | Удалить новеллу + файлы |
+
+### Главы новелл
+
+| Метод | Путь | Auth | Описание |
+|-------|------|------|----------|
+| `GET` | `/v1/novels/:id/chapters` | — | Список глав (number, title, isReleased, releasedAt) |
+| `GET` | `/v1/novels/:id/chapters/:number/download` | — | Скачать JSON одной главы |
 
 ### Авторизация
 
@@ -172,6 +180,8 @@ server/
 | `DELETE` | `/v1/admin/users/:id` | Удалить пользователя (нельзя удалить себя) |
 | `GET` | `/v1/admin/novels` | Все новеллы, включая неопубликованные (?page, ?limit) |
 | `PATCH` | `/v1/admin/novels/:id` | Редактировать (isPublished, title, description, tags) |
+| `GET` | `/v1/admin/novels/:id/chapters` | Список глав новеллы (number, title, isReleased) |
+| `PATCH` | `/v1/admin/novels/:id/chapters/:number` | Выпустить/скрыть главу (isReleased, releasedAt) |
 
 ---
 
@@ -231,7 +241,8 @@ curl http://localhost:3000/v1/sync/all \
 | Модель | Описание | Ключевые поля |
 |--------|----------|---------------|
 | **User** | Пользователь | email, passwordHash, displayName, role (user/admin) |
-| **Novel** | Новелла | title, description, author, tags[], zipFilename, coverUrl, chaptersCount, downloads, isPublished, version |
+| **Novel** | Новелла | title, description, author, tags[], zipFilename, coverUrl, chaptersCount, releasedChapters, downloads, isPublished, version |
+| **Chapter** | Глава новеллы | novelId, number, title, isReleased, releasedAt (@@unique: novelId + number) |
 | **GameSave** | Сохранение игры | userId + novelId → JSON data |
 | **UserProfileData** | Профиль | avatarIndex, statistics, unlockedCGs, achievements |
 | **CurrencyData** | Валюта | diamonds (50 по умолчанию), tickets (5), lastTicketRefill |
@@ -240,7 +251,9 @@ curl http://localhost:3000/v1/sync/all \
 - User → GameSave (1:N)
 - User → UserProfileData (1:1)
 - User → CurrencyData (1:1)
+- Novel → Chapter (1:N, onDelete: Cascade)
 - При регистрации автоматически создаются Profile + Currency
+- При загрузке ZIP автоматически создаются Chapter записи
 
 ---
 
