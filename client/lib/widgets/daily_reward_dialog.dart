@@ -78,20 +78,27 @@ class _DailyRewardDialog extends StatelessWidget {
               const SizedBox(height: 20),
 
               // 7 дней в строку
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(dailyRewards.length, (i) {
-                  final reward = dailyRewards[i];
-                  final isCurrent = i == currentDay;
-                  final isPast = i < currentDay;
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: List.generate(dailyRewards.length, (i) {
+                    final reward = dailyRewards[i];
+                    final isCurrent = i == currentDay;
+                    final isPast = i < currentDay;
 
-                  return _DayCell(
-                    day: i + 1,
-                    label: reward.label,
-                    isCurrent: isCurrent,
-                    isPast: isPast,
-                  );
-                }),
+                    return Padding(
+                      padding: EdgeInsets.only(
+                          right: i < dailyRewards.length - 1 ? 6 : 0),
+                      child: _DayCell(
+                        day: i + 1,
+                        label: reward.label,
+                        isCurrent: isCurrent,
+                        isPast: isPast,
+                      ),
+                    );
+                  }),
+                ),
               ),
               const SizedBox(height: 24),
 
@@ -170,8 +177,8 @@ class _DayCell extends StatelessWidget {
     return Column(
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: isCurrent
@@ -194,10 +201,10 @@ class _DayCell extends StatelessWidget {
           ),
           child: Center(
             child: isPast
-                ? const Icon(Icons.check, size: 18, color: Color(0xFF4CAF50))
+                ? const Icon(Icons.check, size: 16, color: Color(0xFF4CAF50))
                 : Text(
-                    label.split(' ').last, // emoji
-                    style: const TextStyle(fontSize: 16),
+                    label.split(' ').last,
+                    style: const TextStyle(fontSize: 14),
                   ),
           ),
         ),
