@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { NovelProject, Character, Chapter, Scene, SceneEvent, SceneCharacter, NovelMeta } from '../types/novel';
+import type { NovelProject, NovelTranslation, Character, Chapter, Scene, SceneEvent, SceneCharacter, NovelMeta } from '../types/novel';
 
 const defaultMeta: NovelMeta = {
   id: 'new_novel',
@@ -78,6 +78,14 @@ interface EditorState {
   removeEvent: (sceneId: string, eventIndex: number) => void;
   moveEvent: (sceneId: string, from: number, to: number) => void;
   selectEvent: (index: number | null) => void;
+
+  // Переводы
+  setTranslation: (lang: string, translation: NovelTranslation) => void;
+  removeTranslation: (lang: string) => void;
+  updateTranslationText: (lang: string, original: string, translated: string) => void;
+  updateTranslationMeta: (lang: string, field: 'novelTitle' | 'novelDescription', value: string) => void;
+  updateTranslationCharacter: (lang: string, characterId: string, name: string) => void;
+  updateTranslationChapter: (lang: string, chapterId: string, title: string) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -329,4 +337,58 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   }),
 
   selectEvent: (index) => set({ selectedEventIndex: index }),
+
+  // --- Переводы ---
+  setTranslation: (lang, translation) => set((state) => ({
+    project: {
+      ...state.project,
+      translations: { ...(state.project.translations || {}), [lang]: translation },
+    },
+    isDirty: true,
+  })),
+
+  removeTranslation: (lang) => set((state) => {
+    const translations = { ...(state.project.translations || {}) };
+    delete translations[lang];
+    return { project: { ...state.project, translations }, isDirty: true };
+  }),
+
+  updateTranslationText: (lang, original, translated) => set((state) => {
+    const translations = { ...(state.project.translations || {}) };
+    const existing = translations[lang];
+    if (!existing) return state;
+    translations[lang] = { ...existing, texts: { ...existing.texts, [original]: translated } };
+    return { project: { ...state.project, translations }, isDirty: true };
+  }),
+
+  updateTranslationMeta: (lang, field, value) => set((state) => {
+    const translations = { ...(state.project.translations || {}) };
+    const existing = translations[lang];
+    if (!existing) return state;
+    const novel = { ...(existing.novel || {}) };
+    if (field === 'novelTitle') novel.title = value;
+    if (field === 'novelDescription') novel.description = value;
+    translations[lang] = { ...existing, novel };
+    return { project: { ...state.project, translations }, isDirty: true };
+  }),
+
+  updateTranslationCharacter: (lang, characterId, name) => set((state) => {
+    const translations = { ...(state.project.translations || {}) };
+    const existing = translations[lang];
+    if (!existing) return state;
+    const characters = { ...(existing.characters || {}) };
+    characters[characterId] = { name };
+    translations[lang] = { ...existing, characters };
+    return { project: { ...state.project, translations }, isDirty: true };
+  }),
+
+  updateTranslationChapter: (lang, chapterId, title) => set((state) => {
+    const translations = { ...(state.project.translations || {}) };
+    const existing = translations[lang];
+    if (!existing) return state;
+    const chapters = { ...(existing.chapters || {}) };
+    chapters[chapterId] = { title };
+    translations[lang] = { ...existing, chapters };
+    return { project: { ...state.project, translations }, isDirty: true };
+  }),
 }));

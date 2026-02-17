@@ -472,22 +472,26 @@ class _GameScreenState extends ConsumerState<GameScreen>
           onChoiceSelected: (choice) => _handleChoice(choice, engine),
           timeLimit: event.timeLimit,
           defaultChoiceIndex: event.defaultChoiceIndex,
+          translateText: engine.tr,
         );
 
       case EventType.dialogue:
         final character =
             event.speaker != null ? engine.getCharacter(event.speaker!) : null;
+        final speakerName = character != null
+            ? engine.trCharacter(character.id, character.name)
+            : null;
         return DialogueBox(
-          speakerName: character?.name,
+          speakerName: speakerName,
           speakerColor:
               character?.color != null ? _parseColor(character!.color!) : null,
-          text: event.text ?? '',
+          text: engine.tr(event.text),
           onTap: () => engine.nextEvent(),
         );
 
       case EventType.narration:
         return DialogueBox(
-          text: event.text ?? '',
+          text: engine.tr(event.text),
           onTap: () => engine.nextEvent(),
         );
 

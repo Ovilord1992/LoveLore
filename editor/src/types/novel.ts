@@ -8,6 +8,7 @@ export interface NovelMeta {
   coverImage?: string;
   tags: string[];
   totalChapters: number;
+  sourceLanguage?: string; // язык оригинала (ru, en, etc.)
 }
 
 export interface Character {
@@ -124,10 +125,25 @@ export interface Condition {
   value: number;
 }
 
+/// Перевод книги на один язык
+export interface NovelTranslation {
+  meta: {
+    language: string;
+    sourceLanguage: string;
+    novelId: string;
+    version: number;
+  };
+  novel?: { title?: string; description?: string };
+  characters?: Record<string, { name?: string }>;
+  chapters?: Record<string, { title?: string }>;
+  texts: Record<string, string>; // оригинал → перевод
+}
+
 // Полное состояние проекта новеллы в редакторе
 export interface NovelProject {
   meta: NovelMeta;
   characters: Character[];
   variables: Record<string, string | number | boolean>;
   chapters: Chapter[];
+  translations?: Record<string, NovelTranslation>; // lang code → translation
 }

@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 import { validateProject, type ValidationError } from '../../utils/validator';
 import { exportAsZip, exportAsJson, importProject, importProjectFromZip } from '../../utils/exporter';
-import { Plus, Trash2, Download, Upload, AlertTriangle, CheckCircle, Users, BookOpen, Settings, Hash, Image } from 'lucide-react';
-import type { Scene, CharacterSprite } from '../../types/novel';
+import { Plus, Trash2, Download, Upload, AlertTriangle, CheckCircle, Users, BookOpen, Settings, Hash, Image, Globe } from 'lucide-react';
+import type { Scene, CharacterSprite, NovelTranslation } from '../../types/novel';
 import './Sidebar.css';
 
-type Tab = 'meta' | 'characters' | 'chapters' | 'variables' | 'validate';
+type Tab = 'meta' | 'characters' | 'chapters' | 'variables' | 'validate' | 'translations';
 
 export function Sidebar() {
   const [tab, setTab] = useState<Tab>('meta');
@@ -18,6 +18,7 @@ export function Sidebar() {
         <button className={tab === 'characters' ? 'active' : ''} onClick={() => setTab('characters')} title="Персонажи"><Users size={16} /></button>
         <button className={tab === 'chapters' ? 'active' : ''} onClick={() => setTab('chapters')} title="Главы"><BookOpen size={16} /></button>
         <button className={tab === 'variables' ? 'active' : ''} onClick={() => setTab('variables')} title="Переменные"><Hash size={16} /></button>
+        <button className={tab === 'translations' ? 'active' : ''} onClick={() => setTab('translations')} title="Переводы"><Globe size={16} /></button>
         <button className={tab === 'validate' ? 'active' : ''} onClick={() => setTab('validate')} title="Валидация"><AlertTriangle size={16} /></button>
       </div>
       <div className="sidebar-content">
@@ -25,6 +26,7 @@ export function Sidebar() {
         {tab === 'characters' && <CharactersTab />}
         {tab === 'chapters' && <ChaptersTab />}
         {tab === 'variables' && <VariablesTab />}
+        {tab === 'translations' && <TranslationsTab />}
         {tab === 'validate' && <ValidateTab />}
       </div>
     </div>
@@ -384,6 +386,186 @@ function ValidateTab() {
             ))}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+const AVAILABLE_LANGUAGES = [
+  { code: 'en', flag: '🇬🇧', name: 'English' },
+  { code: 'ru', flag: '🇷🇺', name: 'Русский' },
+  { code: 'es', flag: '🇪🇸', name: 'Español' },
+  { code: 'fr', flag: '🇫🇷', name: 'Français' },
+  { code: 'de', flag: '🇩🇪', name: 'Deutsch' },
+  { code: 'it', flag: '🇮🇹', name: 'Italiano' },
+  { code: 'pt', flag: '🇧🇷', name: 'Português' },
+  { code: 'tr', flag: '🇹🇷', name: 'Türkçe' },
+  { code: 'ko', flag: '🇰🇷', name: '한국어' },
+  { code: 'ja', flag: '🇯🇵', name: '日本語' },
+  { code: 'zh', flag: '🇨🇳', name: '中文' },
+];
+
+function TranslationsTab() {
+  const {
+    project,
+    setTranslation,
+    removeTranslation,
+    updateTranslationText,
+    updateTranslationMeta,
+    updateTranslationCharacter,
+    updateTranslationChapter,
+    updateMeta,
+  } = useEditorStore();
+  const [selectedLang, setSelectedLang] = useState<string | null>(null);
+
+  const translations = project.translations || {};
+  const sourceLang = project.meta.sourceLanguage || 'ru';
+
+  // Собрать все уникальные тексты из всех глав
+  const allTexts: string[] = [];
+  for (const chapter of project.chapters) {
+    for (const scene of chapter.scenes) {
+      for (const event of scene.events) {
+        if (event.text && (event.type === 'dialogue' || event.type === 'narration')) {
+          if (!allTexts.includes(event.text)) allTexts.push(event.text);
+        }
+        if (event.choices) {
+          for (const choice of event.choices) {
+            if (choice.text && !allTexts.includes(choice.text)) allTexts.push(choice.text);
+          }
+        }
+      }
+    }
+  }
+
+  const addLanguage = (langCode: string) => {
+    const lang = AVAILABLE_LANGUAGES.find((l) => l.code === langCode);
+    if (!lang || translations[langCode]) return;
+    const newTranslation: NovelTranslation = {
+      meta: { language: langCode, sourceLanguage: sourceLang, novelId: project.meta.id, version: 1 },
+      novel: { title: '', description: '' },
+      characters: {},
+      chapters: {},
+      texts: {},
+    };
+    setTranslation(langCode, newTranslation);
+    setSelectedLang(langCode);
+  };
+
+  const currentTranslation = selectedLang ? translations[selectedLang] : null;
+  const langMeta = selectedLang ? AVAILABLE_LANGUAGES.find((l) => l.code === selectedLang) : null;
+  const addedLangs = Object.keys(translations);
+  const availableLangs = AVAILABLE_LANGUAGES.filter((l) => l.code !== sourceLang && !addedLangs.includes(l.code));
+  const translatedCount = currentTranslation ? Object.values(currentTranslation.texts).filter((v) => v && v.trim()).length : 0;
+
+  return (
+    <div className="tab-content">
+      <h3>Переводы</h3>
+
+      <label>Язык оригинала</label>
+      <select value={sourceLang} onChange={(e) => updateMeta({ sourceLanguage: e.target.value })}>
+        {AVAILABLE_LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
+        ))}
+      </select>
+
+      {/* Список добавленных языков */}
+      <label>Языки перевода</label>
+      <div className="translation-langs">
+        {addedLangs.map((code) => {
+          const lang = AVAILABLE_LANGUAGES.find((l) => l.code === code);
+          return (
+            <div key={code} className={`translation-lang-item ${selectedLang === code ? 'active' : ''}`}>
+              <button className="lang-select-btn" onClick={() => setSelectedLang(code)}>
+                {lang?.flag} {lang?.name || code}
+              </button>
+              <button className="lang-remove-btn" onClick={() => { removeTranslation(code); if (selectedLang === code) setSelectedLang(null); }}>
+                <Trash2 size={12} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Добавить язык */}
+      {availableLangs.length > 0 && (
+        <select onChange={(e) => { if (e.target.value) addLanguage(e.target.value); e.target.value = ''; }} defaultValue="">
+          <option value="" disabled>+ Добавить язык...</option>
+          {availableLangs.map((l) => (
+            <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
+          ))}
+        </select>
+      )}
+
+      {/* Редактор перевода */}
+      {currentTranslation && selectedLang && langMeta && (
+        <div className="translation-editor">
+          <h4>{langMeta.flag} {langMeta.name}</h4>
+          <div className="translation-progress">
+            {translatedCount}/{allTexts.length} текстов переведено
+          </div>
+
+          {/* Мета */}
+          <label>Название</label>
+          <input
+            value={currentTranslation.novel?.title || ''}
+            onChange={(e) => updateTranslationMeta(selectedLang, 'novelTitle', e.target.value)}
+            placeholder={project.meta.title}
+          />
+          <label>Описание</label>
+          <textarea
+            value={currentTranslation.novel?.description || ''}
+            onChange={(e) => updateTranslationMeta(selectedLang, 'novelDescription', e.target.value)}
+            placeholder={project.meta.description}
+            rows={2}
+          />
+
+          {/* Персонажи */}
+          {project.characters.length > 0 && (
+            <>
+              <label>Персонажи</label>
+              {project.characters.map((ch) => (
+                <div key={ch.id} className="translation-row">
+                  <span className="translation-original">{ch.name}</span>
+                  <input
+                    value={currentTranslation.characters?.[ch.id]?.name || ''}
+                    onChange={(e) => updateTranslationCharacter(selectedLang, ch.id, e.target.value)}
+                    placeholder={ch.name}
+                  />
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Главы */}
+          <label>Главы</label>
+          {project.chapters.map((ch) => (
+            <div key={ch.id} className="translation-row">
+              <span className="translation-original">{ch.title}</span>
+              <input
+                value={currentTranslation.chapters?.[ch.id]?.title || ''}
+                onChange={(e) => updateTranslationChapter(selectedLang, ch.id, e.target.value)}
+                placeholder={ch.title}
+              />
+            </div>
+          ))}
+
+          {/* Тексты */}
+          <label>Тексты ({allTexts.length})</label>
+          <div className="translation-texts">
+            {allTexts.map((text, i) => (
+              <div key={i} className="translation-text-item">
+                <div className="translation-original">{text}</div>
+                <textarea
+                  value={currentTranslation.texts[text] || ''}
+                  onChange={(e) => updateTranslationText(selectedLang, text, e.target.value)}
+                  placeholder="Перевод..."
+                  rows={1}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

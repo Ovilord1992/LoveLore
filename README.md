@@ -22,7 +22,7 @@ navell/
 │   ├── lib/                  # Исходный код
 │   │   ├── app/              # MaterialApp, тема, роутинг
 │   │   ├── engine/           # Ядро: SceneEngine, VariableEngine, ConditionEvaluator
-│   │   ├── models/           # Модели: Novel, Scene, Character, GameState
+│   │   ├── models/           # Модели: Novel, Scene, Character, GameState, NovelTranslation
 │   │   ├── screens/          # Экраны: библиотека, игра, профиль, настройки, авторизация
 │   │   ├── services/         # Сервисы: сохранения, валюта, профиль, API, авторизация
 │   │   └── widgets/          # Виджеты: DialogueBox, ChoiceButtons, NovelCard, SceneEffectOverlay, CgOverlay, EmotionBubble, ParallaxBackground
@@ -613,6 +613,70 @@ my_novel.zip
 ```
 Можно добавлять новые языки (например `"de"`, `"fr"`) без перевыпуска.
 
+#### 📚 Локализация книг (контент)
+
+Помимо интерфейса, переводится и содержание книг — диалоги, нарратив, выборы, имена персонажей и названия глав.
+
+**Архитектура:** гибрид Ren'Py + Naninovel — автор пишет на одном языке, переводы хранятся отдельно.
+
+**Структура в ZIP:**
+```
+novel_id.zip/
+├── meta.json                   # sourceLanguage: "ru"
+├── chapters/                   # оригинальные тексты
+├── translations/
+│   ├── en.json                 # английский перевод
+│   ├── es.json                 # испанский
+│   └── fr.json                 # французский
+└── ...
+```
+
+**Формат файла перевода** (`translations/en.json`):
+```json
+{
+  "meta": {
+    "language": "en",
+    "sourceLanguage": "ru",
+    "novelId": "forgotten_gods",
+    "version": 1
+  },
+  "novel": {
+    "title": "Forgotten Gods",
+    "description": "An ancient temple hides a secret..."
+  },
+  "characters": {
+    "lera": { "name": "Lera" },
+    "mysterious_stranger": { "name": "Mysterious Stranger" }
+  },
+  "chapters": {
+    "chapter_1": { "title": "Chapter 1: Awakening" }
+  },
+  "texts": {
+    "Привет! Как твои дела?": "Hey! How are you doing?",
+    "Пойти в парк": "Go to the park",
+    "Остаться дома": "Stay at home"
+  }
+}
+```
+
+**Как добавить перевод:**
+1. **Через редактор** — вкладка 🌍 (Переводы) в сайдбаре: выбрать язык, перевести все тексты, экспортировать ZIP
+2. **Через админку** — кнопка 🌐 на строке новеллы: вставить JSON перевода и загрузить на сервер
+3. **Через API** — `POST /v1/novels/:id/translations/:lang` с JSON-телом
+
+**API:**
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/v1/novels/:id/languages` | Список доступных языков |
+| GET | `/v1/novels/:id/translations/:lang` | Скачать перевод |
+| POST | `/v1/novels/:id/translations/:lang` | Загрузить перевод |
+
+**Как работает на клиенте:**
+- При запуске новеллы движок загружает перевод по текущему языку интерфейса
+- Все диалоги, нарратив и выборы автоматически подставляются из перевода
+- Имена персонажей переводятся отдельно (могут отличаться по культурам)
+- Если перевода нет — показывается оригинальный текст (fallback)
+
 ---
 
 ## Возможности
@@ -627,6 +691,7 @@ my_novel.zip
 - 🎬 Переходы между сценами (fade, slide, dissolve)
 - 📥 Поглавная загрузка: автопереход, скачивание новых глав, «скоро» / «конец»
 - 🖼️ Загрузка изображений из файлов, ассетов и сервера (NovelCoverImage, AnimatedBackground)
+- 🌍 Локализация книг — автоматическая подстановка переводов диалогов, нарратива и выборов
 
 ### Монетизация и геймплей
 - 💎 Алмазы — внутриигровая валюта для премиум-выборов (начальный баланс: 50)

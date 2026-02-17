@@ -4,6 +4,7 @@ import '../services/novel_loader.dart';
 import '../services/novel_api_service.dart';
 import '../services/save_service.dart';
 import '../services/user_profile_service.dart';
+import '../services/locale_service.dart';
 import 'variable_engine.dart';
 import 'condition_evaluator.dart';
 
@@ -31,6 +32,7 @@ class SceneEngine extends StateNotifier<GameState?> {
   Scene? _currentScene;
   List<Character> _characters = [];
   int _nextChapterNumber = 0;
+  NovelTranslation? _translation;
 
   SceneEngine(this._ref) : super(null);
 
@@ -39,6 +41,23 @@ class SceneEngine extends StateNotifier<GameState?> {
   Chapter? get currentChapter => _currentChapter;
   List<Character> get characters => _characters;
   int get nextChapterNumber => _nextChapterNumber;
+  NovelTranslation? get translation => _translation;
+
+  /// Установить перевод для текущей новеллы
+  void setTranslation(NovelTranslation? translation) {
+    _translation = translation;
+  }
+
+  /// Перевести текст через текущий перевод
+  String tr(String? original) {
+    if (original == null || original.isEmpty) return original ?? '';
+    return _translation?.translate(original) ?? original;
+  }
+
+  /// Перевести имя персонажа
+  String trCharacter(String characterId, String originalName) {
+    return _translation?.translateCharacter(characterId, originalName) ?? originalName;
+  }
 
   /// Индекс текущей сцены в списке сцен главы (для прогресс-бара)
   int get currentSceneIndex {
@@ -67,6 +86,11 @@ class SceneEngine extends StateNotifier<GameState?> {
     final loader = _ref.read(novelLoaderProvider);
     await loader.loadNovelMeta(novelId);
     _characters = await loader.loadCharacters(novelId);
+
+    // Загрузить перевод по текущему языку
+    final locale = _ref.read(localeProvider);
+    final langCode = locale.name; // ru, en, es, etc.
+    _translation = await loader.loadTranslation(novelId, langCode);
 
     // Попытаться загрузить сохранение
     final saveService = _ref.read(saveServiceProvider.notifier);

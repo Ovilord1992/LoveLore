@@ -7,6 +7,7 @@ class ChoiceButtons extends StatefulWidget {
   final void Function(Choice choice) onChoiceSelected;
   final int? timeLimit; // секунды
   final int? defaultChoiceIndex;
+  final String Function(String)? translateText;
 
   const ChoiceButtons({
     super.key,
@@ -14,6 +15,7 @@ class ChoiceButtons extends StatefulWidget {
     required this.onChoiceSelected,
     this.timeLimit,
     this.defaultChoiceIndex,
+    this.translateText,
   });
 
   @override
@@ -101,6 +103,7 @@ class _ChoiceButtonsState extends State<ChoiceButtons>
               padding: const EdgeInsets.only(bottom: 12),
               child: _ChoiceButton(
                 choice: choice,
+                translateText: widget.translateText,
                 onTap: () {
                   _timerController?.stop();
                   widget.onChoiceSelected(choice);
@@ -117,8 +120,9 @@ class _ChoiceButtonsState extends State<ChoiceButtons>
 class _ChoiceButton extends StatefulWidget {
   final Choice choice;
   final VoidCallback onTap;
+  final String Function(String)? translateText;
 
-  const _ChoiceButton({required this.choice, required this.onTap});
+  const _ChoiceButton({required this.choice, required this.onTap, this.translateText});
 
   @override
   State<_ChoiceButton> createState() => _ChoiceButtonState();
@@ -193,7 +197,9 @@ class _ChoiceButtonState extends State<_ChoiceButton>
               ],
               Expanded(
                 child: Text(
-                  widget.choice.text,
+                  widget.translateText != null
+                      ? widget.translateText!(widget.choice.text)
+                      : widget.choice.text,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,

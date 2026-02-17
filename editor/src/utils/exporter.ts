@@ -26,6 +26,16 @@ export async function exportAsZip(project: NovelProject, images: Map<string, Fil
     );
   }
 
+  // translations/
+  if (project.translations) {
+    for (const [lang, translation] of Object.entries(project.translations)) {
+      zip.file(
+        `translations/${lang}.json`,
+        JSON.stringify(translation, null, 2)
+      );
+    }
+  }
+
   // Изображения: backgrounds/, sprites/, cg/
   for (const [path, file] of images) {
     zip.file(path, file);
@@ -103,6 +113,26 @@ export async function importProjectFromZip(file: File): Promise<{ project: Novel
 
   if (chapters.length === 0) throw new Error('Ни одной главы не найдено в ZIP');
 
+  // Загрузить переводы
+  const translations: Record<string, unknown> = {};
+  const translationsFolder = zip.folder(prefix + 'translations');
+  if (translationsFolder) {
+    const translationFiles: string[] = [];
+    translationsFolder.forEach((relativePath, entry) => {
+      if (!entry.dir && relativePath.endsWith('.json')) {
+        translationFiles.push(relativePath);
+      }
+    });
+    for (const tf of translationFiles) {
+      const entry = zip.file(prefix + 'translations/' + tf);
+      if (entry) {
+        const text = await entry.async('text');
+        const lang = tf.replace('.json', '');
+        translations[lang] = JSON.parse(text);
+      }
+    }
+  }
+
   // Загрузить изображения
   const images = new Map<string, File>();
   const imageDirs = ['backgrounds/', 'sprites/', 'cg/'];
@@ -128,6 +158,7 @@ export async function importProjectFromZip(file: File): Promise<{ project: Novel
     characters,
     variables,
     chapters,
+    ...(Object.keys(translations).length > 0 ? { translations: translations as NovelProject['translations'] } : {}),
   };
 
   return { project, images };

@@ -108,3 +108,61 @@ export function extractChapterJsonFromZip(
     return null;
   }
 }
+
+/** Извлечь список доступных переводов из ZIP */
+export function extractTranslationLanguagesFromZip(zipPath: string): string[] {
+  try {
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+    const langs: string[] = [];
+
+    for (const entry of entries) {
+      if (
+        entry.entryName.includes('translations/') &&
+        entry.entryName.endsWith('.json') &&
+        !entry.isDirectory
+      ) {
+        const fileName = entry.entryName.split('/').pop() || '';
+        const lang = fileName.replace('.json', '');
+        if (lang) langs.push(lang);
+      }
+    }
+
+    return langs;
+  } catch {
+    return [];
+  }
+}
+
+/** Извлечь перевод на конкретный язык из ZIP */
+export function extractTranslationFromZip(
+  zipPath: string,
+  language: string
+): string | null {
+  try {
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+
+    const translationEntry = entries.find(
+      (e) =>
+        e.entryName === `translations/${language}.json` ||
+        e.entryName.endsWith(`/translations/${language}.json`)
+    );
+
+    if (!translationEntry) return null;
+    return translationEntry.getData().toString('utf-8');
+  } catch {
+    return null;
+  }
+}
+
+/** Добавить/обновить перевод в ZIP */
+export function addTranslationToZip(
+  zipPath: string,
+  language: string,
+  translationJson: string
+): void {
+  const zip = new AdmZip(zipPath);
+  zip.addFile(`translations/${language}.json`, Buffer.from(translationJson, 'utf-8'));
+  zip.writeZip(zipPath);
+}

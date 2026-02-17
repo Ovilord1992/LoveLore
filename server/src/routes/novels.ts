@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../db';
 import { upload } from '../middleware/upload';
-import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip } from '../utils/zip';
+import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip } from '../utils/zip';
 
 export const novelsRouter = Router();
 
@@ -338,3 +338,106 @@ novelsRouter.get(
     }
   }
 );
+
+// ─── GET /v1/novels/:id/languages ── Доступные языки перевода ────────────────
+novelsRouter.get('/:id/languages', async (req: Request, res: Response) => {
+  try {
+    const novel = await prisma.novel.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!novel || !novel.zipFilename) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    const zipPath = path.resolve(uploadDir, 'packs', novel.zipFilename);
+    if (!fs.existsSync(zipPath)) {
+      res.status(404).json({ error: 'Novel file not found' });
+      return;
+    }
+
+    const meta = extractMetaFromZip(zipPath);
+    const sourceLanguage = (meta?.sourceLanguage as string) || 'ru';
+    const translations = extractTranslationLanguagesFromZip(zipPath);
+
+    res.json({
+      novelId: req.params.id,
+      sourceLanguage,
+      availableLanguages: [sourceLanguage, ...translations],
+      translations,
+    });
+  } catch (err) {
+    console.error('Error fetching languages:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/novels/:id/translations/:lang ── Скачать перевод ────────────────
+novelsRouter.get('/:id/translations/:lang', async (req: Request, res: Response) => {
+  try {
+    const novel = await prisma.novel.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!novel || !novel.zipFilename) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    const zipPath = path.resolve(uploadDir, 'packs', novel.zipFilename);
+    if (!fs.existsSync(zipPath)) {
+      res.status(404).json({ error: 'Novel file not found' });
+      return;
+    }
+
+    const translation = extractTranslationFromZip(zipPath, req.params.lang);
+    if (!translation) {
+      res.status(404).json({ error: `Translation for '${req.params.lang}' not found` });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.send(translation);
+  } catch (err) {
+    console.error('Error fetching translation:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/novels/:id/translations/:lang ── Загрузить перевод ─────────────
+novelsRouter.post('/:id/translations/:lang', async (req: Request, res: Response) => {
+  try {
+    const novel = await prisma.novel.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!novel || !novel.zipFilename) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    const zipPath = path.resolve(uploadDir, 'packs', novel.zipFilename);
+    if (!fs.existsSync(zipPath)) {
+      res.status(404).json({ error: 'Novel file not found' });
+      return;
+    }
+
+    const translationData = req.body;
+    if (!translationData || !translationData.texts) {
+      res.status(400).json({ error: 'Invalid translation data: texts field is required' });
+      return;
+    }
+
+    addTranslationToZip(zipPath, req.params.lang, JSON.stringify(translationData, null, 2));
+
+    res.json({
+      message: `Translation for '${req.params.lang}' uploaded successfully`,
+      novelId: req.params.id,
+      language: req.params.lang,
+    });
+  } catch (err) {
+    console.error('Error uploading translation:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});

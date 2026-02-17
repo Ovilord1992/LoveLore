@@ -151,6 +151,53 @@ class NovelLoader {
     }
   }
 
+  /// Загрузить перевод книги
+  Future<NovelTranslation?> loadTranslation(String novelId, String language) async {
+    try {
+      final json = await _loadJson(novelId, 'translations/$language.json');
+      return NovelTranslation.fromJson(json);
+    } catch (_) {
+      // Попробовать загрузить с сервера
+      try {
+        final response = await http.get(
+          Uri.parse('${ApiConfig.baseUrl}/novels/$novelId/translations/$language'),
+          headers: {'Content-Type': 'application/json'},
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          return NovelTranslation.fromJson(data);
+        }
+      } catch (_) {}
+      return null;
+    }
+  }
+
+  /// Загрузить список доступных языков книги
+  Future<List<String>> loadAvailableLanguages(String novelId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/novels/$novelId/languages'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return List<String>.from(data['availableLanguages'] as List);
+      }
+    } catch (_) {}
+    // Fallback: проверяем локальные файлы
+    try {
+      final dir = await _getDownloadedNovelsDir();
+      final translationsDir = Directory('${dir.path}/$novelId/translations');
+      if (await translationsDir.exists()) {
+        final files = translationsDir.listSync().whereType<File>();
+        return files
+            .map((f) => f.path.split('/').last.replaceAll('.json', ''))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
   /// Загрузить JSON — сначала ищет в скачанных, потом в assets
   Future<Map<String, dynamic>> _loadJson(
       String novelId, String fileName) async {
