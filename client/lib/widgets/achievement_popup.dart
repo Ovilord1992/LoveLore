@@ -3,13 +3,14 @@ import '../services/achievement_service.dart';
 
 /// Всплывающее уведомление о новом достижении
 class AchievementPopup {
-  static void show(BuildContext context, AchievementDef achievement) {
+  static void show(BuildContext context, AchievementDef achievement, {String? header}) {
     final overlay = Overlay.of(context);
     late OverlayEntry entry;
 
     entry = OverlayEntry(
       builder: (ctx) => _AchievementOverlay(
         achievement: achievement,
+        header: header ?? 'Achievement unlocked!',
         onDismiss: () => entry.remove(),
       ),
     );
@@ -18,11 +19,11 @@ class AchievementPopup {
   }
 
   /// Показать несколько достижений подряд
-  static void showAll(BuildContext context, List<AchievementDef> achievements) {
+  static void showAll(BuildContext context, List<AchievementDef> achievements, {String? header}) {
     for (var i = 0; i < achievements.length; i++) {
       Future.delayed(Duration(milliseconds: i * 2500), () {
         if (context.mounted) {
-          show(context, achievements[i]);
+          show(context, achievements[i], header: header);
         }
       });
     }
@@ -31,10 +32,12 @@ class AchievementPopup {
 
 class _AchievementOverlay extends StatefulWidget {
   final AchievementDef achievement;
+  final String header;
   final VoidCallback onDismiss;
 
   const _AchievementOverlay({
     required this.achievement,
+    required this.header,
     required this.onDismiss,
   });
 
@@ -136,8 +139,8 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Достижение разблокировано!',
+                        Text(
+                          widget.header,
                           style: TextStyle(
                             fontSize: 11,
                             color: Color(0xFFE91E63),

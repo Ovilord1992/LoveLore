@@ -415,7 +415,14 @@ class _GameScreenState extends ConsumerState<GameScreen>
     }
 
     if (unlocked.isNotEmpty && mounted) {
-      AchievementPopup.showAll(context, unlocked);
+      final translatedHeader = ref.tr('achievement_unlocked');
+      final translated = unlocked.map((a) => AchievementDef(
+        id: a.id,
+        title: ref.tr(a.title),
+        description: ref.tr(a.description),
+        diamondReward: a.diamondReward,
+      )).toList();
+      AchievementPopup.showAll(context, translated, header: translatedHeader);
     }
   }
 

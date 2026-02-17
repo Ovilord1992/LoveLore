@@ -24,65 +24,67 @@ class AchievementDef {
 }
 
 /// Хардкод-каталог (fallback если remote config пуст)
+/// title и description хранят ключи перевода (ach_*),
+/// клиент отображает ref.tr(achievement.title).
 const _defaultAchievements = <AchievementDef>[
   AchievementDef(
     id: 'first_story',
-    title: 'Первая история',
-    description: 'Начни свою первую новеллу',
+    title: 'ach_first_story',
+    description: 'ach_first_story_desc',
     diamondReward: 10,
   ),
   AchievementDef(
     id: 'first_choice',
-    title: 'Первый выбор',
-    description: 'Сделай первый выбор в истории',
+    title: 'ach_first_choice',
+    description: 'ach_first_choice_desc',
     diamondReward: 5,
   ),
   AchievementDef(
     id: 'five_chapters',
-    title: '5 глав',
-    description: 'Прочитай 5 глав',
+    title: 'ach_five_chapters',
+    description: 'ach_five_chapters_desc',
     diamondReward: 15,
   ),
   AchievementDef(
     id: 'first_love',
-    title: 'Первая любовь',
-    description: 'Набери 10+ очков отношений с персонажем',
+    title: 'ach_first_love',
+    description: 'ach_first_love_desc',
     diamondReward: 10,
   ),
   AchievementDef(
     id: 'completionist',
-    title: 'Прохождение',
-    description: 'Пройди новеллу до конца',
+    title: 'ach_completionist',
+    description: 'ach_completionist_desc',
     diamondReward: 25,
   ),
   AchievementDef(
     id: 'collector',
-    title: 'Коллекционер',
-    description: 'Разблокируй 3 CG-арта',
+    title: 'ach_collector',
+    description: 'ach_collector_desc',
     diamondReward: 15,
   ),
   AchievementDef(
     id: 'brave_heart',
-    title: 'Храброе сердце',
-    description: 'Выбери смелый вариант',
+    title: 'ach_brave_heart',
+    description: 'ach_brave_heart_desc',
     diamondReward: 5,
   ),
   AchievementDef(
     id: 'mystery_solver',
-    title: 'Детектив',
-    description: 'Собери 5 улик',
+    title: 'ach_mystery_solver',
+    description: 'ach_mystery_solver_desc',
     diamondReward: 20,
   ),
   AchievementDef(
     id: 'ten_choices',
-    title: 'Решительность',
-    description: 'Сделай 10 выборов',
+    title: 'ach_ten_choices',
+    description: 'ach_ten_choices_desc',
     diamondReward: 10,
   ),
   AchievementDef(
     id: 'diamond_spender',
-    title: 'Щедрая душа',
-    description: 'Потрать 50 алмазов на премиум-выборы',
+    title: 'ach_diamond_spender',
+    description: 'ach_diamond_spender_desc',
     diamondReward: 20,
   ),
 ];

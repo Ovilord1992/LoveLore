@@ -143,10 +143,11 @@ class ProfileScreen extends ConsumerWidget {
               spacing: 8,
               runSpacing: 8,
               children: profile.achievements.map((a) {
-                final info = _achievementInfo(a);
+                final icon = _achievementIcons[a] ?? Icons.star;
+                final label = ref.tr('ach_$a');
                 return _AchievementBadge(
-                  icon: info.icon,
-                  label: info.label,
+                  icon: icon,
+                  label: label,
                 );
               }).toList(),
             ),
@@ -298,28 +299,20 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  _AchievementData _achievementInfo(String id) {
-    return _achievements[id] ??
-        _AchievementData(Icons.star, id);
-  }
 }
 
-// --- Данные достижений ---
-class _AchievementData {
-  final IconData icon;
-  final String label;
-  const _AchievementData(this.icon, this.label);
-}
-
-const _achievements = <String, _AchievementData>{
-  'first_story': _AchievementData(Icons.auto_stories, 'Первая история'),
-  'first_choice': _AchievementData(Icons.touch_app, 'Первый выбор'),
-  'five_chapters': _AchievementData(Icons.menu_book, '5 глав'),
-  'first_love': _AchievementData(Icons.favorite, 'Первая любовь'),
-  'completionist': _AchievementData(Icons.emoji_events, 'Прохождение'),
-  'collector': _AchievementData(Icons.collections, 'Коллекционер'),
-  'brave_heart': _AchievementData(Icons.shield, 'Храброе сердце'),
-  'mystery_solver': _AchievementData(Icons.search, 'Детектив'),
+// --- Иконки достижений ---
+const _achievementIcons = <String, IconData>{
+  'first_story': Icons.auto_stories,
+  'first_choice': Icons.touch_app,
+  'five_chapters': Icons.menu_book,
+  'first_love': Icons.favorite,
+  'completionist': Icons.emoji_events,
+  'collector': Icons.collections,
+  'brave_heart': Icons.shield,
+  'mystery_solver': Icons.search,
+  'ten_choices': Icons.checklist,
+  'diamond_spender': Icons.diamond,
 };
 
 // --- Виджеты ---
