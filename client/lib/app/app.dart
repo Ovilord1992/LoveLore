@@ -14,7 +14,7 @@ class NavellApp extends ConsumerWidget {
       title: 'Amoria',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
-      locale: Locale(locale == AppLocale.ru ? 'ru' : 'en'),
+      locale: Locale(locale.name),
       home: const LibraryScreen(),
     );
   }

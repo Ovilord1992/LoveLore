@@ -302,9 +302,10 @@ class _LanguageTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
+    final meta = localeMetaList[locale]!;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF16213E),
         borderRadius: BorderRadius.circular(12),
@@ -317,27 +318,43 @@ class _LanguageTile extends ConsumerWidget {
             child: Text('Язык / Language',
                 style: TextStyle(color: Colors.white)),
           ),
-          SegmentedButton<AppLocale>(
-            segments: const [
-              ButtonSegment(value: AppLocale.ru, label: Text('🇷🇺 RU')),
-              ButtonSegment(value: AppLocale.en, label: Text('🇬🇧 EN')),
-            ],
-            selected: {locale},
-            onSelectionChanged: (selection) {
-              ref
-                  .read(localeProvider.notifier)
-                  .setLocale(selection.first);
-            },
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const Color(0xFFE91E63);
-                }
-                return Colors.transparent;
-              }),
-              foregroundColor: WidgetStateProperty.all(Colors.white),
-              side: WidgetStateProperty.all(
-                  const BorderSide(color: Colors.white24)),
+          // ← стрелка
+          GestureDetector(
+            onTap: () => ref.read(localeProvider.notifier).previous(),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.chevron_left, color: Colors.white70, size: 20),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Текущий язык
+          SizedBox(
+            width: 90,
+            child: Text(
+              '${meta.flag} ${meta.nativeName}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFE91E63),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // → стрелка
+          GestureDetector(
+            onTap: () => ref.read(localeProvider.notifier).next(),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.chevron_right, color: Colors.white70, size: 20),
             ),
           ),
         ],
