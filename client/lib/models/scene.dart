@@ -7,7 +7,33 @@ part 'scene.g.dart';
 enum CharacterPosition { left, center, right }
 
 /// Тип события в сцене
-enum EventType { dialogue, narration, choice, changeBackground, playSound, changeSprite }
+enum EventType { dialogue, narration, choice, changeBackground, playSound, changeSprite, effect }
+
+/// Тип перехода между сценами
+enum TransitionType { fade, slideLeft, slideRight, dissolve, none }
+
+/// Тип визуального эффекта
+enum EffectType { shake, flash, fadeToBlack, rain, snow, particles }
+
+/// Настройки перехода между сценами
+@JsonSerializable()
+class SceneTransition extends Equatable {
+  @JsonKey(unknownEnumValue: TransitionType.fade)
+  final TransitionType type;
+  final int duration; // мс
+
+  const SceneTransition({
+    this.type = TransitionType.fade,
+    this.duration = 800,
+  });
+
+  factory SceneTransition.fromJson(Map<String, dynamic> json) =>
+      _$SceneTransitionFromJson(json);
+  Map<String, dynamic> toJson() => _$SceneTransitionToJson(this);
+
+  @override
+  List<Object?> get props => [type, duration];
+}
 
 /// Персонаж на экране в данный момент
 @JsonSerializable()
@@ -81,7 +107,7 @@ class Choice extends Equatable {
   List<Object?> get props => [text, nextSceneId, effects, condition, premium, cost];
 }
 
-/// Событие в сцене (диалог, выбор, смена фона и т.д.)
+/// Событие в сцене (диалог, выбор, смена фона, эффект и т.д.)
 @JsonSerializable()
 class SceneEvent extends Equatable {
   @JsonKey(unknownEnumValue: EventType.dialogue)
@@ -93,6 +119,11 @@ class SceneEvent extends Equatable {
   final String? characterId;
   final String? spriteId;
   final String? animation;
+  // Поля для события effect
+  @JsonKey(unknownEnumValue: EffectType.shake)
+  final EffectType? effectType;
+  final int? effectDuration; // мс
+  final double? effectIntensity; // 0.0–1.0
 
   const SceneEvent({
     required this.type,
@@ -103,6 +134,9 @@ class SceneEvent extends Equatable {
     this.characterId,
     this.spriteId,
     this.animation,
+    this.effectType,
+    this.effectDuration,
+    this.effectIntensity,
   });
 
   factory SceneEvent.fromJson(Map<String, dynamic> json) =>
@@ -110,7 +144,7 @@ class SceneEvent extends Equatable {
   Map<String, dynamic> toJson() => _$SceneEventToJson(this);
 
   @override
-  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation];
+  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation, effectType, effectDuration, effectIntensity];
 }
 
 /// Сцена — основная единица новеллы
@@ -119,6 +153,7 @@ class Scene extends Equatable {
   final String id;
   final String? background;
   final String? music;
+  final SceneTransition? transition;
   final List<SceneCharacter> charactersOnScreen;
   final List<SceneEvent> events;
   final String? nextSceneId; // автоматический переход если нет выбора
@@ -127,6 +162,7 @@ class Scene extends Equatable {
     required this.id,
     this.background,
     this.music,
+    this.transition,
     this.charactersOnScreen = const [],
     this.events = const [],
     this.nextSceneId,
@@ -137,5 +173,5 @@ class Scene extends Equatable {
   Map<String, dynamic> toJson() => _$SceneToJson(this);
 
   @override
-  List<Object?> get props => [id, background, music, charactersOnScreen, events, nextSceneId];
+  List<Object?> get props => [id, background, music, transition, charactersOnScreen, events, nextSceneId];
 }

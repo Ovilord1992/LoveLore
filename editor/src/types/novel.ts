@@ -44,19 +44,27 @@ export interface Scene {
   id: string;
   background?: string;
   music?: string;
+  transition?: SceneTransition;
   charactersOnScreen: SceneCharacter[];
   events: SceneEvent[];
   nextSceneId?: string;
+}
+
+export interface SceneTransition {
+  type: 'fade' | 'slideLeft' | 'slideRight' | 'dissolve' | 'none';
+  duration: number; // мс
 }
 
 export interface SceneCharacter {
   characterId: string;
   spriteId: string;
   position: 'left' | 'center' | 'right';
-  animation?: string;
+  animation?: 'fade_in' | 'fade_out' | 'slide_in_left' | 'slide_in_right' | 'bounce' | 'shake';
 }
 
-export type EventType = 'dialogue' | 'narration' | 'choice' | 'set_variable' | 'play_sound' | 'changeBackground' | 'changeSprite';
+export type EventType = 'dialogue' | 'narration' | 'choice' | 'set_variable' | 'play_sound' | 'changeBackground' | 'changeSprite' | 'effect';
+
+export type EffectType = 'shake' | 'flash' | 'fadeToBlack' | 'rain' | 'snow' | 'particles';
 
 export interface SceneEvent {
   type: EventType;
@@ -69,6 +77,10 @@ export interface SceneEvent {
   characterId?: string;
   spriteId?: string;
   sound?: string;
+  // Поля для события effect
+  effectType?: EffectType;
+  effectDuration?: number; // мс
+  effectIntensity?: number; // 0.0–1.0
 }
 
 export interface Choice {

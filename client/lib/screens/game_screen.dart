@@ -33,6 +33,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
   // Кешируем ссылки для безопасного сохранения в deactivate
   SaveService? _saveService;
   GameState? _lastState;
+  // Активный эффект
+  SceneEvent? _activeEffect;
 
   @override
   void initState() {
@@ -202,7 +204,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
           fit: StackFit.expand,
           children: [
             // Фон с анимированными переходами
-            AnimatedBackground(backgroundKey: scene?.background, novelId: widget.novelId),
+            AnimatedBackground(
+              backgroundKey: scene?.background,
+              novelId: widget.novelId,
+              duration: Duration(milliseconds: scene?.transition?.duration ?? 800),
+            ),
 
             // Персонажи на экране
             if (scene != null) _buildCharacters(scene, engine),
@@ -259,6 +265,19 @@ class _GameScreenState extends ConsumerState<GameScreen>
               right: 8,
               child: _buildRelationships(gameState, engine),
             ),
+
+            // Оверлей визуального эффекта
+            if (_activeEffect != null)
+              SceneEffectOverlay(
+                key: ValueKey('effect_${_activeEffect.hashCode}'),
+                effectType: _activeEffect!.effectType ?? EffectType.shake,
+                duration: _activeEffect!.effectDuration ?? 500,
+                intensity: _activeEffect!.effectIntensity ?? 0.7,
+                onComplete: () {
+                  setState(() => _activeEffect = null);
+                  engine.nextEvent();
+                },
+              ),
           ],
         ),
       ),
@@ -405,6 +424,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
         );
 
       default:
+        // Событие effect обрабатывается через оверлей
+        if (event.type == EventType.effect && event.effectType != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _activeEffect == null) {
+              setState(() => _activeEffect = event);
+            }
+          });
+          return const SizedBox.shrink();
+        }
         engine.nextEvent();
         return const SizedBox.shrink();
     }

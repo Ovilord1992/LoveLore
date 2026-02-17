@@ -95,6 +95,12 @@ export function ScenePreview() {
                   <div className="preview-text italic">🎭 Смена спрайта → {event.characterId} / {event.spriteId || '...'}</div>
                 </div>
               )}
+
+              {event.type === 'effect' && (
+                <div className="preview-narration">
+                  <div className="preview-text italic">✨ Эффект: {event.effectType || '...'} ({event.effectDuration || 500}мс, {((event.effectIntensity ?? 0.7) * 100).toFixed(0)}%)</div>
+                </div>
+              )}
             </div>
           )}
 

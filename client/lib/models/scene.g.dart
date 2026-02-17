@@ -6,6 +6,32 @@ part of 'scene.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+SceneTransition _$SceneTransitionFromJson(Map<String, dynamic> json) =>
+    SceneTransition(
+      type:
+          $enumDecodeNullable(
+            _$TransitionTypeEnumMap,
+            json['type'],
+            unknownValue: TransitionType.fade,
+          ) ??
+          TransitionType.fade,
+      duration: (json['duration'] as num?)?.toInt() ?? 800,
+    );
+
+Map<String, dynamic> _$SceneTransitionToJson(SceneTransition instance) =>
+    <String, dynamic>{
+      'type': _$TransitionTypeEnumMap[instance.type]!,
+      'duration': instance.duration,
+    };
+
+const _$TransitionTypeEnumMap = {
+  TransitionType.fade: 'fade',
+  TransitionType.slideLeft: 'slideLeft',
+  TransitionType.slideRight: 'slideRight',
+  TransitionType.dissolve: 'dissolve',
+  TransitionType.none: 'none',
+};
+
 SceneCharacter _$SceneCharacterFromJson(Map<String, dynamic> json) =>
     SceneCharacter(
       characterId: json['characterId'] as String,
@@ -81,6 +107,13 @@ SceneEvent _$SceneEventFromJson(Map<String, dynamic> json) => SceneEvent(
   characterId: json['characterId'] as String?,
   spriteId: json['spriteId'] as String?,
   animation: json['animation'] as String?,
+  effectType: $enumDecodeNullable(
+    _$EffectTypeEnumMap,
+    json['effectType'],
+    unknownValue: EffectType.shake,
+  ),
+  effectDuration: (json['effectDuration'] as num?)?.toInt(),
+  effectIntensity: (json['effectIntensity'] as num?)?.toDouble(),
 );
 
 Map<String, dynamic> _$SceneEventToJson(SceneEvent instance) =>
@@ -93,6 +126,9 @@ Map<String, dynamic> _$SceneEventToJson(SceneEvent instance) =>
       'characterId': instance.characterId,
       'spriteId': instance.spriteId,
       'animation': instance.animation,
+      'effectType': _$EffectTypeEnumMap[instance.effectType],
+      'effectDuration': instance.effectDuration,
+      'effectIntensity': instance.effectIntensity,
     };
 
 const _$EventTypeEnumMap = {
@@ -102,12 +138,25 @@ const _$EventTypeEnumMap = {
   EventType.changeBackground: 'changeBackground',
   EventType.playSound: 'playSound',
   EventType.changeSprite: 'changeSprite',
+  EventType.effect: 'effect',
+};
+
+const _$EffectTypeEnumMap = {
+  EffectType.shake: 'shake',
+  EffectType.flash: 'flash',
+  EffectType.fadeToBlack: 'fadeToBlack',
+  EffectType.rain: 'rain',
+  EffectType.snow: 'snow',
+  EffectType.particles: 'particles',
 };
 
 Scene _$SceneFromJson(Map<String, dynamic> json) => Scene(
   id: json['id'] as String,
   background: json['background'] as String?,
   music: json['music'] as String?,
+  transition: json['transition'] == null
+      ? null
+      : SceneTransition.fromJson(json['transition'] as Map<String, dynamic>),
   charactersOnScreen:
       (json['charactersOnScreen'] as List<dynamic>?)
           ?.map((e) => SceneCharacter.fromJson(e as Map<String, dynamic>))
@@ -125,6 +174,7 @@ Map<String, dynamic> _$SceneToJson(Scene instance) => <String, dynamic>{
   'id': instance.id,
   'background': instance.background,
   'music': instance.music,
+  'transition': instance.transition,
   'charactersOnScreen': instance.charactersOnScreen,
   'events': instance.events,
   'nextSceneId': instance.nextSceneId,

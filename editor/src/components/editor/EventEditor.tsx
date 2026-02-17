@@ -1,6 +1,6 @@
 import { useEditorStore } from '../../store/editorStore';
-import type { Scene, SceneEvent as SceneEventType, Choice } from '../../types/novel';
-import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette } from 'lucide-react';
+import type { Scene, SceneEvent as SceneEventType, Choice, EffectType } from '../../types/novel';
+import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette, Sparkles } from 'lucide-react';
 import './EventEditor.css';
 
 export function EventEditor() {
@@ -20,6 +20,7 @@ export function EventEditor() {
     if (type === 'choice') { event.choices = [{ text: '', nextSceneId: '', effects: {} }]; }
     if (type === 'changeBackground') { event.background = ''; }
     if (type === 'changeSprite') { event.characterId = ''; event.spriteId = ''; }
+    if (type === 'effect') { event.effectType = 'shake'; event.effectDuration = 500; event.effectIntensity = 0.7; }
     addEvent(scene.id, event);
   };
 
@@ -63,6 +64,9 @@ export function EventEditor() {
         </button>
         <button onClick={() => handleAddEvent('changeSprite')} title="Сменить спрайт">
           <Palette size={16} /> Спрайт
+        </button>
+        <button onClick={() => handleAddEvent('effect')} title="Эффект">
+          <Sparkles size={16} /> Эффект
         </button>
       </div>
     </div>
@@ -108,6 +112,31 @@ function SceneSettings({ scene }: { scene: Scene }) {
         value={scene.nextSceneId || ''}
         onChange={(e) => updateScene(scene.id, { nextSceneId: e.target.value || undefined })}
       />
+      <div className="scene-transition-settings">
+        <label>Переход</label>
+        <div className="scene-settings-row">
+          <select
+            value={scene.transition?.type || 'fade'}
+            onChange={(e) => updateScene(scene.id, { transition: { type: e.target.value as 'fade', duration: scene.transition?.duration || 800 } })}
+          >
+            <option value="fade">Fade (плавное)</option>
+            <option value="slideLeft">Slide Left</option>
+            <option value="slideRight">Slide Right</option>
+            <option value="dissolve">Dissolve</option>
+            <option value="none">Без перехода</option>
+          </select>
+          <input
+            type="number"
+            className="transition-duration"
+            placeholder="мс"
+            value={scene.transition?.duration || 800}
+            onChange={(e) => updateScene(scene.id, { transition: { type: scene.transition?.type || 'fade', duration: parseInt(e.target.value) || 800 } })}
+            min={0}
+            max={3000}
+            step={100}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -136,6 +165,15 @@ function CharactersOnScene({ scene }: { scene: Scene }) {
               <option value="left">Лево</option>
               <option value="center">Центр</option>
               <option value="right">Право</option>
+            </select>
+            <select value={sc.animation || ''} onChange={(e) => updateCharacterOnScene(scene.id, sc.characterId, { animation: e.target.value || undefined })}>
+              <option value="">Без анимации</option>
+              <option value="fade_in">Fade In</option>
+              <option value="fade_out">Fade Out</option>
+              <option value="slide_in_left">Slide Left</option>
+              <option value="slide_in_right">Slide Right</option>
+              <option value="bounce">Bounce</option>
+              <option value="shake">Shake</option>
             </select>
             <button onClick={() => removeCharacterFromScene(scene.id, sc.characterId)} className="delete"><Trash2 size={12} /></button>
           </div>
@@ -186,6 +224,7 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
     play_sound: '🔊 Звук',
     changeBackground: '🖼 Смена фона',
     changeSprite: '🎭 Смена спрайта',
+    effect: '✨ Эффект',
   };
 
   const handleBgEventUpload = () => {
@@ -285,6 +324,42 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
               ))}
             </select>
           )}
+        </div>
+      )}
+
+      {event.type === 'effect' && (
+        <div className="event-body">
+          <select
+            value={event.effectType || 'shake'}
+            onChange={(e) => onUpdate({ ...event, effectType: e.target.value as EffectType })}
+          >
+            <option value="shake">🫨 Тряска</option>
+            <option value="flash">⚡ Вспышка</option>
+            <option value="fadeToBlack">🌑 Затемнение</option>
+            <option value="rain">🌧 Дождь</option>
+            <option value="snow">❄️ Снег</option>
+            <option value="particles">✨ Частицы</option>
+          </select>
+          <div className="effect-params">
+            <label>Длительность: {event.effectDuration || 500} мс</label>
+            <input
+              type="range"
+              min={100}
+              max={3000}
+              step={100}
+              value={event.effectDuration || 500}
+              onChange={(e) => onUpdate({ ...event, effectDuration: parseInt(e.target.value) })}
+            />
+            <label>Интенсивность: {((event.effectIntensity ?? 0.7) * 100).toFixed(0)}%</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={(event.effectIntensity ?? 0.7) * 100}
+              onChange={(e) => onUpdate({ ...event, effectIntensity: parseInt(e.target.value) / 100 })}
+            />
+          </div>
         </div>
       )}
     </div>
