@@ -97,13 +97,19 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
       return;
     }
 
-    // Ищем в скачанных файлах
     final appDir = await getApplicationDocumentsDirectory();
-    final path = '${appDir.path}/novels/${widget.novelId}/${widget.backgroundKey}';
-    final file = File(path);
-    if (await file.exists()) {
-      if (mounted) setState(() { _imageFile = file; _resolved = true; });
-      return;
+    final base = '${appDir.path}/novels/${widget.novelId}';
+
+    // Ищем по прямому пути и в подпапке backgrounds/
+    for (final candidate in [
+      '$base/${widget.backgroundKey}',
+      '$base/backgrounds/${widget.backgroundKey}',
+    ]) {
+      final file = File(candidate);
+      if (await file.exists()) {
+        if (mounted) setState(() { _imageFile = file; _resolved = true; });
+        return;
+      }
     }
 
     // Пробуем встроенный asset (не будем ломать, просто пометим resolved)

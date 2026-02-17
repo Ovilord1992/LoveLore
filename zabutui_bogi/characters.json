@@ -1,0 +1,28 @@
+{
+  "characters": [
+    {
+      "id": "Astori",
+      "name": "Астория",
+      "color": "#E91E63",
+      "sprites": [
+        {
+          "id": "neutral",
+          "image": "sprites/char_1771348200037/char_1771348200037_neutral.png",
+          "label": "Спокойный"
+        }
+      ]
+    },
+    {
+      "id": "Karaiel",
+      "name": "Караиэль",
+      "color": "#E91E63",
+      "sprites": [
+        {
+          "id": "neutral",
+          "image": "sprites/char_1771348211889/char_1771348211889_neutral.png",
+          "label": "Спокойный"
+        }
+      ]
+    }
+  ]
+}

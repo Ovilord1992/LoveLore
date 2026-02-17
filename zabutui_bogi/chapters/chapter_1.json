@@ -1,0 +1,506 @@
+{
+  "id": "chapter_1",
+  "title": "Глава 1",
+  "number": 1,
+  "firstSceneId": "scene_1",
+  "scenes": [
+    {
+      "id": "scene_1",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Сумерки медленно опускались на границу Валандорского леса..."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_2"
+    },
+    {
+      "id": "chapter_1_scene_2",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Ветер шевелил высокую траву. Где-то впереди треснула ветка."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_3"
+    },
+    {
+      "id": "chapter_1_scene_3",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Astori",
+          "text": "....След свежий. Зверь где-то рядом. Далеко не уйдет."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_4"
+    },
+    {
+      "id": "chapter_1_scene_4",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Она опустилась на одно колено, касаясь пальцами земли."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_5"
+    },
+    {
+      "id": "chapter_1_scene_5",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Вдруг - шорох."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_6"
+    },
+    {
+      "id": "chapter_1_scene_6",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Не со стороны добычи. Сбоку."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_7"
+    },
+    {
+      "id": "chapter_1_scene_7",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": ""
+        }
+      ],
+      "background": "img_5497.png",
+      "nextSceneId": "chapter_1_scene_8"
+    },
+    {
+      "id": "chapter_1_scene_8",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Из полумрака медленно вышло существо. Тело похоже на человеческое. Голова - рысь. Золотые глаза светились разумом."
+        }
+      ],
+      "background": "img_5481.png",
+      "nextSceneId": "chapter_1_scene_9"
+    },
+    {
+      "id": "chapter_1_scene_9",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Оно наблюдало. Долго. С интересом."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_10"
+    },
+    {
+      "id": "chapter_1_scene_10",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "... Хм... Какая редкость."
+        }
+      ],
+      "nextSceneId": "chapter_1_scene_11",
+      "background": "img_5484.png"
+    },
+    {
+      "id": "chapter_1_scene_11",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Астория резко выпрямилась, рука легла на лук."
+        }
+      ],
+      "background": "img_5482.png",
+      "nextSceneId": "chapter_1_scene_12"
+    },
+    {
+      "id": "chapter_1_scene_12",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "Не дергайся, маленькая охотница. Если бы я хотел тебя убить - ты бы уже не дышала."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_13"
+    },
+    {
+      "id": "chapter_1_scene_13",
+      "charactersOnScreen": [
+        {
+          "characterId": "Astori",
+          "spriteId": "neutral",
+          "position": "left"
+        }
+      ],
+      "events": [
+        {
+          "type": "choice",
+          "choices": [
+            {
+              "text": "Тогда попробуй",
+              "nextSceneId": "chapter_1_scene_14",
+              "effects": {}
+            },
+            {
+              "text": "Кто ты такой?..",
+              "nextSceneId": "chapter_1_scene_20",
+              "effects": {}
+            }
+          ]
+        }
+      ],
+      "background": "img_5484.png"
+    },
+    {
+      "id": "chapter_1_scene_14",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Astori",
+          "text": "Тогда попробуй"
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_15"
+    },
+    {
+      "id": "chapter_1_scene_15",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Золотые глаза Караиэля сузились... и вдруг, он тихо усмехнулся."
+        }
+      ],
+      "background": "img_5611.png",
+      "nextSceneId": "chapter_1_scene_16"
+    },
+    {
+      "id": "chapter_1_scene_16",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "О, мне уже нравится"
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_17"
+    },
+    {
+      "id": "chapter_1_scene_17",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Он делает шаг ближе. Слишком бесшумно для такого массивного тела..."
+        }
+      ],
+      "background": "img_5479.png",
+      "nextSceneId": "chapter_1_scene_18"
+    },
+    {
+      "id": "chapter_1_scene_18",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "Смелая. Юная. и одна у границы леса\n"
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_19"
+    },
+    {
+      "id": "chapter_1_scene_19",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "(тише) Ты хоть понимаешь, на чью территорию зашла?"
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_24"
+    },
+    {
+      "id": "chapter_1_scene_20",
+      "charactersOnScreen": [
+        {
+          "characterId": "Astori",
+          "spriteId": "neutral",
+          "position": "left"
+        }
+      ],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Astori",
+          "text": "Кто ты такой?.."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_21"
+    },
+    {
+      "id": "chapter_1_scene_21",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Существо наклонило голову по-звериному."
+        }
+      ],
+      "background": "img_5612.png",
+      "nextSceneId": "chapter_1_scene_22"
+    },
+    {
+      "id": "chapter_1_scene_22",
+      "charactersOnScreen": [
+        {
+          "characterId": "Karaiel",
+          "spriteId": "neutral",
+          "position": "right"
+        }
+      ],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "Наконец-то правильный вопрос. Меня зовут Караиэль. Страж забытых троп... если по-простому."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_23"
+    },
+    {
+      "id": "chapter_1_scene_23",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "(вдумчиво) Но куда интереснее - это ты."
+        }
+      ],
+      "background": "img_5484.png",
+      "nextSceneId": "chapter_1_scene_24"
+    },
+    {
+      "id": "chapter_1_scene_24",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Ветер резко стих. Лес... словно прислушался. Караиэль вдруг стал серьезнее."
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_25"
+    },
+    {
+      "id": "chapter_1_scene_25",
+      "charactersOnScreen": [
+        {
+          "characterId": "Karaiel",
+          "spriteId": "neutral",
+          "position": "right"
+        }
+      ],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "Скажи мне, охотница.... Ты когда-нибудь слышала о богах?"
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_26"
+    },
+    {
+      "id": "chapter_1_scene_26",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "choice",
+          "choices": [
+            {
+              "text": "Это детские сказки",
+              "nextSceneId": "chapter_1_scene_27",
+              "effects": {}
+            },
+            {
+              "text": "... Слышала. Но им никто не молится.",
+              "nextSceneId": "chapter_1_scene_30",
+              "effects": {}
+            }
+          ]
+        }
+      ],
+      "background": "img_5613.png"
+    },
+    {
+      "id": "chapter_1_scene_27",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Astori",
+          "text": "Это детские сказки"
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_28"
+    },
+    {
+      "id": "chapter_1_scene_28",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "На мгновение в глазах Караиэля мелькнуло что-то странное... разочарование?"
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_29"
+    },
+    {
+      "id": "chapter_1_scene_29",
+      "charactersOnScreen": [
+        {
+          "characterId": "Karaiel",
+          "spriteId": "neutral",
+          "position": "center"
+        }
+      ],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "(тихо) Вот как... Значит... мир действительно забыл."
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_36"
+    },
+    {
+      "id": "chapter_1_scene_30",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Astori",
+          "text": "... Слышала. Но им никто не молится."
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_31"
+    },
+    {
+      "id": "chapter_1_scene_31",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Караиэль медленно кивает."
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_32"
+    },
+    {
+      "id": "chapter_1_scene_32",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "Почти верно."
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_33"
+    },
+    {
+      "id": "chapter_1_scene_33",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Он наклоняется ближе"
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_34"
+    },
+    {
+      "id": "chapter_1_scene_34",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "(шепотом) Или перестали молится... "
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_35"
+    },
+    {
+      "id": "chapter_1_scene_35",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "dialogue",
+          "speaker": "Karaiel",
+          "text": "Но это не значит, что они исчезли полностью..."
+        }
+      ],
+      "background": "img_5613.png",
+      "nextSceneId": "chapter_1_scene_36"
+    },
+    {
+      "id": "chapter_1_scene_36",
+      "charactersOnScreen": [],
+      "events": [
+        {
+          "type": "narration",
+          "text": "Внезапно по земле проходит лёгкая дрожь. "
+        }
+      ],
+      "background": "img_5613.png"
+    }
+  ]
+}
