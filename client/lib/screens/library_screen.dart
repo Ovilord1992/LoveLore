@@ -11,6 +11,7 @@ import '../widgets/novel_card.dart';
 import '../widgets/novel_cover_image.dart';
 import '../widgets/daily_reward_dialog.dart';
 import 'novel_detail_screen.dart';
+import '../services/locale_service.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'shop_screen.dart';
@@ -58,10 +59,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           type: BottomNavigationBarType.fixed,
           selectedFontSize: 12,
           unselectedFontSize: 12,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Главная'),
-            BottomNavigationBarItem(icon: Icon(Icons.auto_stories_rounded), label: 'Каталог'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Профиль'),
+          items: [
+            BottomNavigationBarItem(icon: const Icon(Icons.home_rounded), label: ref.tr('your_stories')),
+            BottomNavigationBarItem(icon: const Icon(Icons.auto_stories_rounded), label: ref.tr('gallery')),
+            BottomNavigationBarItem(icon: const Icon(Icons.person_rounded), label: ref.tr('profile')),
           ],
         ),
       ),
@@ -144,8 +145,8 @@ class _HomeTab extends ConsumerWidget {
 
               // ── Продолжить чтение ──
               if (continuePlaying.isNotEmpty) ...[
-                const SliverToBoxAdapter(
-                  child: _SectionHeader(title: 'Продолжить чтение', icon: Icons.bookmark_rounded),
+                SliverToBoxAdapter(
+                  child: _SectionHeader(title: ref.tr('continue_reading'), icon: Icons.bookmark_rounded),
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
@@ -164,8 +165,8 @@ class _HomeTab extends ConsumerWidget {
               ],
 
               // ── Все истории ──
-              const SliverToBoxAdapter(
-                child: _SectionHeader(title: 'Все истории', icon: Icons.auto_stories_rounded),
+              SliverToBoxAdapter(
+                child: _SectionHeader(title: ref.tr('your_stories'), icon: Icons.auto_stories_rounded),
               ),
               if (snapshot.connectionState == ConnectionState.waiting)
                 const SliverToBoxAdapter(
@@ -218,11 +219,11 @@ class _CatalogTab extends ConsumerWidget {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Text('Каталог',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Text(ref.tr('gallery'),
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
             ),
           ),
           SliverPadding(
@@ -650,14 +651,14 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
 }
 
 // ─── Секция «Продолжить» — горизонтальная карточка ───────────────────────────
-class _ContinueCard extends StatelessWidget {
+class _ContinueCard extends ConsumerWidget {
   final NovelMeta novel;
   final VoidCallback onTap;
 
   const _ContinueCard({required this.novel, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -720,12 +721,12 @@ class _ContinueCard extends StatelessWidget {
                       gradient: const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFF9C27B0)]),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.play_arrow_rounded, size: 16, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text('Продолжить', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                        const Icon(Icons.play_arrow_rounded, size: 16, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(ref.tr('continue_reading'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                       ],
                     ),
                   ),
@@ -740,14 +741,14 @@ class _ContinueCard extends StatelessWidget {
 }
 
 // ─── Большая карточка новеллы (горизонтальная прокрутка) ─────────────────────
-class _LargeNovelCard extends StatelessWidget {
+class _LargeNovelCard extends ConsumerWidget {
   final NovelMeta novel;
   final VoidCallback onTap;
 
   const _LargeNovelCard({required this.novel, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -832,7 +833,7 @@ class _LargeNovelCard extends StatelessWidget {
                         children: [
                           const Icon(Icons.menu_book_rounded, size: 12, color: Colors.white70),
                           const SizedBox(width: 4),
-                          Text('${novel.totalChapters} глав', style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                          Text('${novel.totalChapters} ${ref.tr('chapters_count')}', style: const TextStyle(fontSize: 11, color: Colors.white70)),
                         ],
                       ),
                     ),
@@ -886,11 +887,11 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ─── Пустое состояние ────────────────────────────────────────────────────────
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   const _EmptyState();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -898,9 +899,9 @@ class _EmptyState extends StatelessWidget {
           children: [
             const Icon(Icons.auto_stories, size: 80, color: Colors.white12),
             const SizedBox(height: 16),
-            const Text('Пока нет новелл', style: TextStyle(fontSize: 18, color: Colors.white38)),
+            Text(ref.tr('no_novels'), style: const TextStyle(fontSize: 18, color: Colors.white38)),
             const SizedBox(height: 8),
-            Text('Скоро здесь появятся истории', style: TextStyle(fontSize: 14, color: Colors.white24)),
+            const Text('Скоро здесь появятся истории', style: TextStyle(fontSize: 14, color: Colors.white24)),
           ],
         ),
       ),

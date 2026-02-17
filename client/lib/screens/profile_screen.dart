@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/locale_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/currency_service.dart';
 import '../services/auth_service.dart';
@@ -21,7 +22,7 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: const Text('Профиль'),
+        title: Text(ref.tr('profile')),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -74,13 +75,13 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 _CurrencyChip(
                   icon: '💎',
-                  label: 'Алмазы',
+                  label: ref.tr('diamonds'),
                   value: currency.diamonds,
                 ),
                 Container(width: 1, height: 40, color: Colors.white12),
                 _CurrencyChip(
                   icon: '⚡',
-                  label: 'Билеты',
+                  label: ref.tr('tickets'),
                   value: currency.tickets,
                   maxValue: ref.read(remoteConfigProvider).economy.maxTickets,
                 ),
@@ -103,7 +104,7 @@ class ProfileScreen extends ConsumerWidget {
                 );
               },
               icon: const Icon(Icons.storefront, size: 18),
-              label: const Text('Открыть магазин'),
+              label: Text(ref.tr('shop')),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFE91E63),
                 side: const BorderSide(color: Color(0xFFE91E63)),
@@ -115,27 +116,27 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _SectionTitle('Статистика'),
+          _SectionTitle(ref.tr('statistics')),
           _StatGrid(
             stats: [
-              _Stat('Новелл начато', '${profile.totalNovelsStarted}',
+              _Stat(ref.tr('novels_started'), '${profile.totalNovelsStarted}',
                   Icons.menu_book),
-              _Stat('Новелл пройдено', '${profile.totalNovelsCompleted}',
+              _Stat(ref.tr('novels_completed'), '${profile.totalNovelsCompleted}',
                   Icons.check_circle_outline),
-              _Stat('Глав прочитано', '${profile.totalChaptersRead}',
+              _Stat(ref.tr('chapters_read'), '${profile.totalChaptersRead}',
                   Icons.auto_stories),
-              _Stat('Выборов сделано', '${profile.totalChoicesMade}',
+              _Stat(ref.tr('choices_made'), '${profile.totalChoicesMade}',
                   Icons.touch_app),
             ],
           ),
           const SizedBox(height: 24),
 
           // Достижения
-          _SectionTitle('Достижения'),
+          _SectionTitle(ref.tr('achievements')),
           if (profile.achievements.isEmpty)
-            const _EmptyPlaceholder(
+            _EmptyPlaceholder(
               icon: Icons.emoji_events_outlined,
-              text: 'Пока нет достижений.\nИграй, чтобы открывать новые!',
+              text: ref.tr('no_achievements'),
             )
           else
             Wrap(
@@ -161,16 +162,16 @@ class ProfileScreen extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _SectionTitle('Галерея'),
+                _SectionTitle(ref.tr('gallery')),
                 const Icon(Icons.chevron_right,
                     color: Colors.white38, size: 20),
               ],
             ),
           ),
           if (profile.unlockedCGs.isEmpty)
-            const _EmptyPlaceholder(
+            _EmptyPlaceholder(
               icon: Icons.photo_library_outlined,
-              text: 'Галерея пуста.\nРазблокируй CG-арты в историях!',
+              text: ref.tr('gallery_empty'),
             )
           else
             SizedBox(
@@ -226,7 +227,7 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Выбери аватар',
+              Text(ref.tr('choose_avatar'),
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -259,18 +260,18 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF16213E),
-        title: const Text('Имя', style: TextStyle(color: Colors.white)),
+        title: Text(ref.tr('name'), style: const TextStyle(color: Colors.white)),
         content: TextField(
           controller: controller,
           style: const TextStyle(color: Colors.white),
           maxLength: 20,
-          decoration: const InputDecoration(
-            hintText: 'Введи имя',
-            hintStyle: TextStyle(color: Colors.white38),
-            enabledBorder: UnderlineInputBorder(
+          decoration: InputDecoration(
+            hintText: ref.tr('enter_name'),
+            hintStyle: const TextStyle(color: Colors.white38),
+            enabledBorder: const UnderlineInputBorder(
               borderSide: BorderSide(color: Colors.white24),
             ),
-            focusedBorder: UnderlineInputBorder(
+            focusedBorder: const UnderlineInputBorder(
               borderSide: BorderSide(color: Color(0xFFE91E63)),
             ),
           ),
@@ -279,7 +280,7 @@ class ProfileScreen extends ConsumerWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child:
-                const Text('Отмена', style: TextStyle(color: Colors.white54)),
+                Text(ref.tr('cancel'), style: const TextStyle(color: Colors.white54)),
           ),
           TextButton(
             onPressed: () {
@@ -289,8 +290,8 @@ class ProfileScreen extends ConsumerWidget {
               }
               Navigator.pop(ctx);
             },
-            child: const Text('Сохранить',
-                style: TextStyle(color: Color(0xFFE91E63))),
+            child: Text(ref.tr('save'),
+                style: const TextStyle(color: Color(0xFFE91E63))),
           ),
         ],
       ),
@@ -600,7 +601,7 @@ class _WatchAdButton extends StatelessWidget {
             const Icon(Icons.play_circle_outline, color: Colors.white, size: 20),
             const SizedBox(width: 8),
             Text(
-              'Смотреть рекламу → +${adService.diamondReward} 💎',
+              '${ref.tr('watch_ad')} → +${adService.diamondReward} 💎',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -734,7 +735,7 @@ class _AccountSection extends ConsumerWidget {
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Отмена', style: TextStyle(color: Colors.white54)),
+                          child: Text(ref.tr('cancel'), style: const TextStyle(color: Colors.white54)),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),

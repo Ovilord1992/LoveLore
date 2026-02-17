@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/locale_service.dart';
 import '../models/novel.dart';
 import '../services/save_service.dart';
 import '../services/novel_loader.dart';
@@ -181,14 +182,14 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                       _InfoChip(
                         icon: Icons.menu_book,
                         label: novel.releasedChapters > 0
-                            ? '${novel.releasedChapters}/${novel.totalChapters} глав'
-                            : '${novel.totalChapters} глав',
+                            ? '${novel.releasedChapters}/${novel.totalChapters} ${ref.tr('chapters_count')}'
+                            : '${novel.totalChapters} ${ref.tr('chapters_count')}',
                       ),
                       const SizedBox(width: 12),
                       if (hasSave)
-                        const _InfoChip(
+                        _InfoChip(
                           icon: Icons.bookmark,
-                          label: 'Есть сохранение',
+                          label: ref.tr('has_save'),
                         ),
                     ],
                   ),
@@ -227,7 +228,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                                 ],
                               )
                             : Text(
-                                hasSave ? 'Продолжить' : 'Начать историю',
+                                hasSave ? ref.tr('continue_reading') : ref.tr('start_story'),
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                               ),
                       ),
@@ -247,8 +248,8 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: const Text('Начать заново',
-                              style: TextStyle(fontSize: 16)),
+                          child: Text(ref.tr('start_over'),
+                              style: const TextStyle(fontSize: 16)),
                         ),
                       ),
                     ],
@@ -292,17 +293,17 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF16213E),
-        title: const Text('Начать заново?',
-            style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'Весь прогресс будет потерян. Вы уверены?',
-          style: TextStyle(color: Colors.white60),
+        title: Text(ref.tr('start_over_confirm'),
+            style: const TextStyle(color: Colors.white)),
+        content: Text(
+          ref.tr('progress_will_be_lost'),
+          style: const TextStyle(color: Colors.white60),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Отмена',
-                style: TextStyle(color: Colors.white54)),
+            child: Text(ref.tr('cancel'),
+                style: const TextStyle(color: Colors.white54)),
           ),
           TextButton(
             onPressed: () async {
@@ -320,8 +321,8 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                 );
               }
             },
-            child: const Text('Начать заново',
-                style: TextStyle(color: Color(0xFFE91E63))),
+            child: Text(ref.tr('start_over'),
+                style: const TextStyle(color: Color(0xFFE91E63))),
           ),
         ],
       ),

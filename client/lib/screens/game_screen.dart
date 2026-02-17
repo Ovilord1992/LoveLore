@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/locale_service.dart';
 import 'package:path_provider/path_provider.dart';
 import '../engine/scene_engine.dart';
 import '../models/scene.dart';
@@ -107,7 +108,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
               Navigator.pop(ctx);
               Navigator.of(context).pop();
             },
-            child: const Text('Назад', style: TextStyle(color: Colors.white54)),
+            child: Text(ref.tr('back'), style: const TextStyle(color: Colors.white54)),
           ),
           if (adService.canShowAd)
             TextButton(
@@ -139,9 +140,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 Navigator.pop(ctx);
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Не хватает алмазов 💎'),
-                    backgroundColor: Color(0xFF16213E),
+                  SnackBar(
+                    content: Text('${ref.tr('not_enough_diamonds')} 💎'),
+                    backgroundColor: const Color(0xFF16213E),
                   ),
                 );
               }
@@ -263,7 +264,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     children: [
                       IconButton(
                         icon: const Icon(Icons.checkroom, color: Colors.white70),
-                        tooltip: 'Гардероб',
+                        tooltip: ref.tr('wardrobe'),
                         onPressed: () {
                           _showWardrobePicker(context, engine);
                         },
@@ -275,10 +276,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       await _autoSave();
                       if (mounted) {
                         messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Сохранено ✓'),
-                            duration: Duration(seconds: 1),
-                            backgroundColor: Color(0xFF16213E),
+                          SnackBar(
+                            content: Text(ref.tr('saved')),
+                            duration: const Duration(seconds: 1),
+                            backgroundColor: const Color(0xFF16213E),
                           ),
                         );
                       }
@@ -385,7 +386,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (!currency.canAfford(choice.cost)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Не хватает алмазов (нужно ${choice.cost} 💎)'),
+            content: Text('${ref.tr('not_enough_diamonds')} (${choice.cost} 💎)'),
             duration: const Duration(seconds: 2),
             backgroundColor: const Color(0xFF16213E),
           ),
@@ -447,10 +448,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
       return Container(
         padding: const EdgeInsets.all(20),
         color: Colors.black54,
-        child: const Center(
+        child: Center(
           child: Text(
-            'Конец главы',
-            style: TextStyle(color: Colors.white70, fontSize: 18),
+            ref.tr('end_of_chapter'),
+            style: const TextStyle(color: Colors.white70, fontSize: 18),
           ),
         ),
       );
@@ -632,7 +633,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       : transition == ChapterTransition.notReleased
                           ? 'Продолжение следует...'
                           : transition == ChapterTransition.loading
-                              ? 'Загрузка...'
+                              ? ref.tr('loading')
                               : 'Глава $nextNum',
                   style: const TextStyle(
                     fontSize: 24,
@@ -672,7 +673,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       await engine.downloadAndStartNextChapter();
                     },
                     icon: const Icon(Icons.download),
-                    label: Text('Скачать главу $nextNum'),
+                    label: Text('${ref.tr('download')} $nextNum'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE91E63),
                       foregroundColor: Colors.white,

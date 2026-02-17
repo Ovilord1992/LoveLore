@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/locale_service.dart';
 import '../services/user_profile_service.dart';
 
 class GalleryScreen extends ConsumerWidget {
@@ -13,7 +14,7 @@ class GalleryScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: const Text('Галерея'),
+        title: Text(ref.tr('gallery')),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -25,16 +26,12 @@ class GalleryScreen extends ConsumerWidget {
                   const Icon(Icons.photo_library_outlined,
                       size: 80, color: Colors.white12),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Галерея пуста',
-                    style: TextStyle(fontSize: 20, color: Colors.white54),
+                  Text(
+                    ref.tr('gallery_empty'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 20, color: Colors.white54),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Разблокируй CG-арты в историях,\nчтобы они появились здесь',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.white38),
-                  ),
                 ],
               ),
             )

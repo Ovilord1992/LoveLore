@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import '../services/locale_service.dart';
 import '../services/iap_service.dart';
 import '../services/currency_service.dart';
 import '../services/ad_service.dart';
@@ -53,7 +54,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: const Text('Магазин'),
+        title: Text(ref.tr('shop')),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -78,13 +79,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 const SizedBox(height: 20),
 
                 // Алмазы
-                const _SectionLabel('💎 Алмазы'),
+                _SectionLabel('💎 ${ref.tr('diamonds')}'),
                 const SizedBox(height: 8),
                 ..._buildDiamondCards(iap),
                 const SizedBox(height: 20),
 
                 // Билеты
-                const _SectionLabel('⚡ Билеты'),
+                _SectionLabel('⚡ ${ref.tr('tickets')}'),
                 const SizedBox(height: 8),
                 _ProductCard(
                   icon: '⚡',
@@ -349,13 +350,13 @@ class _ProductCard extends StatelessWidget {
   }
 }
 
-class _VipCard extends StatelessWidget {
+class _VipCard extends ConsumerWidget {
   final IapState iap;
   final void Function(dynamic) onBuy;
   const _VipCard({required this.iap, required this.onBuy});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final product =
         iap.products.where((p) => p.id == ProductIds.vipMonthly).firstOrNull;
 
@@ -402,7 +403,7 @@ class _VipCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               child: Text(
-                product != null ? '${product.price} / мес' : '\$4.99 / мес',
+                product != null ? '${product.price} ${ref.tr('per_month')}' : '\$4.99 ${ref.tr('per_month')}',
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
@@ -498,7 +499,7 @@ class _AdRewardCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
-            child: const Text('📺 Смотреть'),
+            child: Text('📺 ${ref.tr('watch_ad')}'),
           ),
         ],
       ),

@@ -14,7 +14,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: const Text('Настройки'),
+        title: Text(ref.tr('settings')),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -22,22 +22,22 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(20),
         children: [
           // Скорость текста
-          _SectionTitle('Текст'),
+          _SectionTitle(ref.tr('text')),
           _SliderTile(
             icon: Icons.speed,
-            label: 'Скорость текста',
+            label: ref.tr('text_speed'),
             value: settings.textSpeed,
             min: 0.0,
             max: 1.0,
-            leadingLabel: 'Быстро',
-            trailingLabel: 'Медленно',
+            leadingLabel: ref.tr('fast'),
+            trailingLabel: ref.tr('slow'),
             onChanged: (v) => settingsNotifier.setTextSpeed(v),
           ),
           const SizedBox(height: 8),
           _SwitchTile(
             icon: Icons.play_circle_outline,
-            label: 'Автопрокрутка',
-            subtitle: 'Автоматически переключать диалоги',
+            label: ref.tr('auto_play'),
+            subtitle: ref.tr('auto_play_desc'),
             value: settings.autoPlay,
             onChanged: (_) => settingsNotifier.toggleAutoPlay(),
           ),
@@ -45,7 +45,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             _SliderTile(
               icon: Icons.timer,
-              label: 'Задержка автопрокрутки',
+              label: ref.tr('auto_play_delay'),
               value: settings.autoPlayDelay.toDouble(),
               min: 1,
               max: 8,
@@ -59,11 +59,11 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Звук
-          _SectionTitle('Звук'),
+          _SectionTitle(ref.tr('sound')),
           _SwitchTile(
             icon: settings.isMuted ? Icons.volume_off : Icons.volume_up,
-            label: 'Звук',
-            subtitle: settings.isMuted ? 'Выключен' : 'Включён',
+            label: ref.tr('sound'),
+            subtitle: settings.isMuted ? ref.tr('sound_off') : ref.tr('sound_on'),
             value: !settings.isMuted,
             onChanged: (_) => settingsNotifier.toggleMute(),
           ),
@@ -71,7 +71,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             _SliderTile(
               icon: Icons.music_note,
-              label: 'Музыка',
+              label: ref.tr('music'),
               value: settings.bgMusicVolume,
               min: 0.0,
               max: 1.0,
@@ -80,7 +80,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             _SliderTile(
               icon: Icons.surround_sound,
-              label: 'Звуковые эффекты',
+              label: ref.tr('sfx'),
               value: settings.sfxVolume,
               min: 0.0,
               max: 1.0,
@@ -91,17 +91,17 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Язык
-          _SectionTitle('Язык'),
+          _SectionTitle(ref.tr('language')),
           const _LanguageTile(),
 
           const SizedBox(height: 24),
 
           // О приложении
-          _SectionTitle('О приложении'),
+          _SectionTitle(ref.tr('about')),
           _InfoTile(
             icon: Icons.info_outline,
             label: 'Amoria',
-            subtitle: 'Версия 1.0.0',
+            subtitle: ref.tr('version'),
           ),
         ],
       ),
@@ -314,9 +314,9 @@ class _LanguageTile extends ConsumerWidget {
         children: [
           const Icon(Icons.language, color: Colors.white54, size: 20),
           const SizedBox(width: 12),
-          const Expanded(
-            child: Text('Язык / Language',
-                style: TextStyle(color: Colors.white)),
+          Expanded(
+            child: Text(ref.tr('language'),
+                style: const TextStyle(color: Colors.white)),
           ),
           // ← стрелка
           GestureDetector(

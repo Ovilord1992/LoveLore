@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/locale_service.dart';
 import '../services/wardrobe_service.dart';
 
 class WardrobeScreen extends ConsumerWidget {
@@ -23,25 +24,21 @@ class WardrobeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
-        title: Text('Гардероб — $characterName'),
+        title: Text('${ref.tr('wardrobe')} — $characterName'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: allOutfits.isEmpty
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.checkroom, size: 80, color: Colors.white12),
-                  SizedBox(height: 16),
+                  const Icon(Icons.checkroom, size: 80, color: Colors.white12),
+                  const SizedBox(height: 16),
                   Text(
-                    'Пока нет нарядов',
-                    style: TextStyle(fontSize: 18, color: Colors.white54),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Открывай новые образы в историях!',
-                    style: TextStyle(fontSize: 14, color: Colors.white38),
+                    ref.tr('wardrobe_empty'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 18, color: Colors.white54),
                   ),
                 ],
               ),
@@ -81,7 +78,7 @@ class WardrobeScreen extends ConsumerWidget {
   }
 }
 
-class _OutfitCard extends StatelessWidget {
+class _OutfitCard extends ConsumerWidget {
   final Outfit outfit;
   final bool isUnlocked;
   final bool isEquipped;
@@ -95,7 +92,7 @@ class _OutfitCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -181,7 +178,7 @@ class _OutfitCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          isEquipped ? 'Надето' : 'Надеть',
+                          isEquipped ? ref.tr('equipped') : ref.tr('equip'),
                           style: TextStyle(
                             fontSize: 11,
                             color: isEquipped ? Colors.white : Colors.white54,
