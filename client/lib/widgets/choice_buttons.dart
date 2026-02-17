@@ -1,16 +1,51 @@
 import 'package:flutter/material.dart';
 import '../models/scene.dart';
 
-/// Кнопки выбора
-class ChoiceButtons extends StatelessWidget {
+/// Кнопки выбора с опциональным таймером
+class ChoiceButtons extends StatefulWidget {
   final List<Choice> choices;
   final void Function(Choice choice) onChoiceSelected;
+  final int? timeLimit; // секунды
+  final int? defaultChoiceIndex;
 
   const ChoiceButtons({
     super.key,
     required this.choices,
     required this.onChoiceSelected,
+    this.timeLimit,
+    this.defaultChoiceIndex,
   });
+
+  @override
+  State<ChoiceButtons> createState() => _ChoiceButtonsState();
+}
+
+class _ChoiceButtonsState extends State<ChoiceButtons>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _timerController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.timeLimit != null && widget.timeLimit! > 0) {
+      _timerController = AnimationController(
+        duration: Duration(seconds: widget.timeLimit!),
+        vsync: this,
+      );
+      _timerController!.forward().then((_) {
+        if (mounted) {
+          final idx = (widget.defaultChoiceIndex ?? 0).clamp(0, widget.choices.length - 1);
+          widget.onChoiceSelected(widget.choices[idx]);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timerController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,15 +64,51 @@ class ChoiceButtons extends StatelessWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: choices.map((choice) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _ChoiceButton(
-              choice: choice,
-              onTap: () => onChoiceSelected(choice),
+        children: [
+          // Таймер
+          if (_timerController != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: AnimatedBuilder(
+                animation: _timerController!,
+                builder: (context, _) {
+                  final remaining = ((1 - _timerController!.value) * widget.timeLimit!).ceil();
+                  return SizedBox(
+                    width: 48, height: 48,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          value: 1 - _timerController!.value,
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation(
+                            _timerController!.value > 0.7 ? Colors.red : const Color(0xFFE91E63),
+                          ),
+                          backgroundColor: Colors.white12,
+                        ),
+                        Text(
+                          '$remaining',
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          );
-        }).toList(),
+          ...widget.choices.map((choice) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _ChoiceButton(
+                choice: choice,
+                onTap: () {
+                  _timerController?.stop();
+                  widget.onChoiceSelected(choice);
+                },
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

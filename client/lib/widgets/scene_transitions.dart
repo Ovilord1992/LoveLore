@@ -148,6 +148,7 @@ class AnimatedCharacterSprite extends StatefulWidget {
   final String? novelId;
   final String displayLetter;
   final String? animation;
+  final int spriteDuration; // cross-fade мс
 
   const AnimatedCharacterSprite({
     super.key,
@@ -156,6 +157,7 @@ class AnimatedCharacterSprite extends StatefulWidget {
     this.novelId,
     required this.displayLetter,
     this.animation,
+    this.spriteDuration = 300,
   });
 
   @override
@@ -171,7 +173,9 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
   late Animation<double> _bounceAnimation;
   late Animation<double> _shakeAnimation;
   File? _spriteFile;
+  File? _prevSpriteFile;
   bool _resolved = false;
+  bool _crossFading = false;
 
   @override
   void initState() {
@@ -237,8 +241,10 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
   void didUpdateWidget(AnimatedCharacterSprite oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.spriteImage != widget.spriteImage) {
+      _prevSpriteFile = _spriteFile;
       _resolved = false;
       _spriteFile = null;
+      _crossFading = widget.spriteDuration > 0 && _prevSpriteFile != null;
       _resolveSprite();
     }
   }
@@ -268,23 +274,21 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
 
   @override
   Widget build(BuildContext context) {
-    final spriteWidget = _resolved && _spriteFile != null
-        ? Image.file(_spriteFile!, height: 350, fit: BoxFit.contain)
-        : Container(
-            width: 120,
-            height: 200,
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Center(
-              child: Text(
-                widget.displayLetter,
-                style: const TextStyle(fontSize: 48, color: Colors.white24, fontWeight: FontWeight.w300),
-              ),
-            ),
-          );
+    Widget spriteWidget;
+    if (_crossFading && _prevSpriteFile != null) {
+      spriteWidget = AnimatedCrossFade(
+        firstChild: Image.file(_prevSpriteFile!, height: 350, fit: BoxFit.contain),
+        secondChild: _resolved && _spriteFile != null
+            ? Image.file(_spriteFile!, height: 350, fit: BoxFit.contain)
+            : _buildPlaceholder(),
+        crossFadeState: _resolved ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+        duration: Duration(milliseconds: widget.spriteDuration),
+      );
+    } else {
+      spriteWidget = _resolved && _spriteFile != null
+          ? Image.file(_spriteFile!, height: 350, fit: BoxFit.contain)
+          : _buildPlaceholder();
+    }
 
     return AnimatedBuilder(
       animation: _controller,
@@ -298,6 +302,24 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
         );
       },
       child: spriteWidget,
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      width: 120,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Center(
+        child: Text(
+          widget.displayLetter,
+          style: const TextStyle(fontSize: 48, color: Colors.white24, fontWeight: FontWeight.w300),
+        ),
+      ),
     );
   }
 }
@@ -499,4 +521,239 @@ class _ParticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ParticlePainter old) => old.progress != progress;
+}
+
+/// Полноэкранный CG-арт оверлей
+class CgOverlay extends StatefulWidget {
+  final File? imageFile;
+  final CgTransition transition;
+  final int duration; // мс
+  final VoidCallback onDismiss;
+
+  const CgOverlay({
+    super.key,
+    required this.imageFile,
+    this.transition = CgTransition.fade,
+    this.duration = 800,
+    required this.onDismiss,
+  });
+
+  @override
+  State<CgOverlay> createState() => _CgOverlayState();
+}
+
+class _CgOverlayState extends State<CgOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: widget.duration),
+      vsync: this,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.imageFile != null
+        ? Image.file(widget.imageFile!, fit: BoxFit.contain, width: double.infinity, height: double.infinity)
+        : Container(color: Colors.black, child: const Center(child: Text('CG', style: TextStyle(color: Colors.white54, fontSize: 48))));
+
+    final animated = widget.transition == CgTransition.zoomIn
+        ? AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              final scale = 0.8 + 0.2 * Curves.easeOut.transform(_controller.value);
+              return Transform.scale(
+                scale: scale,
+                child: FadeTransition(
+                  opacity: CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+                  child: child,
+                ),
+              );
+            },
+            child: child,
+          )
+        : FadeTransition(
+            opacity: CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+            child: child,
+          );
+
+    return GestureDetector(
+      onTap: () async {
+        await _controller.reverse();
+        widget.onDismiss();
+      },
+      child: Container(
+        color: Colors.black87,
+        child: animated,
+      ),
+    );
+  }
+}
+
+/// Оверлей камеры (zoom + pan) — оборачивает фон
+class CameraTransformWidget extends StatefulWidget {
+  final double zoom;
+  final double panX;
+  final double panY;
+  final int duration; // мс
+  final Widget child;
+
+  const CameraTransformWidget({
+    super.key,
+    this.zoom = 1.0,
+    this.panX = 0.0,
+    this.panY = 0.0,
+    this.duration = 1000,
+    required this.child,
+  });
+
+  @override
+  State<CameraTransformWidget> createState() => _CameraTransformWidgetState();
+}
+
+class _CameraTransformWidgetState extends State<CameraTransformWidget> {
+  @override
+  Widget build(BuildContext context) {
+    final transform = Matrix4.identity();
+    transform.storage[12] = widget.panX;
+    transform.storage[13] = widget.panY;
+    transform.storage[0] = widget.zoom;
+    transform.storage[5] = widget.zoom;
+    return AnimatedContainer(
+      duration: Duration(milliseconds: widget.duration),
+      curve: Curves.easeInOut,
+      transform: transform,
+      transformAlignment: Alignment.center,
+      child: widget.child,
+    );
+  }
+}
+
+/// Анимированная эмоция-иконка над персонажем
+class EmotionBubble extends StatefulWidget {
+  final EmotionType emotionType;
+  final VoidCallback? onComplete;
+
+  const EmotionBubble({
+    super.key,
+    required this.emotionType,
+    this.onComplete,
+  });
+
+  @override
+  State<EmotionBubble> createState() => _EmotionBubbleState();
+}
+
+class _EmotionBubbleState extends State<EmotionBubble>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  static const _emotionEmojis = {
+    EmotionType.heart: '❤️',
+    EmotionType.sweatDrop: '💧',
+    EmotionType.question: '❓',
+    EmotionType.exclamation: '❗',
+    EmotionType.anger: '💢',
+    EmotionType.sparkle: '✨',
+    EmotionType.musicNote: '🎵',
+    EmotionType.zzz: '💤',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _controller.forward().then((_) => widget.onComplete?.call());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scaleAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: 1.3), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 15),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 40),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 25),
+    ]).animate(_controller);
+
+    final slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: const Offset(0, -0.5),
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return SlideTransition(
+          position: slideAnim,
+          child: Transform.scale(
+            scale: scaleAnim.value,
+            child: Text(
+              _emotionEmojis[widget.emotionType] ?? '❓',
+              style: const TextStyle(fontSize: 36),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Параллакс фон из нескольких слоёв
+class ParallaxBackground extends StatelessWidget {
+  final List<BackgroundLayer> layers;
+  final String novelId;
+  final double scrollOffset;
+
+  const ParallaxBackground({
+    super.key,
+    required this.layers,
+    required this.novelId,
+    this.scrollOffset = 0.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Directory>(
+      future: getApplicationDocumentsDirectory(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.expand();
+        final baseDir = '${snapshot.data!.path}/novels/$novelId';
+        final sorted = List<BackgroundLayer>.from(layers)
+          ..sort((a, b) => a.depth.compareTo(b.depth));
+        return Stack(
+          fit: StackFit.expand,
+          children: sorted.map((layer) {
+            final offset = scrollOffset * (1.0 - layer.depth);
+            final file = File('$baseDir/${layer.image}');
+            return Transform.translate(
+              offset: Offset(offset, 0),
+              child: file.existsSync()
+                  ? Image.file(file, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+                  : Container(color: Colors.black),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
 }

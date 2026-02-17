@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import '../engine/scene_engine.dart';
 import '../models/scene.dart';
 import '../models/game_state.dart';
@@ -35,6 +37,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
   GameState? _lastState;
   // Активный эффект
   SceneEvent? _activeEffect;
+  // CG-арт оверлей
+  SceneEvent? _activeCg;
+  File? _cgFile;
+  // Камера
+  double _cameraZoom = 1.0;
+  double _cameraPanX = 0.0;
+  double _cameraPanY = 0.0;
+  int _cameraDuration = 1000;
+  // Эмоции
+  SceneEvent? _activeEmotion;
 
   @override
   void initState() {
@@ -203,11 +215,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Фон с анимированными переходами
-            AnimatedBackground(
-              backgroundKey: scene?.background,
-              novelId: widget.novelId,
-              duration: Duration(milliseconds: scene?.transition?.duration ?? 800),
+            // Фон с камерой (zoom/pan)
+            CameraTransformWidget(
+              zoom: _cameraZoom,
+              panX: _cameraPanX,
+              panY: _cameraPanY,
+              duration: _cameraDuration,
+              child: AnimatedBackground(
+                backgroundKey: scene?.background,
+                novelId: widget.novelId,
+                duration: Duration(milliseconds: scene?.transition?.duration ?? 800),
+              ),
             ),
 
             // Персонажи на экране
@@ -278,6 +296,33 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   engine.nextEvent();
                 },
               ),
+
+            // CG-арт оверлей
+            if (_activeCg != null)
+              CgOverlay(
+                key: ValueKey('cg_${_activeCg.hashCode}'),
+                imageFile: _cgFile,
+                transition: _activeCg!.cgTransition ?? CgTransition.fade,
+                duration: _activeCg!.cgDuration ?? 800,
+                onDismiss: () {
+                  // Разблокировать CG в галерее
+                  if (_activeCg?.cgImage != null) {
+                    final state = ref.read(sceneEngineProvider);
+                    if (state != null) {
+                      final cgs = List<String>.from(state.unlockedCg);
+                      if (!cgs.contains(_activeCg!.cgImage)) {
+                        cgs.add(_activeCg!.cgImage!);
+                      }
+                    }
+                  }
+                  setState(() { _activeCg = null; _cgFile = null; });
+                  engine.nextEvent();
+                },
+              ),
+
+            // Эмоции-иконки
+            if (_activeEmotion != null && scene != null)
+              ..._buildEmotionOverlays(scene, engine),
           ],
         ),
       ),
@@ -404,6 +449,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return ChoiceButtons(
           choices: available,
           onChoiceSelected: (choice) => _handleChoice(choice, engine),
+          timeLimit: event.timeLimit,
+          defaultChoiceIndex: event.defaultChoiceIndex,
         );
 
       case EventType.dialogue:
@@ -424,7 +471,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         );
 
       default:
-        // Событие effect обрабатывается через оверлей
+        // Событие effect
         if (event.type == EventType.effect && event.effectType != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _activeEffect == null) {
@@ -433,9 +480,95 @@ class _GameScreenState extends ConsumerState<GameScreen>
           });
           return const SizedBox.shrink();
         }
+        // CG-арт
+        if (event.type == EventType.showCg && event.cgImage != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (mounted && _activeCg == null) {
+              final appDir = await getApplicationDocumentsDirectory();
+              final file = File('${appDir.path}/novels/${widget.novelId}/${event.cgImage}');
+              setState(() {
+                _activeCg = event;
+                _cgFile = file.existsSync() ? file : null;
+              });
+            }
+          });
+          return const SizedBox.shrink();
+        }
+        // Камера
+        if (event.type == EventType.cameraMove) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _cameraZoom = event.zoom ?? 1.0;
+                _cameraPanX = event.panX ?? 0.0;
+                _cameraPanY = event.panY ?? 0.0;
+                _cameraDuration = event.cameraDuration ?? 1000;
+              });
+              Future.delayed(Duration(milliseconds: event.cameraDuration ?? 1000), () {
+                if (mounted) engine.nextEvent();
+              });
+            }
+          });
+          return const SizedBox.shrink();
+        }
+        // Эмоции
+        if (event.type == EventType.showEmotion && event.emotionType != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _activeEmotion == null) {
+              setState(() => _activeEmotion = event);
+            }
+          });
+          return const SizedBox.shrink();
+        }
         engine.nextEvent();
         return const SizedBox.shrink();
     }
+  }
+
+  List<Widget> _buildEmotionOverlays(Scene scene, SceneEngine engine) {
+    if (_activeEmotion == null) return [];
+    final charId = _activeEmotion!.characterId;
+    final sc = scene.charactersOnScreen.where((c) => c.characterId == charId).firstOrNull;
+    if (sc == null) {
+      // Персонаж не на экране — показываем по центру
+      return [
+        Positioned(
+          top: MediaQuery.of(context).size.height * 0.25,
+          left: 0, right: 0,
+          child: Center(
+            child: EmotionBubble(
+              key: ValueKey('emotion_${_activeEmotion.hashCode}'),
+              emotionType: _activeEmotion!.emotionType ?? EmotionType.heart,
+              onComplete: () {
+                setState(() => _activeEmotion = null);
+                engine.nextEvent();
+              },
+            ),
+          ),
+        ),
+      ];
+    }
+
+    final horizontalAlign = switch (sc.position) {
+      CharacterPosition.left => 0.2,
+      CharacterPosition.right => 0.8,
+      CharacterPosition.center => 0.5,
+    };
+
+    return [
+      Positioned(
+        top: MediaQuery.of(context).size.height * 0.2,
+        left: MediaQuery.of(context).size.width * horizontalAlign - 20,
+        child: EmotionBubble(
+          key: ValueKey('emotion_${_activeEmotion.hashCode}'),
+          emotionType: _activeEmotion!.emotionType ?? EmotionType.heart,
+          onComplete: () {
+            setState(() => _activeEmotion = null);
+            engine.nextEvent();
+          },
+        ),
+      ),
+    ];
   }
 
   Color _parseColor(String hex) {

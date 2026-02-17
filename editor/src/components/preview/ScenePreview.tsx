@@ -101,6 +101,24 @@ export function ScenePreview() {
                   <div className="preview-text italic">✨ Эффект: {event.effectType || '...'} ({event.effectDuration || 500}мс, {((event.effectIntensity ?? 0.7) * 100).toFixed(0)}%)</div>
                 </div>
               )}
+
+              {event.type === 'showCg' && (
+                <div className="preview-narration">
+                  <div className="preview-text italic">🖼️ CG: {event.cgImage || '...'} ({event.cgTransition || 'fade'}, {event.cgDuration || 800}мс)</div>
+                </div>
+              )}
+
+              {event.type === 'cameraMove' && (
+                <div className="preview-narration">
+                  <div className="preview-text italic">📷 Камера: zoom={event.zoom?.toFixed(1) || '1.0'} pan=({event.panX || 0}, {event.panY || 0}) {event.cameraDuration || 1000}мс</div>
+                </div>
+              )}
+
+              {event.type === 'showEmotion' && (
+                <div className="preview-narration">
+                  <div className="preview-text italic">💭 Эмоция: {event.emotionType || '...'} → {project.characters.find(c => c.id === event.characterId)?.name || event.characterId || '...'}</div>
+                </div>
+              )}
             </div>
           )}
 

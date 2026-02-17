@@ -1,6 +1,6 @@
 import { useEditorStore } from '../../store/editorStore';
-import type { Scene, SceneEvent as SceneEventType, Choice, EffectType } from '../../types/novel';
-import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette, Sparkles } from 'lucide-react';
+import type { Scene, SceneEvent as SceneEventType, Choice, EffectType, CgTransition, EmotionType } from '../../types/novel';
+import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette, Sparkles, Camera, Heart, Timer, Layers, ImagePlus } from 'lucide-react';
 import './EventEditor.css';
 
 export function EventEditor() {
@@ -21,6 +21,9 @@ export function EventEditor() {
     if (type === 'changeBackground') { event.background = ''; }
     if (type === 'changeSprite') { event.characterId = ''; event.spriteId = ''; }
     if (type === 'effect') { event.effectType = 'shake'; event.effectDuration = 500; event.effectIntensity = 0.7; }
+    if (type === 'showCg') { event.cgImage = ''; event.cgTransition = 'fade'; event.cgDuration = 800; }
+    if (type === 'cameraMove') { event.zoom = 1.0; event.panX = 0; event.panY = 0; event.cameraDuration = 1000; }
+    if (type === 'showEmotion') { event.characterId = ''; event.emotionType = 'heart'; }
     addEvent(scene.id, event);
   };
 
@@ -67,6 +70,15 @@ export function EventEditor() {
         </button>
         <button onClick={() => handleAddEvent('effect')} title="Эффект">
           <Sparkles size={16} /> Эффект
+        </button>
+        <button onClick={() => handleAddEvent('showCg')} title="CG-арт">
+          <ImagePlus size={16} /> CG
+        </button>
+        <button onClick={() => handleAddEvent('cameraMove')} title="Камера">
+          <Camera size={16} /> Камера
+        </button>
+        <button onClick={() => handleAddEvent('showEmotion')} title="Эмоция">
+          <Heart size={16} /> Эмоция
         </button>
       </div>
     </div>
@@ -225,6 +237,9 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
     changeBackground: '🖼 Смена фона',
     changeSprite: '🎭 Смена спрайта',
     effect: '✨ Эффект',
+    showCg: '🖼️ CG-арт',
+    cameraMove: '📷 Камера',
+    showEmotion: '💭 Эмоция',
   };
 
   const handleBgEventUpload = () => {
@@ -362,6 +377,117 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
           </div>
         </div>
       )}
+
+      {event.type === 'showCg' && (
+        <div className="event-body">
+          <div className="scene-settings-row">
+            <input
+              placeholder="Путь к CG (cg/first_kiss.png)"
+              value={event.cgImage || ''}
+              onChange={(e) => onUpdate({ ...event, cgImage: e.target.value })}
+            />
+            <button className="upload-btn" onClick={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = (ev) => {
+                const file = (ev.target as HTMLInputElement).files?.[0];
+                if (!file) return;
+                const name = file.name.replace(/\s+/g, '_').toLowerCase();
+                addImage(`cg/${name}`, file);
+                onUpdate({ ...event, cgImage: `cg/${name}` });
+              };
+              input.click();
+            }} title="Загрузить CG"><Image size={14} /></button>
+          </div>
+          <select
+            value={event.cgTransition || 'fade'}
+            onChange={(e) => onUpdate({ ...event, cgTransition: e.target.value as CgTransition })}
+          >
+            <option value="fade">Fade</option>
+            <option value="zoomIn">Zoom In</option>
+          </select>
+          <div className="effect-params">
+            <label>Длительность: {event.cgDuration || 800} мс</label>
+            <input
+              type="range" min={200} max={2000} step={100}
+              value={event.cgDuration || 800}
+              onChange={(e) => onUpdate({ ...event, cgDuration: parseInt(e.target.value) })}
+            />
+          </div>
+        </div>
+      )}
+
+      {event.type === 'cameraMove' && (
+        <div className="event-body">
+          <div className="effect-params">
+            <label>Zoom: {event.zoom?.toFixed(1) || '1.0'}x</label>
+            <input
+              type="range" min={50} max={200} step={10}
+              value={(event.zoom ?? 1.0) * 100}
+              onChange={(e) => onUpdate({ ...event, zoom: parseInt(e.target.value) / 100 })}
+            />
+            <label>Pan X: {event.panX || 0}</label>
+            <input
+              type="range" min={-200} max={200} step={10}
+              value={event.panX || 0}
+              onChange={(e) => onUpdate({ ...event, panX: parseInt(e.target.value) })}
+            />
+            <label>Pan Y: {event.panY || 0}</label>
+            <input
+              type="range" min={-200} max={200} step={10}
+              value={event.panY || 0}
+              onChange={(e) => onUpdate({ ...event, panY: parseInt(e.target.value) })}
+            />
+            <label>Длительность: {event.cameraDuration || 1000} мс</label>
+            <input
+              type="range" min={200} max={5000} step={100}
+              value={event.cameraDuration || 1000}
+              onChange={(e) => onUpdate({ ...event, cameraDuration: parseInt(e.target.value) })}
+            />
+          </div>
+        </div>
+      )}
+
+      {event.type === 'showEmotion' && (
+        <div className="event-body">
+          <select
+            value={event.characterId || ''}
+            onChange={(e) => onUpdate({ ...event, characterId: e.target.value || undefined })}
+          >
+            <option value="">— Персонаж —</option>
+            {project.characters.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            value={event.emotionType || 'heart'}
+            onChange={(e) => onUpdate({ ...event, emotionType: e.target.value as EmotionType })}
+          >
+            <option value="heart">❤️ Сердечко</option>
+            <option value="sweatDrop">💧 Капля пота</option>
+            <option value="question">❓ Вопрос</option>
+            <option value="exclamation">❗ Восклицание</option>
+            <option value="anger">💢 Злость</option>
+            <option value="sparkle">✨ Блеск</option>
+            <option value="musicNote">🎵 Нота</option>
+            <option value="zzz">💤 Сон</option>
+          </select>
+        </div>
+      )}
+
+      {event.type === 'changeSprite' && (
+        <div className="event-body">
+          <div className="effect-params">
+            <label>Длительность cross-fade: {event.spriteDuration || 300} мс</label>
+            <input
+              type="range" min={0} max={1000} step={50}
+              value={event.spriteDuration || 300}
+              onChange={(e) => onUpdate({ ...event, spriteDuration: parseInt(e.target.value) })}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -384,6 +510,39 @@ function ChoiceEditor({ event, onUpdate }: { event: SceneEventType; onUpdate: (e
 
   return (
     <div className="event-body choices">
+      {/* Таймер на выбор */}
+      <div className="timer-settings">
+        <label className="premium-toggle">
+          <input
+            type="checkbox"
+            checked={!!event.timeLimit}
+            onChange={(e) => onUpdate({ ...event, timeLimit: e.target.checked ? 10 : undefined, defaultChoiceIndex: e.target.checked ? 0 : undefined })}
+          />
+          ⏱ Таймер
+        </label>
+        {event.timeLimit && (
+          <>
+            <input
+              type="number"
+              className="cost-input"
+              value={event.timeLimit}
+              onChange={(e) => onUpdate({ ...event, timeLimit: parseInt(e.target.value) || 10 })}
+              min={3}
+              max={60}
+            />
+            <span className="timer-label">сек</span>
+            <select
+              value={event.defaultChoiceIndex ?? 0}
+              onChange={(e) => onUpdate({ ...event, defaultChoiceIndex: parseInt(e.target.value) })}
+              className="default-choice-select"
+            >
+              {choices.map((c, i) => (
+                <option key={i} value={i}>По умолч: {c.text.slice(0, 15) || `#${i + 1}`}</option>
+              ))}
+            </select>
+          </>
+        )}
+      </div>
       {choices.map((choice, i) => (
         <div key={i} className={`choice-item ${choice.premium ? 'premium' : ''}`}>
           <input

@@ -45,6 +45,7 @@ export interface Scene {
   background?: string;
   music?: string;
   transition?: SceneTransition;
+  backgroundLayers?: BackgroundLayer[];
   charactersOnScreen: SceneCharacter[];
   events: SceneEvent[];
   nextSceneId?: string;
@@ -55,6 +56,13 @@ export interface SceneTransition {
   duration: number; // мс
 }
 
+export interface BackgroundLayer {
+  image: string;
+  depth: number; // 0.0 (задний план) — 1.0 (передний)
+  offsetX: number;
+  offsetY: number;
+}
+
 export interface SceneCharacter {
   characterId: string;
   spriteId: string;
@@ -62,9 +70,11 @@ export interface SceneCharacter {
   animation?: 'fade_in' | 'fade_out' | 'slide_in_left' | 'slide_in_right' | 'bounce' | 'shake';
 }
 
-export type EventType = 'dialogue' | 'narration' | 'choice' | 'set_variable' | 'play_sound' | 'changeBackground' | 'changeSprite' | 'effect';
+export type EventType = 'dialogue' | 'narration' | 'choice' | 'set_variable' | 'play_sound' | 'changeBackground' | 'changeSprite' | 'effect' | 'showCg' | 'cameraMove' | 'showEmotion';
 
 export type EffectType = 'shake' | 'flash' | 'fadeToBlack' | 'rain' | 'snow' | 'particles';
+export type CgTransition = 'fade' | 'zoomIn';
+export type EmotionType = 'heart' | 'sweatDrop' | 'question' | 'exclamation' | 'anger' | 'sparkle' | 'musicNote' | 'zzz';
 
 export interface SceneEvent {
   type: EventType;
@@ -81,6 +91,22 @@ export interface SceneEvent {
   effectType?: EffectType;
   effectDuration?: number; // мс
   effectIntensity?: number; // 0.0–1.0
+  // CG-арт
+  cgImage?: string;
+  cgTransition?: CgTransition;
+  cgDuration?: number; // мс
+  // Камера
+  zoom?: number; // 0.5–2.0
+  panX?: number;
+  panY?: number;
+  cameraDuration?: number; // мс
+  // Эмоции
+  emotionType?: EmotionType;
+  // Cross-fade спрайтов
+  spriteDuration?: number; // мс
+  // Таймер на выбор
+  timeLimit?: number; // секунды
+  defaultChoiceIndex?: number;
 }
 
 export interface Choice {

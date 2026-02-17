@@ -114,6 +114,25 @@ SceneEvent _$SceneEventFromJson(Map<String, dynamic> json) => SceneEvent(
   ),
   effectDuration: (json['effectDuration'] as num?)?.toInt(),
   effectIntensity: (json['effectIntensity'] as num?)?.toDouble(),
+  cgImage: json['cgImage'] as String?,
+  cgTransition: $enumDecodeNullable(
+    _$CgTransitionEnumMap,
+    json['cgTransition'],
+    unknownValue: CgTransition.fade,
+  ),
+  cgDuration: (json['cgDuration'] as num?)?.toInt(),
+  zoom: (json['zoom'] as num?)?.toDouble(),
+  panX: (json['panX'] as num?)?.toDouble(),
+  panY: (json['panY'] as num?)?.toDouble(),
+  cameraDuration: (json['cameraDuration'] as num?)?.toInt(),
+  emotionType: $enumDecodeNullable(
+    _$EmotionTypeEnumMap,
+    json['emotionType'],
+    unknownValue: EmotionType.heart,
+  ),
+  spriteDuration: (json['spriteDuration'] as num?)?.toInt(),
+  timeLimit: (json['timeLimit'] as num?)?.toInt(),
+  defaultChoiceIndex: (json['defaultChoiceIndex'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$SceneEventToJson(SceneEvent instance) =>
@@ -129,6 +148,17 @@ Map<String, dynamic> _$SceneEventToJson(SceneEvent instance) =>
       'effectType': _$EffectTypeEnumMap[instance.effectType],
       'effectDuration': instance.effectDuration,
       'effectIntensity': instance.effectIntensity,
+      'cgImage': instance.cgImage,
+      'cgTransition': _$CgTransitionEnumMap[instance.cgTransition],
+      'cgDuration': instance.cgDuration,
+      'zoom': instance.zoom,
+      'panX': instance.panX,
+      'panY': instance.panY,
+      'cameraDuration': instance.cameraDuration,
+      'emotionType': _$EmotionTypeEnumMap[instance.emotionType],
+      'spriteDuration': instance.spriteDuration,
+      'timeLimit': instance.timeLimit,
+      'defaultChoiceIndex': instance.defaultChoiceIndex,
     };
 
 const _$EventTypeEnumMap = {
@@ -139,6 +169,9 @@ const _$EventTypeEnumMap = {
   EventType.playSound: 'playSound',
   EventType.changeSprite: 'changeSprite',
   EventType.effect: 'effect',
+  EventType.showCg: 'showCg',
+  EventType.cameraMove: 'cameraMove',
+  EventType.showEmotion: 'showEmotion',
 };
 
 const _$EffectTypeEnumMap = {
@@ -150,6 +183,38 @@ const _$EffectTypeEnumMap = {
   EffectType.particles: 'particles',
 };
 
+const _$CgTransitionEnumMap = {
+  CgTransition.fade: 'fade',
+  CgTransition.zoomIn: 'zoomIn',
+};
+
+const _$EmotionTypeEnumMap = {
+  EmotionType.heart: 'heart',
+  EmotionType.sweatDrop: 'sweatDrop',
+  EmotionType.question: 'question',
+  EmotionType.exclamation: 'exclamation',
+  EmotionType.anger: 'anger',
+  EmotionType.sparkle: 'sparkle',
+  EmotionType.musicNote: 'musicNote',
+  EmotionType.zzz: 'zzz',
+};
+
+BackgroundLayer _$BackgroundLayerFromJson(Map<String, dynamic> json) =>
+    BackgroundLayer(
+      image: json['image'] as String,
+      depth: (json['depth'] as num?)?.toDouble() ?? 0.0,
+      offsetX: (json['offsetX'] as num?)?.toDouble() ?? 0.0,
+      offsetY: (json['offsetY'] as num?)?.toDouble() ?? 0.0,
+    );
+
+Map<String, dynamic> _$BackgroundLayerToJson(BackgroundLayer instance) =>
+    <String, dynamic>{
+      'image': instance.image,
+      'depth': instance.depth,
+      'offsetX': instance.offsetX,
+      'offsetY': instance.offsetY,
+    };
+
 Scene _$SceneFromJson(Map<String, dynamic> json) => Scene(
   id: json['id'] as String,
   background: json['background'] as String?,
@@ -157,6 +222,9 @@ Scene _$SceneFromJson(Map<String, dynamic> json) => Scene(
   transition: json['transition'] == null
       ? null
       : SceneTransition.fromJson(json['transition'] as Map<String, dynamic>),
+  backgroundLayers: (json['backgroundLayers'] as List<dynamic>?)
+      ?.map((e) => BackgroundLayer.fromJson(e as Map<String, dynamic>))
+      .toList(),
   charactersOnScreen:
       (json['charactersOnScreen'] as List<dynamic>?)
           ?.map((e) => SceneCharacter.fromJson(e as Map<String, dynamic>))
@@ -175,6 +243,7 @@ Map<String, dynamic> _$SceneToJson(Scene instance) => <String, dynamic>{
   'background': instance.background,
   'music': instance.music,
   'transition': instance.transition,
+  'backgroundLayers': instance.backgroundLayers,
   'charactersOnScreen': instance.charactersOnScreen,
   'events': instance.events,
   'nextSceneId': instance.nextSceneId,

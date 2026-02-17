@@ -7,13 +7,19 @@ part 'scene.g.dart';
 enum CharacterPosition { left, center, right }
 
 /// Тип события в сцене
-enum EventType { dialogue, narration, choice, changeBackground, playSound, changeSprite, effect }
+enum EventType { dialogue, narration, choice, changeBackground, playSound, changeSprite, effect, showCg, cameraMove, showEmotion }
 
 /// Тип перехода между сценами
 enum TransitionType { fade, slideLeft, slideRight, dissolve, none }
 
 /// Тип визуального эффекта
 enum EffectType { shake, flash, fadeToBlack, rain, snow, particles }
+
+/// Тип перехода CG-арта
+enum CgTransition { fade, zoomIn }
+
+/// Тип эмоции-иконки
+enum EmotionType { heart, sweatDrop, question, exclamation, anger, sparkle, musicNote, zzz }
 
 /// Настройки перехода между сценами
 @JsonSerializable()
@@ -124,6 +130,24 @@ class SceneEvent extends Equatable {
   final EffectType? effectType;
   final int? effectDuration; // мс
   final double? effectIntensity; // 0.0–1.0
+  // CG-арт
+  final String? cgImage;
+  @JsonKey(unknownEnumValue: CgTransition.fade)
+  final CgTransition? cgTransition;
+  final int? cgDuration; // мс
+  // Камера
+  final double? zoom; // 0.5–2.0
+  final double? panX; // смещение по X
+  final double? panY; // смещение по Y
+  final int? cameraDuration; // мс
+  // Эмоции
+  @JsonKey(unknownEnumValue: EmotionType.heart)
+  final EmotionType? emotionType;
+  // Cross-fade спрайтов
+  final int? spriteDuration; // мс
+  // Таймер на выбор
+  final int? timeLimit; // секунды
+  final int? defaultChoiceIndex;
 
   const SceneEvent({
     required this.type,
@@ -137,6 +161,17 @@ class SceneEvent extends Equatable {
     this.effectType,
     this.effectDuration,
     this.effectIntensity,
+    this.cgImage,
+    this.cgTransition,
+    this.cgDuration,
+    this.zoom,
+    this.panX,
+    this.panY,
+    this.cameraDuration,
+    this.emotionType,
+    this.spriteDuration,
+    this.timeLimit,
+    this.defaultChoiceIndex,
   });
 
   factory SceneEvent.fromJson(Map<String, dynamic> json) =>
@@ -144,7 +179,30 @@ class SceneEvent extends Equatable {
   Map<String, dynamic> toJson() => _$SceneEventToJson(this);
 
   @override
-  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation, effectType, effectDuration, effectIntensity];
+  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation, effectType, effectDuration, effectIntensity, cgImage, cgTransition, cgDuration, zoom, panX, panY, cameraDuration, emotionType, spriteDuration, timeLimit, defaultChoiceIndex];
+}
+
+/// Слой фона для параллакса
+@JsonSerializable()
+class BackgroundLayer extends Equatable {
+  final String image;
+  final double depth; // 0.0 (задний план) — 1.0 (передний)
+  final double offsetX;
+  final double offsetY;
+
+  const BackgroundLayer({
+    required this.image,
+    this.depth = 0.0,
+    this.offsetX = 0.0,
+    this.offsetY = 0.0,
+  });
+
+  factory BackgroundLayer.fromJson(Map<String, dynamic> json) =>
+      _$BackgroundLayerFromJson(json);
+  Map<String, dynamic> toJson() => _$BackgroundLayerToJson(this);
+
+  @override
+  List<Object?> get props => [image, depth, offsetX, offsetY];
 }
 
 /// Сцена — основная единица новеллы
@@ -154,6 +212,7 @@ class Scene extends Equatable {
   final String? background;
   final String? music;
   final SceneTransition? transition;
+  final List<BackgroundLayer>? backgroundLayers;
   final List<SceneCharacter> charactersOnScreen;
   final List<SceneEvent> events;
   final String? nextSceneId; // автоматический переход если нет выбора
@@ -163,6 +222,7 @@ class Scene extends Equatable {
     this.background,
     this.music,
     this.transition,
+    this.backgroundLayers,
     this.charactersOnScreen = const [],
     this.events = const [],
     this.nextSceneId,
@@ -173,5 +233,5 @@ class Scene extends Equatable {
   Map<String, dynamic> toJson() => _$SceneToJson(this);
 
   @override
-  List<Object?> get props => [id, background, music, transition, charactersOnScreen, events, nextSceneId];
+  List<Object?> get props => [id, background, music, transition, backgroundLayers, charactersOnScreen, events, nextSceneId];
 }

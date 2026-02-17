@@ -17,6 +17,9 @@
 .event-card.changeBackground { border-left: 3px solid #4caf50; }
 .event-card.changeSprite { border-left: 3px solid #00bcd4; }
 .event-card.effect { border-left: 3px solid #ffc107; }
+.event-card.showCg { border-left: 3px solid #e040fb; }
+.event-card.cameraMove { border-left: 3px solid #00e5ff; }
+.event-card.showEmotion { border-left: 3px solid #ff5252; }
 
 .event-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; }
 .drag-handle { color: #444; cursor: grab; }
@@ -45,6 +48,11 @@
 
 .add-choice { display: flex; align-items: center; gap: 4px; background: none; border: 1px dashed #2a2a3e; color: #666; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
 .add-choice:hover { border-color: #e91e63; color: #e91e63; }
+
+.timer-settings { display: flex; align-items: center; gap: 8px; padding: 6px; background: rgba(255, 152, 0, 0.05); border-radius: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+.timer-settings .cost-input { max-width: 50px; font-size: 12px; text-align: center; }
+.timer-label { font-size: 11px; color: #888; }
+.default-choice-select { max-width: 150px; padding: 4px 6px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 4px; color: #fff; font-size: 11px; }
 
 .add-event-bar { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #2a2a3e; }
 .add-event-bar button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 8px; color: #ccc; cursor: pointer; font-size: 12px; transition: all 0.2s; }
