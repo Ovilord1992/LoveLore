@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge, type OnConnect, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEditorStore } from '../../store/editorStore';
@@ -68,8 +68,11 @@ export function SceneGraph() {
     return { initialNodes: nodes, initialEdges: edges };
   }, [chapter, selectedSceneId]);
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
+  useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
 
   const onConnect: OnConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
