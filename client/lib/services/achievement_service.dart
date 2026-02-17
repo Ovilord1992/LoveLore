@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'user_profile_service.dart';
 import 'currency_service.dart';
+import 'remote_config_service.dart';
 
 /// Провайдер сервиса достижений
 final achievementServiceProvider = Provider<AchievementService>((ref) {
@@ -22,8 +23,8 @@ class AchievementDef {
   });
 }
 
-/// Каталог всех достижений
-const allAchievements = <AchievementDef>[
+/// Хардкод-каталог (fallback если remote config пуст)
+const _defaultAchievements = <AchievementDef>[
   AchievementDef(
     id: 'first_story',
     title: 'Первая история',
@@ -91,6 +92,22 @@ class AchievementService {
   final Ref _ref;
 
   AchievementService(this._ref);
+
+  /// Получить актуальный каталог достижений (remote config → fallback)
+  List<AchievementDef> get allAchievements {
+    final remote = _ref.read(remoteConfigProvider).achievements;
+    if (remote.isNotEmpty) {
+      return remote
+          .map((a) => AchievementDef(
+                id: a.id,
+                title: a.title,
+                description: a.description,
+                diamondReward: a.diamondReward,
+              ))
+          .toList();
+    }
+    return _defaultAchievements;
+  }
 
   /// Проверить все условия достижений и выдать заслуженные
   /// Возвращает список только что разблокированных достижений

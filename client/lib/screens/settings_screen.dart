@@ -92,7 +92,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // Язык
           _SectionTitle('Язык'),
-          _LanguageTile(ref: ref),
+          const _LanguageTile(),
 
           const SizedBox(height: 24),
 
@@ -297,8 +297,7 @@ class _InfoTile extends StatelessWidget {
 }
 
 class _LanguageTile extends ConsumerWidget {
-  final WidgetRef ref;
-  const _LanguageTile({required this.ref});
+  const _LanguageTile();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -5,6 +5,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'remote_config_service.dart';
 
 /// Текущий язык приложения
 final localeProvider =
@@ -48,10 +49,17 @@ class LocaleNotifier extends StateNotifier<AppLocale> {
   }
 }
 
-/// Доступ к строкам: context.tr('key') или ref.tr('key')
+/// Доступ к строкам: ref.tr('key')
+/// Сначала ищет в remote config, затем в хардкоде
 extension LocaleRefExtension on WidgetRef {
   String tr(String key) {
     final locale = watch(localeProvider);
+    final remote = watch(remoteConfigProvider).localization;
+    final lang = locale == AppLocale.ru ? 'ru' : 'en';
+    // Remote config override
+    if (remote.containsKey(lang) && remote[lang]!.containsKey(key)) {
+      return remote[lang]![key]!;
+    }
     return AppStrings.get(key, locale);
   }
 }
