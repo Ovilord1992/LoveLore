@@ -443,6 +443,12 @@ class _PromoBanner extends ConsumerWidget {
     // Скрываем если стартовый бандл уже куплен
     if (iap.starterBundlePurchased) return const SizedBox.shrink();
 
+    final configIap = ref.watch(remoteConfigProvider).iap;
+    final starterRewards = configIap.getReward(ProductIds.starterBundle);
+    final diamonds = starterRewards['diamonds'] ?? 100;
+    final tickets = starterRewards['tickets'] ?? 10;
+    final product = iap.products.where((p) => p.id == ProductIds.starterBundle).firstOrNull;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -465,21 +471,21 @@ class _PromoBanner extends ConsumerWidget {
           children: [
             const Text('🎁', style: TextStyle(fontSize: 28)),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Стартовый набор',
-                    style: TextStyle(
+                    ref.tr('starter_kit'),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                   Text(
-                    '500💎 + 5⚡ — выгода x10!',
-                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                    '$diamonds💎 + $tickets⚡ — ${ref.tr('value_x').replaceAll('{n}', '10')}',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
                   ),
                 ],
               ),
@@ -491,9 +497,9 @@ class _PromoBanner extends ConsumerWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
-                '\$0.99',
-                style: TextStyle(
+              child: Text(
+                product?.price ?? '\$0.99',
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFFE91E63),

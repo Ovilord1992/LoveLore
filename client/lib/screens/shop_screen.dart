@@ -5,6 +5,7 @@ import '../services/locale_service.dart';
 import '../services/iap_service.dart';
 import '../services/currency_service.dart';
 import '../services/ad_service.dart';
+import '../services/remote_config_service.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -89,8 +90,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 const SizedBox(height: 8),
                 _ProductCard(
                   icon: '⚡',
-                  title: '5 билетов',
-                  subtitle: 'Читай без ожидания',
+                  title: ref.tr('tickets_n').replaceAll('{n}', '${ref.watch(remoteConfigProvider).iap.getReward(ProductIds.tickets5)['tickets'] ?? 5}'),
+                  subtitle: ref.tr('read_no_wait'),
                   product: iap.products
                       .where((p) => p.id == ProductIds.tickets5)
                       .firstOrNull,
@@ -100,7 +101,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 const SizedBox(height: 20),
 
                 // VIP
-                const _SectionLabel('⭐ VIP-подписка'),
+                _SectionLabel('⭐ ${ref.tr('vip_subscription')}'),
                 const SizedBox(height: 8),
                 _VipCard(iap: iap, onBuy: _buy),
                 const SizedBox(height: 16),
@@ -110,9 +111,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   child: TextButton(
                     onPressed: () =>
                         ref.read(iapServiceProvider.notifier).restorePurchases(),
-                    child: const Text(
-                      'Восстановить покупки',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    child: Text(
+                      ref.tr('restore_purchases'),
+                      style: const TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ),
                 ),
@@ -131,11 +132,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   }
 
   List<Widget> _buildDiamondCards(IapState iap) {
-    final items = <(String id, String icon, String title, String subtitle, Color color)>[
-      (ProductIds.diamonds20, '💎', '20 алмазов', '', const Color(0xFF9C27B0)),
-      (ProductIds.diamonds60, '💎', '60 алмазов', 'Популярный', const Color(0xFFE91E63)),
-      (ProductIds.diamonds150, '💎', '150 алмазов', 'Выгодно', const Color(0xFFFF5722)),
-      (ProductIds.diamonds500, '💎', '500 алмазов', 'Лучшая цена!', const Color(0xFFFF9800)),
+    final configIap = ref.watch(remoteConfigProvider).iap;
+    final items = <(String id, String icon, int amount, String? badge, Color color)>[
+      (ProductIds.diamonds20, '💎', configIap.getReward(ProductIds.diamonds20)['diamonds'] ?? 20, null, const Color(0xFF9C27B0)),
+      (ProductIds.diamonds60, '💎', configIap.getReward(ProductIds.diamonds60)['diamonds'] ?? 60, ref.tr('popular'), const Color(0xFFE91E63)),
+      (ProductIds.diamonds150, '💎', configIap.getReward(ProductIds.diamonds150)['diamonds'] ?? 150, ref.tr('best_value'), const Color(0xFFFF5722)),
+      (ProductIds.diamonds500, '💎', configIap.getReward(ProductIds.diamonds500)['diamonds'] ?? 500, ref.tr('best_price'), const Color(0xFFFF9800)),
     ];
 
     return items.map((item) {
@@ -144,8 +146,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         padding: const EdgeInsets.only(bottom: 8),
         child: _ProductCard(
           icon: item.$2,
-          title: item.$3,
-          subtitle: item.$4,
+          title: ref.tr('diamonds_n').replaceAll('{n}', '${item.$3}'),
+          subtitle: item.$4 ?? '',
           product: product,
           color: item.$5,
           onBuy: _buy,
@@ -208,13 +210,17 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _StarterBundle extends StatelessWidget {
+class _StarterBundle extends ConsumerWidget {
   final IapState iap;
   final void Function(dynamic) onBuy;
   const _StarterBundle({required this.iap, required this.onBuy});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final configIap = ref.watch(remoteConfigProvider).iap;
+    final starterRewards = configIap.getReward(ProductIds.starterBundle);
+    final diamonds = starterRewards['diamonds'] ?? 100;
+    final tickets = starterRewards['tickets'] ?? 10;
     final product =
         iap.products.where((p) => p.id == ProductIds.starterBundle).firstOrNull;
 
@@ -235,21 +241,21 @@ class _StarterBundle extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Row(
+          Row(
             children: [
-              Text('🎁', style: TextStyle(fontSize: 32)),
-              SizedBox(width: 12),
+              const Text('🎁', style: TextStyle(fontSize: 32)),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Стартовый набор',
-                        style: TextStyle(
+                    Text(ref.tr('starter_kit'),
+                        style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold)),
-                    Text('100 💎 + 10 ⚡ — x10 ценность!',
-                        style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text('$diamonds 💎 + $tickets ⚡ — ${ref.tr('value_x').replaceAll('{n}', '10')}',
+                        style: const TextStyle(color: Colors.white70, fontSize: 13)),
                   ],
                 ),
               ),
@@ -259,9 +265,9 @@ class _StarterBundle extends StatelessWidget {
           Row(
             children: [
               const Spacer(),
-              const Text(
-                'Только один раз!',
-                style: TextStyle(color: Colors.white54, fontSize: 11),
+              Text(
+                ref.tr('starter_kit_once'),
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
               ),
               const SizedBox(width: 12),
               ElevatedButton(
@@ -359,6 +365,24 @@ class _VipCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final product =
         iap.products.where((p) => p.id == ProductIds.vipMonthly).firstOrNull;
+    final vipConfig = ref.watch(remoteConfigProvider).vip;
+
+    final perks = <Widget>[];
+    if (vipConfig.dailyDiamonds > 0) {
+      perks.add(_VipPerk(icon: '💎', text: ref.tr('vip_perk_diamonds').replaceAll('{n}', '${vipConfig.dailyDiamonds}')));
+    }
+    if (vipConfig.unlimitedTickets) {
+      perks.add(_VipPerk(icon: '⚡', text: ref.tr('vip_perk_tickets')));
+    }
+    if (vipConfig.earlyAccess) {
+      perks.add(_VipPerk(icon: '🔓', text: ref.tr('vip_perk_early_access')));
+    }
+    if (vipConfig.exclusiveFrame) {
+      perks.add(_VipPerk(icon: '🖼️', text: ref.tr('vip_perk_frame')));
+    }
+    if (vipConfig.noAds) {
+      perks.add(_VipPerk(icon: '🚫', text: ref.tr('vip_perk_no_ads')));
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -372,23 +396,19 @@ class _VipCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Text('⭐', style: TextStyle(fontSize: 28)),
-              SizedBox(width: 10),
-              Text('VIP-подписка',
-                  style: TextStyle(
+              const Text('⭐', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 10),
+              Text(ref.tr('vip_subscription'),
+                  style: const TextStyle(
                       color: Color(0xFFFFD700),
                       fontSize: 18,
                       fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 12),
-          const _VipPerk(icon: '💎', text: '+5 алмазов каждый день'),
-          const _VipPerk(icon: '⚡', text: 'Безлимитные билеты'),
-          const _VipPerk(icon: '🔓', text: 'Ранний доступ к новым главам'),
-          const _VipPerk(icon: '🖼️', text: 'Эксклюзивная рамка профиля'),
-          const _VipPerk(icon: '🚫', text: 'Без рекламы'),
+          ...perks,
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -459,13 +479,13 @@ class _AdRewardCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Бесплатные алмазы',
-                    style: TextStyle(
+                Text(ref.tr('free_diamonds'),
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w600)),
                 Text(
-                  'Смотри рекламу → +${adService.diamondReward} 💎 (${adService.adsRemainingToday} осталось)',
+                  '${ref.tr('watch_ad_reward').replaceAll('{n}', '${adService.diamondReward}')} (${adService.adsRemainingToday} ${ref.tr('remaining')})',
                   style: const TextStyle(color: Color(0xFF00BCD4), fontSize: 12),
                 ),
               ],
