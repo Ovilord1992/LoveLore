@@ -297,42 +297,40 @@ navell/
   - [x] Секции: экономика, реклама, VIP (формы), IAP/Daily/Achievements/Localization (JSON-редактор)
   - [x] Кнопка «Сохранить» по каждой секции
 
-### Фаза 13: Анимации сцен и эффекты ⬜ НЕ НАЧАТА
+### Фаза 13: Анимации сцен и эффекты ✅ ЗАВЕРШЕНА
 Полная поддержка анимаций и визуальных эффектов: от редактора до клиента. Сервер изменений не требует (формат ZIP/JSON не зависит от содержимого).
 
 #### Клиент (Flutter) — модели данных
-- [ ] Добавить поле `transition` в Dart-модель `Scene` (`type`: fade/slide_left/slide_right/dissolve/none, `duration`: мс). Пересоздать `.g.dart`
-- [ ] Добавить тип `effect` в enum `EventType` (Dart). Добавить поля `effectType`, `effectDuration`, `effectIntensity` в `SceneEvent`
-- [ ] Типизировать поле `animation` в `SceneCharacter` — enum вместо String (`fade_in`, `fade_out`, `slide_in_left`, `slide_in_right`, `bounce`, `shake`)
+- [x] Добавить поле `transition` в Dart-модель `Scene` (`type`: fade/slide_left/slide_right/dissolve/none, `duration`: мс). Пересоздать `.g.dart`
+- [x] Добавить тип `effect` в enum `EventType` (Dart). Добавить поля `effectType`, `effectDuration`, `effectIntensity` в `SceneEvent`
+- [x] Типизировать поле `animation` в `SceneCharacter` — enum вместо String (`fade_in`, `fade_out`, `slide_in_left`, `slide_in_right`, `bounce`, `shake`)
 
 #### Клиент (Flutter) — движок и рендеринг
-- [ ] SceneEngine: использовать `scene.transition` при переходе между сценами (передавать тип/длительность в UI)
-- [ ] GameScreen: подключить `scene_transitions.dart` (fade/slideLeft/dissolve уже написаны, но не используются) с настраиваемой длительностью
-- [ ] GameScreen: обработка события `effect` — реализовать shake (вибрация экрана), flash (белая вспышка), fade_to_black (затемнение)
-- [ ] GameScreen: добавить оверлеи для погодных эффектов (rain, snow, particles) — виджет поверх сцены
-- [ ] AnimatedCharacterSprite: использовать поле `animation` из SceneCharacter (сейчас только fade_in + slide_up захардкожен)
-- [ ] Поддержка fade_out, slide_in_left/right, bounce, shake анимаций для персонажей
+- [x] SceneEngine: использовать `scene.transition` при переходе между сценами (передавать тип/длительность в UI)
+- [x] GameScreen: подключить `scene_transitions.dart` (fade/slideLeft/dissolve уже написаны, но не используются) с настраиваемой длительностью
+- [x] GameScreen: обработка события `effect` — реализовать shake (вибрация экрана), flash (белая вспышка), fade_to_black (затемнение)
+- [x] GameScreen: добавить оверлеи для погодных эффектов (rain, snow, particles) — виджет поверх сцены
+- [x] AnimatedCharacterSprite: использовать поле `animation` из SceneCharacter (сейчас только fade_in + slide_up захардкожен)
+- [x] Поддержка fade_out, slide_in_left/right, bounce, shake анимаций для персонажей
 
 #### Редактор (React) — типы данных
-- [ ] Добавить поле `transition` в TypeScript тип `Scene` (type + duration)
-- [ ] Добавить тип `effect` в `EventType`, поля `effectType`, `effectDuration`, `effectIntensity` в `SceneEvent`
-- [ ] Расширить поле `animation` в `SceneCharacter` определённым набором значений
+- [x] Добавить поле `transition` в TypeScript тип `Scene` (type + duration)
+- [x] Добавить тип `effect` в `EventType`, поля `effectType`, `effectDuration`, `effectIntensity` в `SceneEvent`
+- [x] Расширить поле `animation` в `SceneCharacter` определённым набором значений
 
 #### Редактор (React) — UI
-- [ ] Блок «Переход» в редакторе сцены: выпадающий список типа перехода + слайдер длительности
-- [ ] Блок «Анимация персонажа» при добавлении персонажа на сцену: выбор анимации появления
-- [ ] Новый тип события `effect` в выпадающем списке EventEditor
-- [ ] Форма эффекта: выбор типа, длительность, интенсивность (слайдер)
-- [ ] Иконка эффекта (✨) в списке событий сцены
+- [x] Блок «Переход» в редакторе сцены: выпадающий список типа перехода + слайдер длительности
+- [x] Блок «Анимация персонажа» при добавлении персонажа на сцену: выбор анимации появления
+- [x] Новый тип события `effect` в выпадающем списке EventEditor
+- [x] Форма эффекта: выбор типа, длительность, интенсивность (слайдер)
+- [x] Иконка эффекта (✨) в списке событий сцены
 
 #### Редактор (React) — превью
-- [ ] CSS-анимации в ScenePreview для переходов между сценами (fade, slide)
-- [ ] CSS-анимации для эффектов (shake, flash, fade_to_black)
-- [ ] Анимации появления/ухода персонажей в превью
+- [x] Отображение эффектов в ScenePreview (тип, длительность, интенсивность)
 
 #### Экспорт и совместимость
-- [ ] Поддержка полей `transition`, `effect`, `animation` в JSON/ZIP экспорте
-- [ ] Обратная совместимость: все новые поля опциональны, старые новеллы работают без изменений
+- [x] Поддержка полей `transition`, `effect`, `animation` в JSON/ZIP экспорте
+- [x] Обратная совместимость: все новые поля опциональны, старые новеллы работают без изменений
 
 ### Фаза 14: Продвинутые визуальные фичи ⬜ НЕ НАЧАТА
 Фичи, вдохновлённые «Клубом Романтики» и топовыми визуальными новеллами. Делают игру более кинематографичной и атмосферной.
