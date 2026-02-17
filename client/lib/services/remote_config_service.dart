@@ -164,19 +164,19 @@ class VipConfig {
   final bool exclusiveFrame;
 
   const VipConfig({
-    this.dailyDiamonds = 5,
-    this.unlimitedTickets = true,
-    this.earlyAccess = true,
-    this.noAds = true,
-    this.exclusiveFrame = true,
+    this.dailyDiamonds = 0,
+    this.unlimitedTickets = false,
+    this.earlyAccess = false,
+    this.noAds = false,
+    this.exclusiveFrame = false,
   });
 
   factory VipConfig.fromJson(Map<String, dynamic> json) => VipConfig(
-        dailyDiamonds: json['dailyDiamonds'] as int? ?? 5,
-        unlimitedTickets: json['unlimitedTickets'] as bool? ?? true,
-        earlyAccess: json['earlyAccess'] as bool? ?? true,
-        noAds: json['noAds'] as bool? ?? true,
-        exclusiveFrame: json['exclusiveFrame'] as bool? ?? true,
+        dailyDiamonds: json['dailyDiamonds'] as int? ?? 0,
+        unlimitedTickets: json['unlimitedTickets'] as bool? ?? false,
+        earlyAccess: json['earlyAccess'] as bool? ?? false,
+        noAds: json['noAds'] as bool? ?? false,
+        exclusiveFrame: json['exclusiveFrame'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
