@@ -17,6 +17,7 @@ import '../widgets/scene_transitions.dart';
 import '../widgets/relationship_bar.dart';
 import '../widgets/chapter_progress.dart';
 import '../widgets/achievement_popup.dart';
+import 'wardrobe_screen.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String novelId;
@@ -257,8 +258,18 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     totalScenes: engine.totalScenes,
                     chapterTitle: engine.currentChapter?.title,
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.save_outlined, color: Colors.white70),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.checkroom, color: Colors.white70),
+                        tooltip: 'Гардероб',
+                        onPressed: () {
+                          _showWardrobePicker(context, engine);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.save_outlined, color: Colors.white70),
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
                       await _autoSave();
@@ -271,7 +282,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
                           ),
                         );
                       }
-                    },
+                      },
+                    ),
+                    ],
                   ),
                 ],
               ),
@@ -693,6 +706,62 @@ class _GameScreenState extends ConsumerState<GameScreen>
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showWardrobePicker(BuildContext context, SceneEngine engine) {
+    final characters = engine.characters;
+    if (characters.isEmpty) return;
+
+    // Если один персонаж — сразу открыть гардероб
+    if (characters.length == 1) {
+      final c = characters.first;
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => WardrobeScreen(
+          characterId: c.id,
+          characterName: c.name,
+          allOutfits: [],
+        ),
+      ));
+      return;
+    }
+
+    // Показать выбор персонажа
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF16213E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Выбери персонажа', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+            ...characters.map((c) => ListTile(
+              leading: CircleAvatar(
+                backgroundColor: c.color != null ? _parseColor(c.color!) : const Color(0xFFE91E63),
+                child: Text(c.name[0], style: const TextStyle(color: Colors.white)),
+              ),
+              title: Text(c.name, style: const TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => WardrobeScreen(
+                    characterId: c.id,
+                    characterName: c.name,
+                    allOutfits: [],
+                  ),
+                ));
+              },
+            )),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );
