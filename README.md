@@ -25,7 +25,7 @@ navell/
 │   │   ├── models/           # Модели: Novel, Scene, Character, GameState
 │   │   ├── screens/          # Экраны: библиотека, игра, профиль, настройки, авторизация
 │   │   ├── services/         # Сервисы: сохранения, валюта, профиль, API, авторизация
-│   │   └── widgets/          # Виджеты: DialogueBox, ChoiceButtons, NovelCard
+│   │   └── widgets/          # Виджеты: DialogueBox, ChoiceButtons, NovelCard, SceneEffectOverlay, CgOverlay, EmotionBubble, ParallaxBackground
 │   ├── assets/               # Ассеты мобильного приложения
 │   │   ├── novels/           # Встроенные новеллы (JSON + manifest)
 │   │   ├── backgrounds/      # Фоны сцен
@@ -289,10 +289,43 @@ my_novel/
 |-----|----------|------|
 | `dialogue` | Реплика персонажа | `speaker`, `text` |
 | `narration` | Описание / мысли | `text` |
-| `choice` | Выбор игрока | `choices[]` (text, effects, nextSceneId, condition, premium, cost) |
+| `choice` | Выбор игрока | `choices[]` (text, effects, nextSceneId, condition, premium, cost), `timeLimit?`, `defaultChoiceIndex?` |
 | `changeBackground` | Смена фона | `background` |
 | `playSound` | Звуковой эффект | `sound` |
-| `changeSprite` | Смена спрайта персонажа | `characterId`, `spriteId` |
+| `changeSprite` | Смена спрайта персонажа | `characterId`, `spriteId`, `spriteDuration?` (cross-fade мс) |
+| `effect` | Визуальный эффект | `effectType` (shake/flash/fadeToBlack/rain/snow/particles), `effectDuration`, `effectIntensity` |
+| `showCg` | CG-арт (полноэкранная иллюстрация) | `cgImage`, `cgTransition` (fade/zoomIn), `cgDuration` |
+| `cameraMove` | Движение камеры | `zoom` (0.5–2.0), `panX`, `panY`, `cameraDuration` |
+| `showEmotion` | Эмоция-иконка над персонажем | `characterId`, `emotionType` (heart/sweatDrop/question/exclamation/anger/sparkle/musicNote/zzz) |
+
+#### Анимации и эффекты
+
+Каждая сцена поддерживает:
+
+- **Переходы между сценами** — `transition` в объекте Scene: fade, slideLeft, slideRight, slideUp, slideDown (+ настраиваемая длительность)
+- **Визуальные эффекты** — тряска экрана, вспышка, затемнение, дождь, снег, частицы
+- **Анимации персонажей** — fade_in, fade_out, slide_in_left, slide_in_right, bounce, shake
+- **CG-арт** — полноэкранные иллюстрации с переходами fade/zoomIn, разблокируются в галерее
+- **Камера** — zoom и pan по фону с плавной анимацией
+- **Эмоции** — 8 типов emoji-иконок, всплывающих над головой персонажа
+- **Cross-fade спрайтов** — плавная смена выражений с настраиваемой длительностью
+- **Таймер на выбор** — обратный отсчёт с круговым прогресс-баром и авто-выбором
+- **Параллакс фонов** — многослойные фоны с разной глубиной для эффекта объёма
+
+#### Многослойные фоны (backgroundLayers)
+
+```json
+{
+  "backgroundLayers": [
+    { "image": "bg_sky.png", "depth": 0.0 },
+    { "image": "bg_mountains.png", "depth": 0.3 },
+    { "image": "bg_trees.png", "depth": 0.7 },
+    { "image": "bg_ground.png", "depth": 1.0 }
+  ]
+}
+```
+
+Слой с `depth: 0.0` — самый дальний (неподвижный), `depth: 1.0` — ближний (двигается быстрее всего).
 
 ### Условия (conditions)
 

@@ -336,39 +336,35 @@ navell/
 Фичи, вдохновлённые «Клубом Романтики» и топовыми визуальными новеллами. Делают игру более кинематографичной и атмосферной.
 
 #### CG-арт вставки (полноэкранные иллюстрации)
-- [ ] Новый тип события `show_cg` в SceneEvent (Dart + TypeScript): поля `cgImage`, `cgTransition` (fade/zoom_in), `cgDuration`
-- [ ] Клиент: полноэкранный оверлей CG-арта поверх сцены с fade/zoom анимацией + tap для закрытия
-- [ ] Автоматическая разблокировка в галерее CG при показе
-- [ ] Редактор: тип события `show_cg` в EventEditor, загрузка CG-изображения, превью
+- [x] Новый тип события `showCg` в SceneEvent (Dart + TypeScript): поля `cgImage`, `cgTransition` (fade/zoomIn), `cgDuration`
+- [x] Клиент: `CgOverlay` — полноэкранный оверлей с fade/zoom анимацией + tap для закрытия
+- [x] Автоматическая разблокировка в галерее CG (поле `unlockedCg` в GameState)
+- [x] Редактор: форма `showCg` в EventEditor — загрузка CG, выбор перехода, слайдер длительности
 
 #### Zoom и Pan камеры (движение по фону)
-- [ ] Добавить поле `camera` в `Scene` и/или новый тип события `camera_move`: `zoom` (0.5–2.0), `panX`/`panY` (смещение), `duration`
-- [ ] Клиент: `AnimatedContainer` / `Transform.scale` + `Transform.translate` для плавного zoom/pan фона
-- [ ] Примеры использования: медленное приближение к лицу персонажа, панорама по городу, zoom-out для показа масштаба
-- [ ] Редактор: визуальный блок камеры (слайдеры zoom, panX, panY, длительность)
+- [x] Новый тип события `cameraMove`: `zoom` (0.5–2.0), `panX`/`panY`, `cameraDuration`
+- [x] Клиент: `CameraTransformWidget` — Matrix4 transform с плавной анимацией (AnimatedContainer)
+- [x] Редактор: слайдеры zoom, panX, panY, длительность в EventEditor
 
 #### Эмоции-иконки над персонажами
-- [ ] Добавить новый тип события `show_emotion` в SceneEvent: `characterId`, `emotionType` (heart, sweat_drop, question, exclamation, anger, sparkle, music_note, zzz)
-- [ ] Клиент: анимированная иконка над спрайтом персонажа (popup + fade, 1–2 сек)
-- [ ] Встроенный набор SVG/PNG иконок эмоций (не требует загрузки от автора)
-- [ ] Редактор: тип события `show_emotion`, выбор персонажа + выбор эмоции из набора иконок
+- [x] Новый тип события `showEmotion`: `characterId`, `emotionType` (heart/sweatDrop/question/exclamation/anger/sparkle/musicNote/zzz)
+- [x] Клиент: `EmotionBubble` — анимированный popup emoji над спрайтом (scale + fade, 2 сек)
+- [x] Редактор: выбор персонажа + выбор эмоции из 8 типов
 
 #### Cross-fade смена спрайтов
-- [ ] Клиент: при событии `changeSprite` — плавный cross-fade между старым и новым спрайтом (300–500 мс) вместо мгновенной замены
-- [ ] Опциональное поле `spriteDuration` в SceneEvent для настройки длительности
-- [ ] Редактор: слайдер длительности в форме события `changeSprite`
+- [x] Клиент: `AnimatedCrossFade` между старым и новым спрайтом при `changeSprite`
+- [x] Поле `spriteDuration` (мс) для настройки длительности
+- [x] Редактор: слайдер длительности cross-fade в форме `changeSprite`
 
 #### Таймер на выбор
-- [ ] Добавить поле `timeLimit` (секунды) в SceneEvent для событий типа `choice`
-- [ ] Добавить поле `defaultChoiceIndex` — какой вариант выбирается при истечении времени
-- [ ] Клиент: обратный отсчёт (круговой прогресс-бар), auto-select при timeout
-- [ ] Редактор: чекбокс «Ограничить время» + поле ввода секунд + выбор варианта по умолчанию
+- [x] Поля `timeLimit` (секунды) и `defaultChoiceIndex` в SceneEvent для `choice`
+- [x] Клиент: `ChoiceButtons` — AnimationController с круговым прогресс-баром, авто-выбор при timeout
+- [x] Редактор: чекбокс «Таймер» + поле секунд + выбор варианта по умолчанию
 
 #### Параллакс фонов (многослойные фоны)
-- [ ] Расширить `background` в Scene: массив слоёв `backgroundLayers` (image, depth, offsetX, offsetY) вместо одной строки
-- [ ] Клиент: Stack из слоёв с лёгким смещением при переходах/движении камеры (эффект глубины)
-- [ ] Обратная совместимость: если `background` — строка, работает как раньше (один слой)
-- [ ] Редактор: управление слоями фона (добавить/удалить слой, загрузить изображение, настроить глубину)
+- [x] Поле `backgroundLayers` (BackgroundLayer[]) в Scene: image, depth, offsetX, offsetY
+- [x] Клиент: `ParallaxBackground` — Stack из слоёв со смещением по глубине
+- [x] Обратная совместимость: `background` (строка) работает как раньше
 
 ### Фаза 15: Мини-игры ⬜ ОТЛОЖЕНА
 - [ ] QTE (Quick Time Events) — нажми в нужный момент
