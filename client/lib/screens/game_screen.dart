@@ -545,7 +545,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
           });
           return const SizedBox.shrink();
         }
-        engine.nextEvent();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) engine.nextEvent();
+        });
         return const SizedBox.shrink();
     }
   }
