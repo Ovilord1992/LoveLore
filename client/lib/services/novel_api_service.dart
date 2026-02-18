@@ -64,12 +64,22 @@ class NovelApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final list = data['novels'] as List;
-        return list
-            .map((j) => NovelMeta.fromJson(j as Map<String, dynamic>))
+        final novels = list
+            .map((j) {
+              final map = Map<String, dynamic>.from(j as Map<String, dynamic>);
+              if (map.containsKey('chaptersCount') && !map.containsKey('totalChapters')) {
+                map['totalChapters'] = map['chaptersCount'];
+              }
+              return NovelMeta.fromJson(map);
+            })
             .toList();
+        print('[NovelAPI] Catalog loaded: ${novels.length} novels');
+        return novels;
       }
+      print('[NovelAPI] Catalog fetch failed: status ${response.statusCode}');
       return [];
-    } catch (_) {
+    } catch (e) {
+      print('[NovelAPI] Catalog fetch error: $e');
       return [];
     }
   }

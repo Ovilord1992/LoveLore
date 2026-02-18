@@ -57,9 +57,13 @@ class NovelLoader {
       for (final id in novelIds) {
         try {
           novels.add(await loadNovelMeta(id));
-        } catch (_) {}
+        } catch (e) {
+          print('[NovelLoader] Failed to load built-in novel "$id": $e');
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      print('[NovelLoader] Failed to load manifest: $e');
+    }
 
     // 2. Скачанные новеллы из файловой системы
     try {
@@ -78,10 +82,14 @@ class NovelLoader {
                 novels.add(meta);
               }
             }
-          } catch (_) {}
+          } catch (e) {
+            print('[NovelLoader] Failed to load downloaded novel from ${dir.path}: $e');
+          }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      print('[NovelLoader] Failed to scan downloaded novels: $e');
+    }
 
     // 3. Каталог с сервера (новеллы, которых нет локально)
     try {
@@ -104,8 +112,11 @@ class NovelLoader {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      print('[NovelLoader] Failed to fetch server catalog: $e');
+    }
 
+    print('[NovelLoader] Total novels loaded: ${novels.length} (${novels.map((n) => n.id).join(", ")})');
     return novels;
   }
 
