@@ -81,7 +81,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          novel.title[0],
+                          novel.displayTitle[0],
                           style: const TextStyle(
                             fontSize: 80,
                             fontWeight: FontWeight.w200,
@@ -116,7 +116,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                 children: [
                   // Название
                   Text(
-                    novel.title,
+                    novel.displayTitle,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -167,7 +167,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
 
                   // Описание
                   Text(
-                    novel.description,
+                    novel.displayDescription,
                     style: const TextStyle(
                       fontSize: 16,
                       color: Colors.white70,

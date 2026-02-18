@@ -50,6 +50,14 @@ class NovelMeta extends Equatable {
   final int totalChapters;
   final int releasedChapters;
 
+  /// Локализованное название (заполняется из перевода если доступен)
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final String? localizedTitle;
+
+  /// Локализованное описание (заполняется из перевода если доступен)
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final String? localizedDescription;
+
   const NovelMeta({
     required this.id,
     required this.title,
@@ -60,14 +68,39 @@ class NovelMeta extends Equatable {
     this.tags = const [],
     this.totalChapters = 0,
     this.releasedChapters = 0,
+    this.localizedTitle,
+    this.localizedDescription,
   });
 
   factory NovelMeta.fromJson(Map<String, dynamic> json) =>
       _$NovelMetaFromJson(json);
   Map<String, dynamic> toJson() => _$NovelMetaToJson(this);
 
+  /// Возвращает отображаемое название (локализованное если есть, иначе оригинал)
+  String get displayTitle => localizedTitle ?? title;
+
+  /// Возвращает отображаемое описание (локализованное если есть, иначе оригинал)
+  String get displayDescription => localizedDescription ?? description;
+
+  /// Создать копию с переводом
+  NovelMeta copyWithTranslation(String? translatedTitle, String? translatedDescription) {
+    return NovelMeta(
+      id: id,
+      title: title,
+      description: description,
+      author: author,
+      coverImage: coverImage,
+      coverUrl: coverUrl,
+      tags: tags,
+      totalChapters: totalChapters,
+      releasedChapters: releasedChapters,
+      localizedTitle: translatedTitle,
+      localizedDescription: translatedDescription,
+    );
+  }
+
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters, localizedTitle, localizedDescription];
 }
 
 /// Информация о главе с сервера

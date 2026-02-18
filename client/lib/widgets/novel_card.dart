@@ -79,7 +79,7 @@ class NovelCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    novel.description,
+                    novel.displayDescription,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

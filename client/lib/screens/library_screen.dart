@@ -604,7 +604,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              novel.title,
+                              novel.displayTitle,
                               style: const TextStyle(
                                 fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white,
                                 height: 1.2,
@@ -612,7 +612,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              novel.description,
+                              novel.displayDescription,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
@@ -701,7 +701,7 @@ class _ContinueCard extends ConsumerWidget {
                     fit: BoxFit.cover,
                     placeholder: Center(
                         child: Text(
-                          novel.title[0],
+                          novel.displayTitle[0],
                           style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w200, color: Colors.white24),
                         ),
                       ),
@@ -714,7 +714,7 @@ class _ContinueCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    novel.title,
+                    novel.displayTitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
@@ -797,7 +797,7 @@ class _LargeNovelCard extends ConsumerWidget {
                         fit: BoxFit.cover,
                         placeholder: Center(
                             child: Text(
-                              novel.title[0],
+                              novel.displayTitle[0],
                               style: const TextStyle(fontSize: 60, fontWeight: FontWeight.w200, color: Colors.white24),
                             ),
                           ),
@@ -850,7 +850,7 @@ class _LargeNovelCard extends ConsumerWidget {
             const SizedBox(height: 10),
             // Название
             Text(
-              novel.title,
+              novel.displayTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),

@@ -6,11 +6,17 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../models/models.dart';
 import 'api_config.dart';
+import 'locale_service.dart';
 
-final novelLoaderProvider = Provider<NovelLoader>((ref) => NovelLoader());
+final novelLoaderProvider = Provider<NovelLoader>((ref) {
+  return NovelLoader(ref);
+});
 
 /// Загрузчик новелл — из assets (встроенные) и из файловой системы (скачанные)
 class NovelLoader {
+  final Ref _ref;
+
+  NovelLoader(this._ref);
   /// Загрузить метаданные новеллы
   Future<NovelMeta> loadNovelMeta(String novelId) async {
     final json = await _loadJson(novelId, 'meta.json');
@@ -117,7 +123,36 @@ class NovelLoader {
     }
 
     print('[NovelLoader] Total novels loaded: ${novels.length} (${novels.map((n) => n.id).join(", ")})');
-    return novels;
+
+    // 4. Применить переводы мета-данных для текущего языка
+    final localized = await _localizeNovelMetas(novels);
+    return localized;
+  }
+
+  /// Применить переводы к мета-данным новелл
+  Future<List<NovelMeta>> _localizeNovelMetas(List<NovelMeta> novels) async {
+    final currentLang = _ref.read(localeProvider).name;
+    final result = <NovelMeta>[];
+
+    for (final novel in novels) {
+      try {
+        final translation = await loadTranslation(novel.id, currentLang);
+        if (translation != null) {
+          final translatedTitle = translation.novelTitle;
+          final translatedDesc = translation.novelDescription;
+          if ((translatedTitle != null && translatedTitle.isNotEmpty) ||
+              (translatedDesc != null && translatedDesc.isNotEmpty)) {
+            result.add(novel.copyWithTranslation(translatedTitle, translatedDesc));
+            continue;
+          }
+        }
+      } catch (_) {
+        // Нет перевода — не страшно
+      }
+      result.add(novel);
+    }
+
+    return result;
   }
 
   /// Путь к ассету новеллы (assets или скачанный файл)
