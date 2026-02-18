@@ -408,6 +408,7 @@ const AVAILABLE_LANGUAGES = [
 function TranslationsTab() {
   const {
     project,
+    selectedTranslationLang,
     setTranslation,
     removeTranslation,
     updateTranslationText,
@@ -415,11 +416,12 @@ function TranslationsTab() {
     updateTranslationCharacter,
     updateTranslationChapter,
     updateMeta,
+    selectTranslationLang,
   } = useEditorStore();
-  const [selectedLang, setSelectedLang] = useState<string | null>(null);
 
   const translations = project.translations || {};
   const sourceLang = project.meta.sourceLanguage || 'ru';
+  const selectedLang = selectedTranslationLang;
 
   // Собрать все уникальные тексты из всех глав
   const allTexts: string[] = [];
@@ -449,7 +451,7 @@ function TranslationsTab() {
       texts: {},
     };
     setTranslation(langCode, newTranslation);
-    setSelectedLang(langCode);
+    selectTranslationLang(langCode);
   };
 
   const currentTranslation = selectedLang ? translations[selectedLang] : null;
@@ -476,10 +478,10 @@ function TranslationsTab() {
           const lang = AVAILABLE_LANGUAGES.find((l) => l.code === code);
           return (
             <div key={code} className={`translation-lang-item ${selectedLang === code ? 'active' : ''}`}>
-              <button className="lang-select-btn" onClick={() => setSelectedLang(code)}>
+              <button className="lang-select-btn" onClick={() => selectTranslationLang(code)}>
                 {lang?.flag} {lang?.name || code}
               </button>
-              <button className="lang-remove-btn" onClick={() => { removeTranslation(code); if (selectedLang === code) setSelectedLang(null); }}>
+              <button className="lang-remove-btn" onClick={() => { removeTranslation(code); if (selectedLang === code) selectTranslationLang(null); }}>
                 <Trash2 size={12} />
               </button>
             </div>

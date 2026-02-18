@@ -34,6 +34,7 @@ interface EditorState {
   selectedChapterIndex: number;
   selectedSceneId: string | null;
   selectedEventIndex: number | null;
+  selectedTranslationLang: string | null;
   isDirty: boolean;
 
   // Проект
@@ -86,6 +87,7 @@ interface EditorState {
   updateTranslationMeta: (lang: string, field: 'novelTitle' | 'novelDescription', value: string) => void;
   updateTranslationCharacter: (lang: string, characterId: string, name: string) => void;
   updateTranslationChapter: (lang: string, chapterId: string, title: string) => void;
+  selectTranslationLang: (lang: string | null) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -100,6 +102,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedChapterIndex: 0,
   selectedSceneId: 'scene_1',
   selectedEventIndex: null,
+  selectedTranslationLang: null,
   isDirty: false,
 
   setProject: (project) => set({ project, isDirty: false, selectedChapterIndex: 0, selectedSceneId: null, selectedEventIndex: null }),
@@ -391,4 +394,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     translations[lang] = { ...existing, chapters };
     return { project: { ...state.project, translations }, isDirty: true };
   }),
+
+  selectTranslationLang: (lang) => set({ selectedTranslationLang: lang }),
 }));
