@@ -285,6 +285,35 @@
   background: linear-gradient(135deg, rgba(156,39,176,0.35), rgba(233,30,99,0.35));
   border-color: #E91E63;
 }
+
+/* ── Themed Choices ── */
+/* Ornate */
+.gp-choice-ornate { background: var(--frame-bg, rgba(26,20,16,0.85)); border-color: var(--frame-color, rgba(184,134,11,0.5)); border-radius: 12px; }
+.gp-choice-ornate:hover { background: rgba(184,134,11,0.2); border-color: var(--frame-color, #DAA520); }
+.gp-choice-ornate.premium { background: linear-gradient(135deg, rgba(184,134,11,0.4), rgba(218,165,32,0.2)); border-color: var(--frame-color, #DAA520); }
+/* Art Deco */
+.gp-choice-artDeco { background: var(--frame-bg, rgba(15,27,45,0.85)); border-color: var(--frame-color, rgba(139,115,85,0.5)); border-radius: 2px; }
+.gp-choice-artDeco:hover { background: rgba(139,115,85,0.2); border-color: var(--frame-color, #C4A265); }
+.gp-choice-artDeco.premium { background: linear-gradient(135deg, rgba(139,115,85,0.4), rgba(196,162,101,0.2)); border-color: var(--frame-color, #C4A265); }
+/* Modern */
+.gp-choice-modern { background: var(--frame-bg, rgba(26,26,46,0.85)); border-color: var(--frame-color, rgba(108,99,255,0.5)); border-radius: 8px; }
+.gp-choice-modern:hover { background: rgba(108,99,255,0.2); border-color: var(--frame-color, #8B83FF); }
+.gp-choice-modern.premium { background: linear-gradient(135deg, rgba(108,99,255,0.4), rgba(139,131,255,0.2)); border-color: var(--frame-color, #8B83FF); }
+/* Glassmorphism */
+.gp-choice-glassmorphism { background: var(--frame-bg, rgba(255,255,255,0.1)); border-color: var(--frame-color, rgba(255,255,255,0.2)); border-radius: 16px; backdrop-filter: blur(8px); }
+.gp-choice-glassmorphism:hover { background: rgba(255,255,255,0.18); border-color: var(--frame-color, rgba(255,255,255,0.4)); }
+.gp-choice-glassmorphism.premium { background: rgba(255,255,255,0.15); border-color: var(--frame-color, rgba(255,255,255,0.4)); }
+/* Fantasy */
+.gp-choice-fantasy { background: var(--frame-bg, rgba(20,10,31,0.85)); border-color: var(--frame-color, rgba(123,45,142,0.5)); border-radius: 12px; }
+.gp-choice-fantasy:hover { background: rgba(123,45,142,0.2); border-color: var(--frame-color, #A855F7); }
+.gp-choice-fantasy.premium { background: linear-gradient(135deg, rgba(123,45,142,0.4), rgba(168,85,247,0.2)); border-color: var(--frame-color, #A855F7); }
+
+/* Custom color overrides via CSS vars */
+.gp-body-ornate { background: var(--frame-bg, rgba(26,20,16,0.88)); border-color: var(--frame-color, #E8C872); }
+.gp-body-artDeco { background: var(--frame-bg, rgba(15,27,45,0.92)); border-color: var(--frame-color, #8B7355); }
+.gp-body-modern { background: var(--frame-bg, rgba(26,26,46,0.9)); }
+.gp-body-glassmorphism { background: var(--frame-bg, rgba(255,255,255,0.1)); }
+.gp-body-fantasy { background: var(--frame-bg, rgba(20,10,31,0.88)); border-color: var(--frame-color, #D8B4FE); }
 .gp-diamond { margin-right: 6px; font-size: 11px; }
 
 /* Effects */

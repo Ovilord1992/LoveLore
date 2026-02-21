@@ -198,10 +198,19 @@ export function GamePreview() {
 
   const dialogueTheme = project.meta.dialogueTheme || 'ornate';
 
+  // Custom color CSS vars
+  const customStyle: React.CSSProperties = {};
+  if (project.meta.dialogueFrameColor) {
+    customStyle['--frame-color' as string] = project.meta.dialogueFrameColor;
+  }
+  if (project.meta.dialogueBgColor) {
+    customStyle['--frame-bg' as string] = project.meta.dialogueBgColor;
+  }
+
   return (
     <div className="game-preview">
       <div className="phone-frame">
-        <div className="phone-screen" style={bgStyle} onClick={handleClick}>
+        <div className="phone-screen" style={{ ...bgStyle, ...customStyle }} onClick={handleClick}>
           {/* Top HUD */}
           <div className="gp-hud">
             <span className="gp-scene-label">
@@ -263,9 +272,9 @@ export function GamePreview() {
             </div>
           )}
 
-          {/* Choices */}
+          {/* Choices — themed */}
           {showChoices && currentEvent?.choices && (
-            <div className="gp-choices">
+            <div className={`gp-choices gp-choices-${dialogueTheme}`}>
               {currentEvent.choices.map((choice, i) => {
                 if (choice.condition) {
                   const varVal = gameState.variables[choice.condition.variable] as number ?? 0;
@@ -275,7 +284,7 @@ export function GamePreview() {
                 return (
                   <button
                     key={i}
-                    className={`gp-choice ${choice.premium ? 'premium' : ''}`}
+                    className={`gp-choice gp-choice-${dialogueTheme} ${choice.premium ? 'premium' : ''}`}
                     onClick={(e) => { e.stopPropagation(); handleChoice(choice); }}
                   >
                     {choice.premium && <span className="gp-diamond">💎 {choice.cost}</span>}

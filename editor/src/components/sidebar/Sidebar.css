@@ -96,3 +96,12 @@
 .translation-text-item { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: #1a1a2e; border-radius: 6px; }
 .translation-text-item .translation-original { white-space: normal; margin-bottom: 4px; }
 .translation-text-item textarea { background: #12121f; border: 1px solid #2a2a3e; color: #ccc; padding: 6px 8px; border-radius: 4px; font-size: 12px; resize: vertical; font-family: inherit; }
+
+/* Select / Color pickers */
+.tab-content select { width: 100%; padding: 8px 10px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 6px; color: #fff; font-size: 13px; cursor: pointer; }
+.tab-content select:focus { border-color: #e91e63; outline: none; }
+.color-row { display: flex; gap: 6px; align-items: center; }
+.color-row input[type="color"] { width: 32px; height: 32px; border: 1px solid #2a2a3e; border-radius: 6px; cursor: pointer; background: none; padding: 0; }
+.color-hex { flex: 1 !important; width: auto !important; }
+.color-clear { background: none; border: 1px solid #2a2a3e; color: #666; width: 28px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0; }
+.color-clear:hover { color: #e91e63; border-color: #e91e63; }

@@ -15,6 +15,8 @@ class DialogueOverlay extends ConsumerStatefulWidget {
   final VoidCallback onTap;
   final VoidCallback? onComplete;
   final DialogueFrameTheme frameTheme;
+  final Color? customFrameColor;
+  final Color? customBgColor;
 
   const DialogueOverlay({
     super.key,
@@ -24,6 +26,8 @@ class DialogueOverlay extends ConsumerStatefulWidget {
     required this.onTap,
     this.onComplete,
     this.frameTheme = DialogueFrameTheme.ornate,
+    this.customFrameColor,
+    this.customBgColor,
   });
 
   @override
@@ -156,6 +160,8 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
                   displayedText: _displayedText,
                   isComplete: _isComplete,
                   frameTheme: widget.frameTheme,
+                  customFrameColor: widget.customFrameColor,
+                  customBgColor: widget.customBgColor,
                 ),
               ),
             ),
@@ -185,7 +191,20 @@ class _FrameColors {
     required this.nameGradient2,
   });
 
-  static _FrameColors forTheme(DialogueFrameTheme theme) {
+  static _FrameColors forTheme(DialogueFrameTheme theme, {Color? customFrame, Color? customBg}) {
+    final base = _baseForTheme(theme);
+    if (customFrame == null && customBg == null) return base;
+    return _FrameColors(
+      primary: customFrame ?? base.primary,
+      secondary: customFrame?.withValues(alpha: 0.8) ?? base.secondary,
+      light: customFrame?.withValues(alpha: 0.6) ?? base.light,
+      background: customBg ?? base.background,
+      nameGradient1: customFrame ?? base.nameGradient1,
+      nameGradient2: customFrame?.withValues(alpha: 0.7) ?? base.nameGradient2,
+    );
+  }
+
+  static _FrameColors _baseForTheme(DialogueFrameTheme theme) {
     switch (theme) {
       case DialogueFrameTheme.ornate:
         return const _FrameColors(
@@ -244,6 +263,8 @@ class _ThemedDialogueFrame extends StatelessWidget {
   final String displayedText;
   final bool isComplete;
   final DialogueFrameTheme frameTheme;
+  final Color? customFrameColor;
+  final Color? customBgColor;
 
   const _ThemedDialogueFrame({
     this.speakerName,
@@ -252,11 +273,14 @@ class _ThemedDialogueFrame extends StatelessWidget {
     required this.displayedText,
     required this.isComplete,
     required this.frameTheme,
+    this.customFrameColor,
+    this.customBgColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colors = _FrameColors.forTheme(frameTheme);
+    final colors = _FrameColors.forTheme(frameTheme,
+        customFrame: customFrameColor, customBg: customBgColor);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -391,7 +415,7 @@ class _ThemedDialogueFrame extends StatelessWidget {
   }
 }
 
-/// CustomPainter для декоративной рамки с орнаментальными углами
+/// CustomPainter для декоративной рамки с орнаментальными углами и филигранью
 class _OrnateFramePainter extends CustomPainter {
   final Color frameColor;
   final Color frameColorLight;
@@ -406,28 +430,27 @@ class _OrnateFramePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final r = 4.0; // corner radius
+    final r = 4.0;
 
     // Фон
-    final bgPaint = Paint()..color = backgroundColor;
     canvas.drawRRect(
       RRect.fromRectAndCorners(rect,
         bottomLeft: Radius.circular(r),
         bottomRight: Radius.circular(r),
       ),
-      bgPaint,
+      Paint()..color = backgroundColor,
     );
 
-    // Внешняя рамка
+    // Внешняя рамка — градиент
     final outerPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [frameColorLight, frameColor, frameColorLight],
+        colors: [frameColorLight, frameColor, frameColorLight, frameColor, frameColorLight],
+        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
-
     canvas.drawRRect(
       RRect.fromRectAndCorners(rect,
         bottomLeft: Radius.circular(r),
@@ -436,27 +459,29 @@ class _OrnateFramePainter extends CustomPainter {
       outerPaint,
     );
 
-    // Внутренняя тонкая рамка (inset)
+    // Внутренняя рамка (inset)
     final innerRect = rect.deflate(6);
-    final innerPaint = Paint()
-      ..color = frameColor.withValues(alpha: 0.4)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
     canvas.drawRRect(
       RRect.fromRectAndRadius(innerRect, Radius.circular(r)),
-      innerPaint,
+      Paint()
+        ..color = frameColor.withValues(alpha: 0.4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
     );
 
-    // Декоративные углы
-    _drawCornerOrnament(canvas, size, 0, 0, 1, 1); // top-left
-    _drawCornerOrnament(canvas, size, size.width, 0, -1, 1); // top-right
-    _drawCornerOrnament(canvas, size, 0, size.height, 1, -1); // bottom-left
-    _drawCornerOrnament(canvas, size, size.width, size.height, -1, -1); // bottom-right
+    // Декоративные углы с завитками
+    _drawCornerOrnament(canvas, size, 0, 0, 1, 1);
+    _drawCornerOrnament(canvas, size, size.width, 0, -1, 1);
+    _drawCornerOrnament(canvas, size, 0, size.height, 1, -1);
+    _drawCornerOrnament(canvas, size, size.width, size.height, -1, -1);
 
-    // Горизонтальные декоративные линии (верх и низ)
+    // Горизонтальный орнамент (верх и низ)
     _drawHorizontalOrnament(canvas, size, isTop: true);
     _drawHorizontalOrnament(canvas, size, isTop: false);
+
+    // Вертикальные филиграни по бокам
+    _drawVerticalFiligree(canvas, size, isLeft: true);
+    _drawVerticalFiligree(canvas, size, isLeft: false);
   }
 
   void _drawCornerOrnament(Canvas canvas, Size size, double x, double y, double dx, double dy) {
@@ -466,60 +491,59 @@ class _OrnateFramePainter extends CustomPainter {
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
 
-    final cornerSize = 16.0;
-
     // L-образная фигура
     final path = Path();
-    path.moveTo(x + dx * 4, y + dy * cornerSize);
+    path.moveTo(x + dx * 4, y + dy * 18);
     path.lineTo(x + dx * 4, y + dy * 4);
-    path.lineTo(x + dx * cornerSize, y + dy * 4);
+    path.lineTo(x + dx * 18, y + dy * 4);
     canvas.drawPath(path, paint);
 
-    // Маленький ромбик
-    final diamondPaint = Paint()
-      ..color = frameColorLight
-      ..style = PaintingStyle.fill;
-
-    final cx = x + dx * 10;
-    final cy = y + dy * 10;
-    final ds = 3.0;
+    // Ромбик на пересечении
+    final cx = x + dx * 11;
+    final cy = y + dy * 11;
+    final ds = 3.5;
     final diamond = Path()
       ..moveTo(cx, cy - ds)
       ..lineTo(cx + ds, cy)
       ..lineTo(cx, cy + ds)
       ..lineTo(cx - ds, cy)
       ..close();
-    canvas.drawPath(diamond, diamondPaint);
+    canvas.drawPath(diamond, Paint()..color = frameColorLight..style = PaintingStyle.fill);
+
+    // Маленький завиток
+    final swirlPaint = Paint()
+      ..color = frameColorLight.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+    final swirl = Path();
+    swirl.moveTo(x + dx * 18, y + dy * 8);
+    swirl.quadraticBezierTo(x + dx * 22, y + dy * 8, x + dx * 22, y + dy * 12);
+    canvas.drawPath(swirl, swirlPaint);
   }
 
   void _drawHorizontalOrnament(Canvas canvas, Size size, {required bool isTop}) {
     final y = isTop ? 0.0 : size.height;
     final centerX = size.width / 2;
-    final ornamentWidth = 40.0;
 
     final paint = Paint()
       ..color = frameColorLight.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
 
-    // Маленькие декоративные штрихи по центру
     final dy = isTop ? 6.0 : -6.0;
-    canvas.drawLine(
-      Offset(centerX - ornamentWidth, y + dy),
-      Offset(centerX - 8, y + dy),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(centerX + 8, y + dy),
-      Offset(centerX + ornamentWidth, y + dy),
-      paint,
-    );
+    // Линии по сторонам от центра
+    canvas.drawLine(Offset(centerX - 40, y + dy), Offset(centerX - 8, y + dy), paint);
+    canvas.drawLine(Offset(centerX + 8, y + dy), Offset(centerX + 40, y + dy), paint);
+
+    // Маленькие точки-акценты
+    final dotPaint = Paint()..color = frameColorLight.withValues(alpha: 0.4)..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(centerX - 44, y + dy), 1.2, dotPaint);
+    canvas.drawCircle(Offset(centerX + 44, y + dy), 1.2, dotPaint);
 
     // Центральный ромбик
-    final dp = Paint()
-      ..color = frameColorLight.withValues(alpha: 0.6)
-      ..style = PaintingStyle.fill;
-    final d = 3.0;
+    final dp = Paint()..color = frameColorLight.withValues(alpha: 0.6)..style = PaintingStyle.fill;
+    final d = 3.5;
     final diamond = Path()
       ..moveTo(centerX, y + dy - d)
       ..lineTo(centerX + d, y + dy)
@@ -529,12 +553,29 @@ class _OrnateFramePainter extends CustomPainter {
     canvas.drawPath(diamond, dp);
   }
 
+  void _drawVerticalFiligree(Canvas canvas, Size size, {required bool isLeft}) {
+    final x = isLeft ? 9.0 : size.width - 9.0;
+    final centerY = size.height / 2;
+    final paint = Paint()
+      ..color = frameColorLight.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+
+    // Тонкая вертикальная линия
+    canvas.drawLine(Offset(x, centerY - 20), Offset(x, centerY + 20), paint);
+    // Маленькие точки на концах
+    final dotPaint = Paint()..color = frameColorLight.withValues(alpha: 0.3)..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(x, centerY - 22), 1.0, dotPaint);
+    canvas.drawCircle(Offset(x, centerY + 22), 1.0, dotPaint);
+  }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ─────────────────────────────────────────────────────
-// Art Deco — геометрические угольники, строгие линии
+// Art Deco — геометрические угольники, строгие линии,
+// ступенчатые бордюры, лучи, веера
 // ─────────────────────────────────────────────────────
 class _ArtDecoFramePainter extends CustomPainter {
   final Color frameColor;
@@ -559,7 +600,8 @@ class _ArtDecoFramePainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [frameColorLight, frameColor, frameColorLight],
+        colors: [frameColorLight, frameColor, frameColorLight, frameColor],
+        stops: const [0.0, 0.3, 0.7, 1.0],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
@@ -572,21 +614,26 @@ class _ArtDecoFramePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8);
 
-    // Геометрические угловые элементы — скошенные трапеции
-    final cornerSize = 20.0;
+    // Третья рамка — тончайшая
+    final innerRect2 = rect.deflate(8);
+    canvas.drawRect(innerRect2, Paint()
+      ..color = frameColor.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5);
+
     final linePaint = Paint()
       ..color = frameColorLight
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.square;
 
-    // Верхний левый — шестиугольный уголок
-    _drawDecoCorner(canvas, 0, 0, 1, 1, cornerSize, linePaint);
-    _drawDecoCorner(canvas, size.width, 0, -1, 1, cornerSize, linePaint);
-    _drawDecoCorner(canvas, 0, size.height, 1, -1, cornerSize, linePaint);
-    _drawDecoCorner(canvas, size.width, size.height, -1, -1, cornerSize, linePaint);
+    // Геометрические углы со ступеньками
+    _drawDecoCorner(canvas, 0, 0, 1, 1, 22.0, linePaint);
+    _drawDecoCorner(canvas, size.width, 0, -1, 1, 22.0, linePaint);
+    _drawDecoCorner(canvas, 0, size.height, 1, -1, 22.0, linePaint);
+    _drawDecoCorner(canvas, size.width, size.height, -1, -1, 22.0, linePaint);
 
-    // Горизонтальные декоративные элементы — «ступеньки»
+    // Горизонтальные элементы — «ступеньки» + лучи
     _drawDecoHLine(canvas, size, isTop: true);
     _drawDecoHLine(canvas, size, isTop: false);
   }
@@ -600,9 +647,20 @@ class _ArtDecoFramePainter extends CustomPainter {
       ..lineTo(x + dx * s, y + dy * 3);
     canvas.drawPath(path, paint);
 
+    // Ступенька — второй уровень
+    final step = Path()
+      ..moveTo(x + dx * 6, y + dy * (s - 4))
+      ..lineTo(x + dx * 6, y + dy * 11)
+      ..lineTo(x + dx * 11, y + dy * 6)
+      ..lineTo(x + dx * (s - 4), y + dy * 6);
+    canvas.drawPath(step, Paint()
+      ..color = frameColorLight.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8);
+
     // Ромб внутри угла
-    final cx = x + dx * 12;
-    final cy = y + dy * 12;
+    final cx = x + dx * 13;
+    final cy = y + dy * 13;
     final d = 2.5;
     final diamond = Path()
       ..moveTo(cx, cy - d)
@@ -624,8 +682,21 @@ class _ArtDecoFramePainter extends CustomPainter {
       ..strokeWidth = 1.0;
 
     // Три параллельные линии (ступеньки)
-    canvas.drawLine(Offset(centerX - 35, y), Offset(centerX - 5, y), paint);
-    canvas.drawLine(Offset(centerX + 5, y), Offset(centerX + 35, y), paint);
+    canvas.drawLine(Offset(centerX - 40, y), Offset(centerX - 5, y), paint);
+    canvas.drawLine(Offset(centerX + 5, y), Offset(centerX + 40, y), paint);
+
+    // Маленькие лучи от центра
+    final rayPaint = Paint()
+      ..color = frameColorLight.withValues(alpha: 0.25)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    for (int i = -2; i <= 2; i++) {
+      if (i == 0) continue;
+      final angle = i * 0.3;
+      final rx = centerX + 12 * math.sin(angle);
+      final ry = y + (isTop ? 1 : -1) * 12 * math.cos(angle).abs();
+      canvas.drawLine(Offset(centerX, y), Offset(rx, ry), rayPaint);
+    }
 
     // Центральный квадрат
     final sq = 3.0;
@@ -742,7 +813,7 @@ class _GlassmorphismFramePainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────
-// Fantasy — завитки, мистические элементы
+// Fantasy — завитки, звёзды, мистические рунные элементы
 // ─────────────────────────────────────────────
 class _FantasyFramePainter extends CustomPainter {
   final Color frameColor;
@@ -802,6 +873,13 @@ class _FantasyFramePainter extends CustomPainter {
     // Звёздочки-акценты
     _drawStar(canvas, size.width / 2, 6);
     _drawStar(canvas, size.width / 2, size.height - 6);
+
+    // Боковые мистические точки-спирали
+    _drawMysticDots(canvas, size, isLeft: true);
+    _drawMysticDots(canvas, size, isLeft: false);
+
+    // Центральный орнамент — арка
+    _drawCenterArc(canvas, size);
   }
 
   void _drawSwirlCorner(Canvas canvas, double x, double y, double dx, double dy) {
@@ -813,14 +891,24 @@ class _FantasyFramePainter extends CustomPainter {
 
     // Дуга-завиток
     final path = Path();
-    path.moveTo(x + dx * 4, y + dy * 18);
-    path.quadraticBezierTo(x + dx * 4, y + dy * 4, x + dx * 12, y + dy * 4);
-    path.quadraticBezierTo(x + dx * 8, y + dy * 8, x + dx * 6, y + dy * 12);
+    path.moveTo(x + dx * 4, y + dy * 20);
+    path.quadraticBezierTo(x + dx * 4, y + dy * 4, x + dx * 14, y + dy * 4);
+    path.quadraticBezierTo(x + dx * 10, y + dy * 8, x + dx * 7, y + dy * 14);
     canvas.drawPath(path, paint);
 
-    // Точка на конце завитка
+    // Второй завиток (внутренний)
+    final swirl2 = Path();
+    swirl2.moveTo(x + dx * 14, y + dy * 7);
+    swirl2.quadraticBezierTo(x + dx * 18, y + dy * 7, x + dx * 18, y + dy * 11);
+    canvas.drawPath(swirl2, Paint()
+      ..color = frameColorLight.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..strokeCap = StrokeCap.round);
+
+    // Точка на конце
     canvas.drawCircle(
-      Offset(x + dx * 6, y + dy * 12),
+      Offset(x + dx * 7, y + dy * 14),
       2.0,
       Paint()..color = frameColorLight..style = PaintingStyle.fill,
     );
@@ -833,7 +921,7 @@ class _FantasyFramePainter extends CustomPainter {
 
     final path = Path();
     const spikes = 4;
-    const outerR = 4.0;
+    const outerR = 4.5;
     const innerR = 1.5;
 
     for (int i = 0; i < spikes * 2; i++) {
@@ -849,6 +937,36 @@ class _FantasyFramePainter extends CustomPainter {
     }
     path.close();
     canvas.drawPath(path, paint);
+
+    // Glow circle behind star
+    canvas.drawCircle(Offset(cx, cy), 6.0, Paint()
+      ..color = frameColorLight.withValues(alpha: 0.1)
+      ..style = PaintingStyle.fill);
+  }
+
+  void _drawMysticDots(Canvas canvas, Size size, {required bool isLeft}) {
+    final x = isLeft ? 8.0 : size.width - 8.0;
+    final centerY = size.height / 2;
+    final dotPaint = Paint()..color = frameColorLight.withValues(alpha: 0.25)..style = PaintingStyle.fill;
+
+    for (int i = -2; i <= 2; i++) {
+      final r = i == 0 ? 1.8 : 1.0;
+      canvas.drawCircle(Offset(x, centerY + i * 6.0), r, dotPaint);
+    }
+  }
+
+  void _drawCenterArc(Canvas canvas, Size size) {
+    final centerX = size.width / 2;
+    final paint = Paint()
+      ..color = frameColorLight.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+
+    // Маленькая дуга сверху
+    final arc = Path();
+    arc.moveTo(centerX - 25, 10);
+    arc.quadraticBezierTo(centerX, 16, centerX + 25, 10);
+    canvas.drawPath(arc, paint);
   }
 
   @override

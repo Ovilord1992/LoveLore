@@ -473,6 +473,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
           text: engine.tr(event.text),
           onTap: () => engine.nextEvent(),
           frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
+          customFrameColor: _parseHexColor(engine.novelMeta?.dialogueFrameColor),
+          customBgColor: _parseHexColor(engine.novelMeta?.dialogueBgColor),
         ),
       );
     }
@@ -509,6 +511,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
           timeLimit: event.timeLimit,
           defaultChoiceIndex: event.defaultChoiceIndex,
           translateText: engine.tr,
+          frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
+          customFrameColor: _parseHexColor(engine.novelMeta?.dialogueFrameColor),
+          customBgColor: _parseHexColor(engine.novelMeta?.dialogueBgColor),
         );
 
       case EventType.dialogue:
@@ -638,6 +643,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
     hex = hex.replaceFirst('#', '');
     if (hex.length == 6) hex = 'FF$hex';
     return Color(int.parse(hex, radix: 16));
+  }
+
+  Color? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    return _parseColor(hex);
   }
 
   Widget _buildChapterTransitionScreen(

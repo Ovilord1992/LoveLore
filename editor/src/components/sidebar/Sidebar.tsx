@@ -122,6 +122,42 @@ function MetaTab() {
         <option value="fantasy">🔮 Фэнтези</option>
       </select>
 
+      <label>Цвет рамки диалога (опционально)</label>
+      <div className="color-row">
+        <input
+          type="color"
+          value={meta.dialogueFrameColor || '#B8860B'}
+          onChange={(e) => updateMeta({ dialogueFrameColor: e.target.value })}
+        />
+        <input
+          value={meta.dialogueFrameColor || ''}
+          onChange={(e) => updateMeta({ dialogueFrameColor: e.target.value || undefined })}
+          placeholder="Авто (по теме)"
+          className="color-hex"
+        />
+        {meta.dialogueFrameColor && (
+          <button className="color-clear" onClick={() => updateMeta({ dialogueFrameColor: undefined })}>✕</button>
+        )}
+      </div>
+
+      <label>Цвет фона диалога (опционально)</label>
+      <div className="color-row">
+        <input
+          type="color"
+          value={meta.dialogueBgColor || '#1A1410'}
+          onChange={(e) => updateMeta({ dialogueBgColor: e.target.value })}
+        />
+        <input
+          value={meta.dialogueBgColor || ''}
+          onChange={(e) => updateMeta({ dialogueBgColor: e.target.value || undefined })}
+          placeholder="Авто (по теме)"
+          className="color-hex"
+        />
+        {meta.dialogueBgColor && (
+          <button className="color-clear" onClick={() => updateMeta({ dialogueBgColor: undefined })}>✕</button>
+        )}
+      </div>
+
       <div className="actions-group">
         <button onClick={() => exportAsZip(project, images)} className="primary"><Download size={14} /> ZIP для Amoria</button>
         <button onClick={() => exportAsJson(project)}><Download size={14} /> JSON</button>

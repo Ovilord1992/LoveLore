@@ -51,6 +51,12 @@ class NovelMeta extends Equatable {
   final int releasedChapters;
   final String? dialogueTheme;
 
+  /// Цвет рамки диалога (hex, например "#B8860B"). Если задан — перекрывает тему.
+  final String? dialogueFrameColor;
+
+  /// Цвет фона диалога (hex, например "#1A1410"). Если задан — перекрывает тему.
+  final String? dialogueBgColor;
+
   /// Локализованное название (заполняется из перевода если доступен)
   @JsonKey(includeFromJson: false, includeToJson: false)
   final String? localizedTitle;
@@ -70,6 +76,8 @@ class NovelMeta extends Equatable {
     this.totalChapters = 0,
     this.releasedChapters = 0,
     this.dialogueTheme,
+    this.dialogueFrameColor,
+    this.dialogueBgColor,
     this.localizedTitle,
     this.localizedDescription,
   });
@@ -108,13 +116,15 @@ class NovelMeta extends Equatable {
       totalChapters: totalChapters,
       releasedChapters: releasedChapters,
       dialogueTheme: dialogueTheme,
+      dialogueFrameColor: dialogueFrameColor,
+      dialogueBgColor: dialogueBgColor,
       localizedTitle: translatedTitle,
       localizedDescription: translatedDescription,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters, dialogueTheme, localizedTitle, localizedDescription];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters, dialogueTheme, dialogueFrameColor, dialogueBgColor, localizedTitle, localizedDescription];
 }
 
 /// Информация о главе с сервера
