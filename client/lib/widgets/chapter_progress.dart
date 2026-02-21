@@ -29,20 +29,24 @@ class ChapterProgressIndicator extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (chapterTitle != null) ...[
-            Text(
-              chapterTitle!,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.white54,
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                chapterTitle!,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
           ],
 
           // Шкала прогресса
           SizedBox(
-            width: 60,
+            width: 40,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(3),
               child: TweenAnimationBuilder<double>(
