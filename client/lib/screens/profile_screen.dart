@@ -515,15 +515,15 @@ class _StatGrid extends StatelessWidget {
       childAspectRatio: 2.0,
       children: stats.map((s) {
         return Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFF16213E),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              Text(s.emoji, style: const TextStyle(fontSize: 24)),
-              const SizedBox(width: 10),
+              Text(s.emoji, style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,7 +533,7 @@ class _StatGrid extends StatelessWidget {
                     Text(s.value,
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold)),
                     Text(s.label,
                         style: const TextStyle(
