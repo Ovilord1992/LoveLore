@@ -27,4 +27,20 @@
 .editor-panel { height: 45%; overflow-y: auto; border-top: 1px solid #2a2a3e; background: #12121f; }
 
 /* Preview panel */
-.preview-panel { width: 320px; border-left: 1px solid #2a2a3e; background: #0f0f1a; flex-shrink: 0; }
+.preview-panel { width: 320px; border-left: 1px solid #2a2a3e; background: #0f0f1a; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Preview tabs */
+.preview-tabs { display: flex; border-bottom: 1px solid #333; flex-shrink: 0; }
+.preview-tab {
+  flex: 1;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.preview-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.preview-tab.active { color: #E91E63; border-bottom: 2px solid #E91E63; }

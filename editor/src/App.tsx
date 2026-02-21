@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { useEditorStore } from './store/editorStore';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { SceneGraph } from './components/editor/SceneGraph';
 import { EventEditor } from './components/editor/EventEditor';
 import { ScenePreview } from './components/preview/ScenePreview';
+import { GamePreview } from './components/preview/GamePreview';
 import './App.css';
 
 export default function App() {
+  const [previewMode, setPreviewMode] = useState<'static' | 'play'>('static');
   const { project, isDirty, selectedSceneId, selectedChapterIndex } = useEditorStore();
   const chapter = project.chapters[selectedChapterIndex];
   const scene = chapter?.scenes.find((s) => s.id === selectedSceneId);
@@ -43,7 +46,21 @@ export default function App() {
 
         {/* Правая панель — Превью */}
         <div className="preview-panel">
-          <ScenePreview />
+          <div className="preview-tabs">
+            <button
+              className={`preview-tab ${previewMode === 'static' ? 'active' : ''}`}
+              onClick={() => setPreviewMode('static')}
+            >
+              📋 Превью
+            </button>
+            <button
+              className={`preview-tab ${previewMode === 'play' ? 'active' : ''}`}
+              onClick={() => setPreviewMode('play')}
+            >
+              ▶ Играть
+            </button>
+          </div>
+          {previewMode === 'static' ? <ScenePreview /> : <GamePreview />}
         </div>
       </div>
     </div>
