@@ -233,8 +233,45 @@ syncRouter.put('/currency', async (req: AuthRequest, res: Response) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// FULL SYNC — полная синхронизация (pull all / push all)
+// FAVORITES — избранные новеллы
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── GET /v1/sync/favorites ── Список избранных новелл ───────────────────────
+syncRouter.get('/favorites', async (req: AuthRequest, res: Response) => {
+  try {
+    const favorites = await prisma.favorite.findMany({
+      where: { userId: req.userId },
+      select: { novelId: true },
+    });
+
+    res.json({ favorites: favorites.map((f) => f.novelId) });
+  } catch (err) {
+    console.error('Get favorites error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/sync/favorites/:novelId ── Переключить избранное ──────────────
+syncRouter.post('/favorites/:novelId', async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.favorite.findUnique({
+      where: { userId_novelId: { userId: req.userId!, novelId: req.params.novelId } },
+    });
+
+    if (existing) {
+      await prisma.favorite.delete({ where: { id: existing.id } });
+      res.json({ favorited: false });
+    } else {
+      await prisma.favorite.create({
+        data: { userId: req.userId!, novelId: req.params.novelId },
+      });
+      res.json({ favorited: true });
+    }
+  } catch (err) {
+    console.error('Toggle favorite error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // ─── GET /v1/sync/all ── Получить все данные пользователя ────────────────────
 syncRouter.get('/all', async (req: AuthRequest, res: Response) => {

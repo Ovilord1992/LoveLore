@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app/theme.dart';
 
 /// Шкала отношений с персонажем
 class RelationshipBar extends StatelessWidget {
@@ -14,7 +15,7 @@ class RelationshipBar extends StatelessWidget {
     required this.variableKey,
     required this.value,
     this.maxValue = 20,
-    this.color = const Color(0xFFE91E63),
+    this.color = AppTheme.primary,
   });
 
   @override
@@ -146,7 +147,7 @@ class _RelationshipPanelState extends State<RelationshipPanel>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.favorite, color: Color(0xFFE91E63), size: 16),
+                const Icon(Icons.favorite, color: AppTheme.primary, size: 16),
                 const SizedBox(width: 4),
                 AnimatedRotation(
                   turns: _isExpanded ? 0.5 : 0,

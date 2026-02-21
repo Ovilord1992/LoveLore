@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -15,6 +16,7 @@ class AppSettings {
   final bool autoPlay;
   final int autoPlayDelay; // секунды
   final bool isMuted;
+  final int themeMode; // 0=system, 1=light, 2=dark
 
   const AppSettings({
     this.textSpeed = 0.5,
@@ -23,7 +25,16 @@ class AppSettings {
     this.autoPlay = false,
     this.autoPlayDelay = 3,
     this.isMuted = false,
+    this.themeMode = 2, // dark by default
   });
+
+  ThemeMode get flutterThemeMode {
+    switch (themeMode) {
+      case 1: return ThemeMode.light;
+      case 2: return ThemeMode.dark;
+      default: return ThemeMode.system;
+    }
+  }
 
   AppSettings copyWith({
     double? textSpeed,
@@ -32,6 +43,7 @@ class AppSettings {
     bool? autoPlay,
     int? autoPlayDelay,
     bool? isMuted,
+    int? themeMode,
   }) {
     return AppSettings(
       textSpeed: textSpeed ?? this.textSpeed,
@@ -40,6 +52,7 @@ class AppSettings {
       autoPlay: autoPlay ?? this.autoPlay,
       autoPlayDelay: autoPlayDelay ?? this.autoPlayDelay,
       isMuted: isMuted ?? this.isMuted,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 
@@ -50,6 +63,7 @@ class AppSettings {
         'autoPlay': autoPlay,
         'autoPlayDelay': autoPlayDelay,
         'isMuted': isMuted,
+        'themeMode': themeMode,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -59,6 +73,7 @@ class AppSettings {
         autoPlay: json['autoPlay'] as bool? ?? false,
         autoPlayDelay: json['autoPlayDelay'] as int? ?? 3,
         isMuted: json['isMuted'] as bool? ?? false,
+        themeMode: json['themeMode'] as int? ?? 2,
       );
 
   /// Задержка печати одного символа в миллисекундах
@@ -100,6 +115,11 @@ class SettingsService extends StateNotifier<AppSettings> {
 
   void toggleMute() {
     state = state.copyWith(isMuted: !state.isMuted);
+    _save();
+  }
+
+  void setThemeMode(int mode) {
+    state = state.copyWith(themeMode: mode);
     _save();
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../app/theme.dart';
 import '../services/settings_service.dart';
 
 /// Виджет диалогового окна с анимацией печати текста
@@ -112,15 +113,7 @@ class _DialogueBoxState extends ConsumerState<DialogueBox> {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.7),
-              Colors.black.withValues(alpha: 0.9),
-            ],
-          ),
+        decoration: AppTheme.glassmorphism().copyWith(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -133,7 +126,7 @@ class _DialogueBoxState extends ConsumerState<DialogueBox> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: widget.speakerColor ?? const Color(0xFFE91E63),
+                  color: widget.speakerColor ?? AppTheme.primary,
                 ),
               ),
               const SizedBox(height: 8),

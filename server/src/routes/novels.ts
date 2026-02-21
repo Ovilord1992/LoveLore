@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../db';
 import { upload } from '../middleware/upload';
+import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip } from '../utils/zip';
 
 export const novelsRouter = Router();
@@ -35,6 +36,67 @@ novelsRouter.get('/', async (_req: Request, res: Response) => {
     res.json({ novels });
   } catch (err) {
     console.error('Error fetching catalog:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/novels/popular ── Топ новелл по рейтингу ─────────────────────────
+novelsRouter.get('/popular', async (_req: Request, res: Response) => {
+  try {
+    const novels = await prisma.novel.findMany({
+      where: { isPublished: true },
+      orderBy: { averageRating: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        author: true,
+        coverUrl: true,
+        tags: true,
+        averageRating: true,
+        ratingCount: true,
+        downloads: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json({ novels });
+  } catch (err) {
+    console.error('Error fetching popular novels:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/novels/new-chapters ── Новеллы с новыми главами ─────────────────
+novelsRouter.get('/new-chapters', async (_req: Request, res: Response) => {
+  try {
+    const novels = await prisma.novel.findMany({
+      where: {
+        isPublished: true,
+        chapters: { some: { isReleased: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        title: true,
+        coverUrl: true,
+        releasedChapters: true,
+        updatedAt: true,
+        chapters: {
+          where: { isReleased: true },
+          orderBy: { releasedAt: 'desc' },
+          take: 1,
+          select: { number: true, title: true, releasedAt: true },
+        },
+      },
+    });
+
+    res.json({ novels });
+  } catch (err) {
+    console.error('Error fetching new chapters:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -438,6 +500,122 @@ novelsRouter.post('/:id/translations/:lang', async (req: Request, res: Response)
     });
   } catch (err) {
     console.error('Error uploading translation:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/novels/:id/rate ── Оценить новеллу ────────────────────────────
+novelsRouter.post('/:id/rate', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { value } = req.body;
+    if (!value || value < 1 || value > 5 || !Number.isInteger(value)) {
+      res.status(400).json({ error: 'Rating value must be an integer from 1 to 5' });
+      return;
+    }
+
+    const novel = await prisma.novel.findUnique({ where: { id: req.params.id } });
+    if (!novel || !novel.isPublished) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    await prisma.rating.upsert({
+      where: { userId_novelId: { userId: req.userId!, novelId: req.params.id } },
+      update: { value },
+      create: { userId: req.userId!, novelId: req.params.id, value },
+    });
+
+    // Recalculate average rating
+    const agg = await prisma.rating.aggregate({
+      where: { novelId: req.params.id },
+      _avg: { value: true },
+      _count: { value: true },
+    });
+
+    await prisma.novel.update({
+      where: { id: req.params.id },
+      data: {
+        averageRating: Math.round((agg._avg.value ?? 0) * 100) / 100,
+        ratingCount: agg._count.value,
+      },
+    });
+
+    res.json({ averageRating: agg._avg.value, ratingCount: agg._count.value });
+  } catch (err) {
+    console.error('Error rating novel:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/novels/:id/rating ── Рейтинг текущего пользователя ─────────────
+novelsRouter.get('/:id/rating', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const rating = await prisma.rating.findUnique({
+      where: { userId_novelId: { userId: req.userId!, novelId: req.params.id } },
+    });
+
+    res.json({ rating: rating ? rating.value : null });
+  } catch (err) {
+    console.error('Error fetching rating:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/novels/:id/reviews ── Отзывы новеллы ───────────────────────────
+novelsRouter.get('/:id/reviews', async (req: Request, res: Response) => {
+  try {
+    const reviews = await prisma.review.findMany({
+      where: { novelId: req.params.id, status: 'approved' },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        text: true,
+        createdAt: true,
+        user: { select: { displayName: true } },
+      },
+    });
+
+    res.json({ reviews });
+  } catch (err) {
+    console.error('Error fetching reviews:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/novels/:id/reviews ── Оставить отзыв ─────────────────────────
+novelsRouter.post('/:id/reviews', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      res.status(400).json({ error: 'Review text is required' });
+      return;
+    }
+    if (text.length > 500) {
+      res.status(400).json({ error: 'Review text must be 500 characters or less' });
+      return;
+    }
+
+    const novel = await prisma.novel.findUnique({ where: { id: req.params.id } });
+    if (!novel || !novel.isPublished) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    const existing = await prisma.review.findUnique({
+      where: { userId_novelId: { userId: req.userId!, novelId: req.params.id } },
+    });
+    if (existing) {
+      res.status(409).json({ error: 'You have already reviewed this novel' });
+      return;
+    }
+
+    const review = await prisma.review.create({
+      data: { userId: req.userId!, novelId: req.params.id, text: text.trim() },
+    });
+
+    res.status(201).json({ review });
+  } catch (err) {
+    console.error('Error creating review:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

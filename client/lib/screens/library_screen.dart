@@ -4,18 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/novel_loader.dart';
 import '../services/currency_service.dart';
 import '../services/save_service.dart';
-import '../services/iap_service.dart';
-import '../services/remote_config_service.dart';
 import '../models/novel.dart';
 import '../widgets/novel_card.dart';
 import '../widgets/novel_cover_image.dart';
 import '../widgets/daily_reward_dialog.dart';
 import 'novel_detail_screen.dart';
 import '../services/locale_service.dart';
-import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'shop_screen.dart';
+import 'notification_screen.dart';
 
+// ─── Главный экран с 4 вкладками (V1) ────────────────────────────────────────
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
@@ -29,7 +28,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Показываем daily reward popup при первом открытии
     if (!_dailyChecked) {
       _dailyChecked = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -43,6 +41,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         children: const [
           _HomeTab(),
           _CatalogTab(),
+          ShopScreen(),
           ProfileScreen(),
         ],
       ),
@@ -60,8 +59,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           selectedFontSize: 12,
           unselectedFontSize: 12,
           items: [
-            BottomNavigationBarItem(icon: const Icon(Icons.home_rounded), label: ref.tr('your_stories')),
-            BottomNavigationBarItem(icon: const Icon(Icons.auto_stories_rounded), label: ref.tr('gallery')),
+            BottomNavigationBarItem(icon: const Icon(Icons.home_rounded), label: ref.tr('home')),
+            BottomNavigationBarItem(icon: const Icon(Icons.search_rounded), label: ref.tr('catalog')),
+            BottomNavigationBarItem(icon: const Icon(Icons.shopping_bag_rounded), label: ref.tr('shop')),
             BottomNavigationBarItem(icon: const Icon(Icons.person_rounded), label: ref.tr('profile')),
           ],
         ),
@@ -83,46 +83,52 @@ class _HomeTab extends ConsumerWidget {
         future: ref.read(novelLoaderProvider).loadAllNovels(),
         builder: (context, snapshot) {
           final novels = snapshot.data ?? [];
-          ref.watch(saveServiceProvider); // подписка на изменения сохранений
+          ref.watch(saveServiceProvider);
           final saveService = ref.read(saveServiceProvider.notifier);
           final continuePlaying = novels.where((n) => saveService.hasSave(n.id)).toList();
 
           return CustomScrollView(
             slivers: [
-              // ── Верхняя панель: валюта + настройки ──
+              // ── Верхняя панель ──
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
                   child: Row(
                     children: [
+                      // Колокольчик
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                        ),
+                        child: Stack(
+                          children: [
+                            const Icon(Icons.notifications_rounded, color: Color(0xFFE91E63), size: 26),
+                            Positioned(
+                              right: 0, top: 0,
+                              child: Container(
+                                width: 8, height: 8,
+                                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE91E63)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const Spacer(),
-                      // Валюта с кнопками "+"
-                      _CurrencyBadgeTappable(
-                        icon: '💎',
-                        value: currency.diamonds,
-                        onPlusTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const ShopScreen()),
+                      // Название «Amoria» с градиентом
+                      ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
+                        ).createShader(bounds),
+                        child: const Text(
+                          'Amoria',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                       ),
+                      const Spacer(),
+                      // Валюта
+                      _CurrencyPill(icon: '💎', value: '${currency.diamonds}'),
                       const SizedBox(width: 6),
-                      _TicketBadgeWithTimer(
-                        currency: currency,
-                        maxTickets: ref.read(remoteConfigProvider).economy.maxTickets,
-                        refillMinutes: ref.read(remoteConfigProvider).economy.ticketRefillMinutes,
-                        onPlusTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const ShopScreen()),
-                        ),
-                        onCheckRefill: () => ref.read(currencyServiceProvider.notifier).checkRefill(),
-                      ),
-                      // Настройки
-                      IconButton(
-                        icon: const Icon(Icons.settings_rounded, color: Colors.white30, size: 22),
-                        padding: const EdgeInsets.only(left: 4),
-                        constraints: const BoxConstraints(),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                        ),
-                      ),
+                      _CurrencyPill(icon: '⚡', value: '${currency.tickets}'),
                     ],
                   ),
                 ),
@@ -130,18 +136,7 @@ class _HomeTab extends ConsumerWidget {
 
               // ── Баннер-карусель ──
               if (novels.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: _FeaturedBanner(novels: novels),
-                ),
-
-              // ── Промо-баннер (стартовый набор / спецпредложение) ──
-              SliverToBoxAdapter(
-                child: _PromoBanner(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ShopScreen()),
-                  ),
-                ),
-              ),
+                SliverToBoxAdapter(child: _FeaturedBanner(novels: novels)),
 
               // ── Продолжить чтение ──
               if (continuePlaying.isNotEmpty) ...[
@@ -164,36 +159,52 @@ class _HomeTab extends ConsumerWidget {
                 ),
               ],
 
-              // ── Все истории ──
-              SliverToBoxAdapter(
-                child: _SectionHeader(title: ref.tr('your_stories'), icon: Icons.auto_stories_rounded),
-              ),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: Center(child: CircularProgressIndicator(color: Color(0xFFE91E63))),
-                  ),
-                )
-              else if (novels.isEmpty)
-                const SliverToBoxAdapter(
-                  child: _EmptyState(),
-                )
-              else
+              // ── Рекомендации ──
+              if (novels.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: _SectionHeader(title: ref.tr('recommendations'), icon: Icons.auto_awesome_rounded),
+                ),
                 SliverToBoxAdapter(
                   child: SizedBox(
                     height: 280,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: novels.length,
-                      itemBuilder: (context, index) => _LargeNovelCard(
-                        novel: novels[index],
-                        onTap: () => _openNovel(context, novels[index]),
+                      itemCount: (novels.length > 6 ? 6 : novels.length),
+                      itemBuilder: (context, index) {
+                        final shuffled = List<NovelMeta>.from(novels)..shuffle();
+                        final novel = shuffled[index];
+                        return _NovelVerticalCard(
+                          novel: novel,
+                          onTap: () => _openNovel(context, novel),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+
+              // ── Тренды ──
+              if (novels.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: _SectionHeader(title: ref.tr('trending'), icon: Icons.local_fire_department_rounded),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: List.generate(
+                        novels.length > 5 ? 5 : novels.length,
+                        (i) => _TrendingItem(
+                          rank: i + 1,
+                          novel: novels[i],
+                          onTap: () => _openNovel(context, novels[i]),
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ],
 
               const SliverToBoxAdapter(child: SizedBox(height: 20)),
             ],
@@ -210,81 +221,221 @@ class _HomeTab extends ConsumerWidget {
   }
 }
 
-// ─── Вкладка «Каталог» (полный список) ──────────────────────────────────────
-class _CatalogTab extends ConsumerWidget {
+// ─── Вкладка «Каталог» ──────────────────────────────────────────────────────
+class _CatalogTab extends ConsumerStatefulWidget {
   const _CatalogTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CatalogTab> createState() => _CatalogTabState();
+}
+
+class _CatalogTabState extends ConsumerState<_CatalogTab> {
+  String _searchQuery = '';
+  String _selectedGenre = 'all';
+  String _sortBy = 'popular';
+  bool _gridView = true;
+
+  static const _genres = [
+    'all', 'romance', 'fantasy', 'drama', 'detective', 'mystic', 'comedy',
+  ];
+  static const _genreIcons = ['', '💕', '✨', '🎭', '🔍', '🌙', '😂'];
+
+  @override
+  Widget build(BuildContext context) {
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              child: Text(ref.tr('gallery'),
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: _FullNovelList(),
-          ),
-        ],
+      child: FutureBuilder<List<NovelMeta>>(
+        future: ref.read(novelLoaderProvider).loadAllNovels(),
+        builder: (context, snapshot) {
+          final allNovels = snapshot.data ?? [];
+          final filtered = _filterNovels(allNovels);
+
+          return CustomScrollView(
+            slivers: [
+              // Заголовок
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                  child: Text(ref.tr('catalog'),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+              // Поиск
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF16213E),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: TextField(
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                      decoration: InputDecoration(
+                        icon: const Icon(Icons.search, color: Colors.white38, size: 20),
+                        hintText: ref.tr('search_placeholder'),
+                        hintStyle: const TextStyle(color: Colors.white24),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Жанры
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 40,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _genres.length,
+                    itemBuilder: (context, i) {
+                      final isActive = _selectedGenre == _genres[i];
+                      final label = i == 0
+                          ? ref.tr('all')
+                          : '${_genreIcons[i]} ${ref.tr(_genres[i])}';
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedGenre = _genres[i]),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isActive ? const Color(0xFFE91E63) : const Color(0xFF16213E),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(label,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isActive ? Colors.white : Colors.white54,
+                                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                              )),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              // Сортировка + переключатель вида
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Row(
+                    children: [
+                      Text('${ref.tr('sort_by')}:', style: const TextStyle(color: Colors.white38, fontSize: 13)),
+                      const SizedBox(width: 8),
+                      DropdownButton<String>(
+                        value: _sortBy,
+                        dropdownColor: const Color(0xFF16213E),
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        underline: const SizedBox.shrink(),
+                        iconEnabledColor: Colors.white38,
+                        items: [
+                          DropdownMenuItem(value: 'popular', child: Text(ref.tr('popular'))),
+                          DropdownMenuItem(value: 'newest', child: Text(ref.tr('newest'))),
+                          DropdownMenuItem(value: 'by_rating', child: Text(ref.tr('by_rating'))),
+                        ],
+                        onChanged: (v) => setState(() => _sortBy = v ?? 'popular'),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => setState(() => _gridView = true),
+                        child: Icon(Icons.grid_view_rounded,
+                          size: 22, color: _gridView ? const Color(0xFFE91E63) : Colors.white24),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () => setState(() => _gridView = false),
+                        child: Icon(Icons.view_list_rounded,
+                          size: 22, color: !_gridView ? const Color(0xFFE91E63) : Colors.white24),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Контент
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator(color: Color(0xFFE91E63))),
+                  ),
+                )
+              else if (filtered.isEmpty)
+                const SliverToBoxAdapter(child: _EmptyState())
+              else if (_gridView)
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 0.55,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => NovelCard(
+                        novel: filtered[i],
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => NovelDetailScreen(novel: filtered[i])),
+                        ),
+                      ),
+                      childCount: filtered.length,
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _NovelListCard(
+                        novel: filtered[i],
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => NovelDetailScreen(novel: filtered[i])),
+                        ),
+                      ),
+                      childCount: filtered.length,
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            ],
+          );
+        },
       ),
     );
   }
-}
 
-class _FullNovelList extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<List<NovelMeta>>(
-      future: ref.read(novelLoaderProvider).loadAllNovels(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SliverToBoxAdapter(
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final novels = snapshot.data ?? [];
-        if (novels.isEmpty) {
-          return const SliverToBoxAdapter(child: _EmptyState());
-        }
-
-        return SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => NovelCard(
-              novel: novels[index],
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => NovelDetailScreen(novel: novels[index])),
-              ),
-            ),
-            childCount: novels.length,
-          ),
-        );
-      },
-    );
+  List<NovelMeta> _filterNovels(List<NovelMeta> novels) {
+    var result = novels.toList();
+    if (_selectedGenre != 'all') {
+      result = result.where((n) =>
+        n.tags.any((t) => t.toLowerCase().contains(_selectedGenre))).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result.where((n) =>
+        n.displayTitle.toLowerCase().contains(q) ||
+        n.author.toLowerCase().contains(q)).toList();
+    }
+    return result;
   }
 }
 
-// ─── Бейдж валюты с кнопкой "+" ──────────────────────────────────────────────
-class _CurrencyBadgeTappable extends StatelessWidget {
-  final String icon;
-  final int value;
-  final VoidCallback onPlusTap;
+// ─── Компоненты ──────────────────────────────────────────────────────────────
 
-  const _CurrencyBadgeTappable({
-    required this.icon,
-    required this.value,
-    required this.onPlusTap,
-  });
+class _CurrencyPill extends StatelessWidget {
+  final String icon;
+  final String value;
+  const _CurrencyPill({required this.icon, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(left: 10, top: 4, bottom: 4, right: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFF16213E),
         borderRadius: BorderRadius.circular(20),
@@ -295,228 +446,16 @@ class _CurrencyBadgeTappable extends StatelessWidget {
         children: [
           Text(icon, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 4),
-          Text('$value',
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white)),
-          const SizedBox(width: 2),
-          GestureDetector(
-            onTap: onPlusTap,
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
-                ),
-              ),
-              child: const Icon(Icons.add, size: 14, color: Colors.white),
-            ),
-          ),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
         ],
       ),
     );
   }
 }
 
-// ─── Бейдж билетов с таймером и "+" ─────────────────────────────────────────
-class _TicketBadgeWithTimer extends StatefulWidget {
-  final CurrencyState currency;
-  final VoidCallback onPlusTap;
-  final VoidCallback onCheckRefill;
-  final int maxTickets;
-  final int refillMinutes;
-
-  const _TicketBadgeWithTimer({
-    required this.currency,
-    required this.onPlusTap,
-    required this.onCheckRefill,
-    required this.maxTickets,
-    required this.refillMinutes,
-  });
-
-  @override
-  State<_TicketBadgeWithTimer> createState() => _TicketBadgeWithTimerState();
-}
-
-class _TicketBadgeWithTimerState extends State<_TicketBadgeWithTimer> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        widget.onCheckRefill();
-        setState(() {});
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  String _formatDuration(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isFull = widget.currency.tickets >= widget.maxTickets;
-
-    // Рассчитываем таймер
-    String? timerText;
-    if (!isFull) {
-      final lastRefill = widget.currency.lastTicketRefill ?? DateTime.now();
-      final next = lastRefill
-          .add(Duration(minutes: widget.refillMinutes));
-      final remaining = next.difference(DateTime.now());
-      if (remaining.isNegative) {
-        timerText = '00:00';
-      } else {
-        timerText = _formatDuration(remaining);
-      }
-    }
-
-    return Container(
-      padding: const EdgeInsets.only(left: 10, top: 4, bottom: 4, right: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('⚡', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 4),
-          Text(
-            '${widget.currency.tickets}/${widget.maxTickets}',
-            style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white),
-          ),
-          if (timerText != null) ...[
-            const SizedBox(width: 4),
-            Text(
-              timerText,
-              style: const TextStyle(fontSize: 10, color: Color(0xFF00BCD4)),
-            ),
-          ],
-          const SizedBox(width: 2),
-          GestureDetector(
-            onTap: widget.onPlusTap,
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFF00838F), Color(0xFF00BCD4)],
-                ),
-              ),
-              child: const Icon(Icons.add, size: 14, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Промо-баннер спецпредложения ────────────────────────────────────────────
-class _PromoBanner extends ConsumerWidget {
-  final VoidCallback onTap;
-  const _PromoBanner({required this.onTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final iap = ref.watch(iapServiceProvider);
-    // Скрываем если стартовый бандл уже куплен
-    if (iap.starterBundlePurchased) return const SizedBox.shrink();
-
-    final configIap = ref.watch(remoteConfigProvider).iap;
-    final starterRewards = configIap.getReward(ProductIds.starterBundle);
-    final diamonds = starterRewards['diamonds'] ?? 100;
-    final tickets = starterRewards['tickets'] ?? 10;
-    final product = iap.products.where((p) => p.id == ProductIds.starterBundle).firstOrNull;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
-          ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFE91E63).withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Text('🎁', style: TextStyle(fontSize: 28)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    ref.tr('starter_kit'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    '$diamonds💎 + $tickets⚡ — ${ref.tr('value_x').replaceAll('{n}', '10')}',
-                    style: const TextStyle(fontSize: 12, color: Colors.white70),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                product?.price ?? '\$0.99',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFE91E63),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Баннер-карусель ─────────────────────────────────────────────────────────
+// ─── Баннер-карусель с автопрокруткой ────────────────────────────────────────
 class _FeaturedBanner extends StatefulWidget {
   final List<NovelMeta> novels;
-
   const _FeaturedBanner({required this.novels});
 
   @override
@@ -526,9 +465,22 @@ class _FeaturedBanner extends StatefulWidget {
 class _FeaturedBannerState extends State<_FeaturedBanner> {
   final _pageController = PageController(viewportFraction: 0.9);
   int _currentPage = 0;
+  Timer? _autoScrollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoScrollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final next = (_currentPage + 1) % widget.novels.take(3).length;
+      _pageController.animateToPage(next,
+        duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    });
+  }
 
   @override
   void dispose() {
+    _autoScrollTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -540,7 +492,7 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
     return Column(
       children: [
         SizedBox(
-          height: 200,
+          height: 220,
           child: PageView.builder(
             controller: _pageController,
             itemCount: featured.length,
@@ -553,70 +505,54 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
                 ),
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        _bannerColor(index),
-                        _bannerColor(index).withValues(alpha: 0.6),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _bannerColor(index).withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
                   child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      // Декоративные элементы
-                      Positioned(
-                        right: -20, top: -20,
-                        child: Container(
-                          width: 120, height: 120,
+                      NovelCoverImage(
+                        novelId: novel.id,
+                        coverImage: novel.coverImage,
+                        coverUrl: novel.coverUrl,
+                        fit: BoxFit.cover,
+                        placeholder: Container(
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.08),
+                            gradient: LinearGradient(colors: [
+                              _bannerColor(index),
+                              _bannerColor(index).withValues(alpha: 0.6),
+                            ]),
                           ),
                         ),
                       ),
-                      // Контент
-                      Padding(
-                        padding: const EdgeInsets.all(24),
+                      // Градиент снизу
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16, left: 16, right: 16,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
+                                color: const Color(0xFFE91E63),
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Text(
-                                novel.tags.isNotEmpty ? novel.tags.first : 'Новелла',
-                                style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
-                              ),
+                              child: const Text('Новая глава!',
+                                style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              novel.displayTitle,
-                              style: const TextStyle(
-                                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white,
-                                height: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              novel.displayDescription,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
-                            ),
+                            const SizedBox(height: 6),
+                            Text(novel.displayTitle,
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2)),
                           ],
                         ),
                       ),
@@ -627,7 +563,6 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
             },
           ),
         ),
-        // Индикаторы
         if (featured.length > 1)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -647,20 +582,15 @@ class _FeaturedBannerState extends State<_FeaturedBanner> {
   }
 
   Color _bannerColor(int index) {
-    const colors = [
-      Color(0xFF6A1B9A), // фиолетовый
-      Color(0xFF1565C0), // синий
-      Color(0xFFC62828), // красный
-    ];
+    const colors = [Color(0xFF6A1B9A), Color(0xFF1565C0), Color(0xFFC62828)];
     return colors[index % colors.length];
   }
 }
 
-// ─── Секция «Продолжить» — горизонтальная карточка ───────────────────────────
+// ─── Секция «Продолжить» — карточка ─────────────────────────────────────────
 class _ContinueCard extends ConsumerWidget {
   final NovelMeta novel;
   final VoidCallback onTap;
-
   const _ContinueCard({required this.novel, required this.onTap});
 
   @override
@@ -672,40 +602,27 @@ class _ContinueCard extends ConsumerWidget {
         margin: const EdgeInsets.only(right: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF1E1E3A), Color(0xFF16213E)],
-          ),
+          gradient: const LinearGradient(colors: [Color(0xFF1E1E3A), Color(0xFF16213E)]),
           border: Border.all(color: const Color(0xFFE91E63).withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Обложка
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Container(
+              child: SizedBox(
                 height: 110,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFE91E63).withValues(alpha: 0.3),
-                      const Color(0xFF9C27B0).withValues(alpha: 0.3),
-                    ],
+                child: NovelCoverImage(
+                  novelId: novel.id,
+                  coverImage: novel.coverImage,
+                  coverUrl: novel.coverUrl,
+                  fit: BoxFit.cover,
+                  placeholder: Center(
+                    child: Text(novel.displayTitle[0],
+                      style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w200, color: Colors.white24)),
                   ),
                 ),
-                child: NovelCoverImage(
-                    novelId: novel.id,
-                    coverImage: novel.coverImage,
-                    coverUrl: novel.coverUrl,
-                    fit: BoxFit.cover,
-                    placeholder: Center(
-                        child: Text(
-                          novel.displayTitle[0],
-                          style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w200, color: Colors.white24),
-                        ),
-                      ),
-                  ),
               ),
             ),
             Padding(
@@ -713,14 +630,10 @@ class _ContinueCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    novel.displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-                  ),
+                  Text(novel.displayTitle,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
                   const SizedBox(height: 8),
-                  // Кнопка продолжить
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
@@ -732,7 +645,8 @@ class _ContinueCard extends ConsumerWidget {
                       children: [
                         const Icon(Icons.play_arrow_rounded, size: 16, color: Colors.white),
                         const SizedBox(width: 4),
-                        Text(ref.tr('continue_reading'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                        Text(ref.tr('continue_reading'),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                       ],
                     ),
                   ),
@@ -746,119 +660,205 @@ class _ContinueCard extends ConsumerWidget {
   }
 }
 
-// ─── Большая карточка новеллы (горизонтальная прокрутка) ─────────────────────
-class _LargeNovelCard extends ConsumerWidget {
+// ─── Вертикальная карточка новеллы (рекомендации) ────────────────────────────
+class _NovelVerticalCard extends ConsumerWidget {
   final NovelMeta novel;
   final VoidCallback onTap;
-
-  const _LargeNovelCard({required this.novel, required this.onTap});
+  const _NovelVerticalCard({required this.novel, required this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 180,
+        width: 150,
         margin: const EdgeInsets.only(right: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Обложка
             Container(
-              height: 220,
-              width: 180,
+              height: 210,
+              width: 150,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF2D1854),
-                    const Color(0xFFE91E63).withValues(alpha: 0.5),
-                  ],
-                ),
+                borderRadius: BorderRadius.circular(14),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 6)),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     NovelCoverImage(
-                        novelId: novel.id,
-                        coverImage: novel.coverImage,
-                        coverUrl: novel.coverUrl,
-                        fit: BoxFit.cover,
-                        placeholder: Center(
-                            child: Text(
-                              novel.displayTitle[0],
-                              style: const TextStyle(fontSize: 60, fontWeight: FontWeight.w200, color: Colors.white24),
-                            ),
-                          ),
-                      ),
-                    // Градиент снизу
-                    Positioned(
-                      bottom: 0, left: 0, right: 0,
-                      child: Container(
-                        height: 80,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.8)],
-                          ),
-                        ),
+                      novelId: novel.id,
+                      coverImage: novel.coverImage,
+                      coverUrl: novel.coverUrl,
+                      fit: BoxFit.cover,
+                      placeholder: Container(
+                        color: const Color(0xFF2D1854),
+                        child: Center(child: Text(novel.displayTitle[0],
+                          style: const TextStyle(fontSize: 50, fontWeight: FontWeight.w200, color: Colors.white24))),
                       ),
                     ),
-                    // Тег
                     if (novel.tags.isNotEmpty)
                       Positioned(
-                        top: 10, left: 10,
+                        top: 8, left: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE91E63).withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(
-                            novel.tags.first,
-                            style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
+                          child: Text(novel.tags.first,
+                            style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                    // Количество глав
-                    Positioned(
-                      bottom: 10, left: 10,
-                      child: Row(
-                        children: [
-                          const Icon(Icons.menu_book_rounded, size: 12, color: Colors.white70),
-                          const SizedBox(width: 4),
-                          Text('${novel.totalChapters} ${ref.tr('chapters_count')}', style: const TextStyle(fontSize: 11, color: Colors.white70)),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 10),
-            // Название
-            Text(
-              novel.displayTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
-            ),
+            const SizedBox(height: 8),
+            Text(novel.displayTitle,
+              maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
             const SizedBox(height: 2),
-            Text(
-              novel.author,
-              style: const TextStyle(fontSize: 12, color: Colors.white38),
+            Text(novel.author,
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Colors.white38)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Тренды — строка с номером ──────────────────────────────────────────────
+class _TrendingItem extends StatelessWidget {
+  final int rank;
+  final NovelMeta novel;
+  final VoidCallback onTap;
+  const _TrendingItem({required this.rank, required this.novel, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16213E),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          children: [
+            Text('#$rank',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFE91E63))),
+            const SizedBox(width: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 50, height: 65,
+                child: NovelCoverImage(
+                  novelId: novel.id,
+                  coverImage: novel.coverImage,
+                  coverUrl: novel.coverUrl,
+                  fit: BoxFit.cover,
+                  placeholder: Container(color: const Color(0xFF2D1854)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(novel.displayTitle,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  if (novel.tags.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(novel.tags.first,
+                        style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Карточка для списочного вида каталога ───────────────────────────────────
+class _NovelListCard extends StatelessWidget {
+  final NovelMeta novel;
+  final VoidCallback onTap;
+  const _NovelListCard({required this.novel, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16213E),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 60, height: 80,
+                child: NovelCoverImage(
+                  novelId: novel.id,
+                  coverImage: novel.coverImage,
+                  coverUrl: novel.coverUrl,
+                  fit: BoxFit.cover,
+                  placeholder: Container(color: const Color(0xFF2D1854)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(novel.displayTitle,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text(novel.author,
+                    style: const TextStyle(fontSize: 13, color: Colors.white38)),
+                  const SizedBox(height: 6),
+                  if (novel.tags.isNotEmpty)
+                    Wrap(
+                      spacing: 6,
+                      children: novel.tags.take(2).map((t) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(t, style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                      )).toList(),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -871,7 +871,6 @@ class _LargeNovelCard extends ConsumerWidget {
 class _SectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
-
   const _SectionHeader({required this.title, required this.icon});
 
   @override
@@ -882,10 +881,7 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: const Color(0xFFE91E63)),
           const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
+          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../app/theme.dart';
 import '../services/locale_service.dart';
 import '../models/novel.dart';
 import '../services/save_service.dart';
@@ -49,14 +50,14 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
     final downloadState = ref.watch(downloadStateProvider(novel.id));
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // Обложка
           SliverAppBar(
             expandedHeight: 350,
             pinned: true,
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -74,8 +75,8 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                           end: Alignment.bottomRight,
                           colors: [
                             Color(0xFF2D1854),
-                            Color(0xFFE91E63),
-                            Color(0xFF9C27B0),
+                            AppTheme.primary,
+                            AppTheme.secondary,
                           ],
                         ),
                       ),
@@ -92,13 +93,13 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                     ),
                   ),
                   // Градиентное затемнение снизу
-                  const DecoratedBox(
+                  DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Color(0xFF1A1A2E)],
-                        stops: [0.5, 1.0],
+                        colors: [Colors.transparent, Theme.of(context).scaffoldBackgroundColor],
+                        stops: const [0.5, 1.0],
                       ),
                     ),
                   ),
@@ -129,13 +130,13 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                   Row(
                     children: [
                       const Icon(Icons.person_outline,
-                          size: 16, color: Color(0xFFE91E63)),
+                          size: 16, color: AppTheme.primary),
                       const SizedBox(width: 6),
                       Text(
                         novel.author,
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFFE91E63),
+                          color: AppTheme.primary,
                         ),
                       ),
                     ],
@@ -151,7 +152,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF16213E),
+                          color: AppTheme.surfaceColor(context),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white12),
                         ),
@@ -203,18 +204,24 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                     SizedBox(
                       width: double.infinity,
                       height: 52,
-                      child: ElevatedButton(
-                        onPressed: downloadState.status == DownloadStatus.downloading
-                            ? null
-                            : () => _handlePlay(context, hasSave),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE91E63),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 4,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.accentGradient,
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        child: ElevatedButton(
+                          onPressed: downloadState.status == DownloadStatus.downloading
+                              ? null
+                              : () => _handlePlay(context, hasSave),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
                         child: downloadState.status == DownloadStatus.downloading
                             ? Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -231,6 +238,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                                 hasSave ? ref.tr('continue_reading') : ref.tr('start_story'),
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                               ),
+                        ),
                       ),
                     ),
 
@@ -292,7 +300,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
+        backgroundColor: AppTheme.surfaceColor(context),
         title: Text(ref.tr('start_over_confirm'),
             style: const TextStyle(color: Colors.white)),
         content: Text(
@@ -322,7 +330,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
               }
             },
             child: Text(ref.tr('start_over'),
-                style: const TextStyle(color: Color(0xFFE91E63))),
+                style: const TextStyle(color: AppTheme.primary)),
           ),
         ],
       ),

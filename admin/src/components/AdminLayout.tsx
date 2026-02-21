@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Layout, Menu, Button, Typography } from 'antd';
-import { DashboardOutlined, UserOutlined, BookOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
+import { DashboardOutlined, UserOutlined, BookOutlined, CommentOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
 
 const { Sider, Header, Content } = Layout;
 const { Text } = Typography;
@@ -18,6 +18,7 @@ export default function AdminLayout({ activeKey, onNavigate, onLogout, children 
     { key: 'dashboard', icon: <DashboardOutlined />, label: 'Дашборд' },
     { key: 'users', icon: <UserOutlined />, label: 'Пользователи' },
     { key: 'novels', icon: <BookOutlined />, label: 'Новеллы' },
+    { key: 'reviews', icon: <CommentOutlined />, label: 'Отзывы' },
     { key: 'config', icon: <SettingOutlined />, label: 'Конфигурация' },
   ];
 

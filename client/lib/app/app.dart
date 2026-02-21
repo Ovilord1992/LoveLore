@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme.dart';
 import '../screens/library_screen.dart';
 import '../services/locale_service.dart';
+import '../services/settings_service.dart';
 
 class NavellApp extends ConsumerWidget {
   const NavellApp({super.key});
@@ -10,10 +11,13 @@ class NavellApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
+    final settings = ref.watch(settingsServiceProvider);
     return MaterialApp(
       title: 'Amoria',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: settings.flutterThemeMode,
       locale: Locale(locale.name),
       home: const LibraryScreen(),
     );

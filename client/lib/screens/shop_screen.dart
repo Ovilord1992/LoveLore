@@ -6,6 +6,7 @@ import '../services/iap_service.dart';
 import '../services/currency_service.dart';
 import '../services/ad_service.dart';
 import '../services/remote_config_service.dart';
+import '../app/theme.dart';
 
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
@@ -14,10 +15,14 @@ class ShopScreen extends ConsumerStatefulWidget {
   ConsumerState<ShopScreen> createState() => _ShopScreenState();
 }
 
-class _ShopScreenState extends ConsumerState<ShopScreen> {
+class _ShopScreenState extends ConsumerState<ShopScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
     // Подключаем начисление наград
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(iapServiceProvider.notifier).onReward = (productId, rewards) {
@@ -48,86 +53,130 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currency = ref.watch(currencyServiceProvider);
     final iap = ref.watch(iapServiceProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
-      appBar: AppBar(
-        title: Text(ref.tr('shop')),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          _CurrencyBadge(icon: '💎', value: currency.diamonds),
-          _CurrencyBadge(icon: '⚡', value: currency.tickets),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: iap.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFE91E63)))
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Стартовый бандл
-                if (!iap.starterBundlePurchased) ...[
-                  _StarterBundle(iap: iap, onBuy: _buy),
-                  const SizedBox(height: 20),
+      backgroundColor: AppTheme.backgroundColor(context),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top bar: title + currency
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  Text('Магазин',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  _CurrencyBadge(icon: '💎', value: currency.diamonds),
+                  _CurrencyBadge(icon: '⚡', value: currency.tickets),
                 ],
-
-                // Реклама за алмазы
-                _AdRewardCard(ref: ref),
-                const SizedBox(height: 20),
-
-                // Алмазы
-                _SectionLabel('💎 ${ref.tr('diamonds')}'),
-                const SizedBox(height: 8),
-                ..._buildDiamondCards(iap),
-                const SizedBox(height: 20),
-
-                // Билеты
-                _SectionLabel('⚡ ${ref.tr('tickets')}'),
-                const SizedBox(height: 8),
-                _ProductCard(
-                  icon: '⚡',
-                  title: ref.tr('tickets_n').replaceAll('{n}', '${ref.watch(remoteConfigProvider).iap.getReward(ProductIds.tickets5)['tickets'] ?? 5}'),
-                  subtitle: ref.tr('read_no_wait'),
-                  product: iap.products
-                      .where((p) => p.id == ProductIds.tickets5)
-                      .firstOrNull,
-                  color: const Color(0xFF00BCD4),
-                  onBuy: _buy,
-                ),
-                const SizedBox(height: 20),
-
-                // VIP
-                _SectionLabel('⭐ ${ref.tr('vip_subscription')}'),
-                const SizedBox(height: 8),
-                _VipCard(iap: iap, onBuy: _buy),
-                const SizedBox(height: 16),
-
-                // Восстановление покупок
-                Center(
-                  child: TextButton(
-                    onPressed: () =>
-                        ref.read(iapServiceProvider.notifier).restorePurchases(),
-                    child: Text(
-                      ref.tr('restore_purchases'),
-                      style: const TextStyle(color: Colors.white38, fontSize: 12),
-                    ),
-                  ),
-                ),
-
-                if (iap.error != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    iap.error!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Inner tab bar
+            TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              indicatorColor: AppTheme.primary,
+              indicatorWeight: 3,
+              labelColor: Theme.of(context).colorScheme.onSurface,
+              unselectedLabelColor: AppTheme.textMuted(context),
+              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 14),
+              dividerHeight: 0,
+              tabAlignment: TabAlignment.start,
+              tabs: const [
+                Tab(text: '💎 Алмазы'),
+                Tab(text: '⚡ Билеты'),
+                Tab(text: '👑 VIP'),
+                Tab(text: '🎁 Акции'),
               ],
             ),
+            // Tab content
+            Expanded(
+              child: iap.isLoading
+                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // 💎 Алмазы
+                        ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            _AdRewardCard(ref: ref),
+                            const SizedBox(height: 12),
+                            ..._buildDiamondCards(iap),
+                          ],
+                        ),
+                        // ⚡ Билеты
+                        ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            _ProductCard(
+                              icon: '⚡',
+                              title: ref.tr('tickets_n').replaceAll('{n}', '${ref.watch(remoteConfigProvider).iap.getReward(ProductIds.tickets5)['tickets'] ?? 5}'),
+                              subtitle: ref.tr('read_no_wait'),
+                              product: iap.products
+                                  .where((p) => p.id == ProductIds.tickets5)
+                                  .firstOrNull,
+                              color: AppTheme.cyan,
+                              onBuy: _buy,
+                            ),
+                          ],
+                        ),
+                        // 👑 VIP
+                        ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            _VipCard(iap: iap, onBuy: _buy),
+                          ],
+                        ),
+                        // 🎁 Акции
+                        ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            if (!iap.starterBundlePurchased) ...[
+                              _StarterBundle(iap: iap, onBuy: _buy),
+                              const SizedBox(height: 16),
+                            ],
+                            Center(
+                              child: TextButton(
+                                onPressed: () =>
+                                    ref.read(iapServiceProvider.notifier).restorePurchases(),
+                                child: Text(
+                                  ref.tr('restore_purchases'),
+                                  style: TextStyle(color: AppTheme.textMuted(context), fontSize: 12),
+                                ),
+                              ),
+                            ),
+                            if (iap.error != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                iap.error!,
+                                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -174,7 +223,7 @@ class _CurrencyBadge extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -188,23 +237,6 @@ class _CurrencyBadge extends StatelessWidget {
                   fontSize: 14,
                   fontWeight: FontWeight.bold)),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
       ),
     );
   }
@@ -312,7 +344,7 @@ class _ProductCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
@@ -356,15 +388,38 @@ class _ProductCard extends StatelessWidget {
   }
 }
 
-class _VipCard extends ConsumerWidget {
+class _VipCard extends ConsumerStatefulWidget {
   final IapState iap;
   final void Function(dynamic) onBuy;
   const _VipCard({required this.iap, required this.onBuy});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_VipCard> createState() => _VipCardState();
+}
+
+class _VipCardState extends ConsumerState<_VipCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shimmer;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final product =
-        iap.products.where((p) => p.id == ProductIds.vipMonthly).firstOrNull;
+        widget.iap.products.where((p) => p.id == ProductIds.vipMonthly).firstOrNull;
     final vipConfig = ref.watch(remoteConfigProvider).vip;
 
     final perks = <Widget>[];
@@ -384,52 +439,75 @@ class _VipCard extends ConsumerWidget {
       perks.add(_VipPerk(icon: '🚫', text: ref.tr('vip_perk_no_ads')));
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A237E), Color(0xFF283593)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('⭐', style: TextStyle(fontSize: 28)),
-              const SizedBox(width: 10),
-              Text(ref.tr('vip_subscription'),
-                  style: const TextStyle(
-                      color: Color(0xFFFFD700),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-            ],
+    return AnimatedBuilder(
+      animation: _shimmer,
+      builder: (context, child) {
+        final t = _shimmer.value;
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment(-1.0 + 3.0 * t, -0.5),
+              end: Alignment(-1.0 + 3.0 * t + 1.0, 0.5),
+              colors: const [
+                Color(0xFFFFD700),
+                Color(0xFFE91E63),
+                Color(0xFF9C27B0),
+                Color(0xFFFFD700),
+              ],
+              tileMode: TileMode.mirror,
+            ),
+            borderRadius: BorderRadius.circular(16),
           ),
-          const SizedBox(height: 12),
-          ...perks,
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: product != null ? () => onBuy(product) : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFD700),
-                foregroundColor: const Color(0xFF1A237E),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+          padding: const EdgeInsets.all(2),
+          child: child,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1A237E), Color(0xFF283593)],
+          ),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('⭐', style: TextStyle(fontSize: 28)),
+                const SizedBox(width: 10),
+                Text(ref.tr('vip_subscription'),
+                    style: const TextStyle(
+                        color: Color(0xFFFFD700),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...perks,
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: product != null ? () => widget.onBuy(product) : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFD700),
+                  foregroundColor: const Color(0xFF1A237E),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text(
-                product != null ? '${product.price} ${ref.tr('per_month')}' : '\$4.99 ${ref.tr('per_month')}',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                child: Text(
+                  product != null ? '${product.price} ${ref.tr('per_month')}' : '\$4.99 ${ref.tr('per_month')}',
+                  style:
+                      const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -466,7 +544,7 @@ class _AdRewardCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF00BCD4).withValues(alpha: 0.3)),
       ),

@@ -19,6 +19,7 @@ import '../widgets/relationship_bar.dart';
 import '../widgets/chapter_progress.dart';
 import '../widgets/achievement_popup.dart';
 import 'wardrobe_screen.dart';
+import '../app/theme.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String novelId;
@@ -96,7 +97,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF16213E),
+        backgroundColor: AppTheme.surfaceDark,
         title: const Text('Нет билетов ⚡', style: TextStyle(color: Colors.white)),
         content: Text(
           'Билеты закончились.\nСледующий через $min м $sec с.',
@@ -126,7 +127,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
               },
               child: Text(
                 '📺 Реклама → +${adService.ticketReward} 🎫',
-                style: const TextStyle(color: Color(0xFF00BCD4)),
+                style: const TextStyle(color: AppTheme.cyan),
               ),
             ),
           TextButton(
@@ -142,12 +143,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('${ref.tr('not_enough_diamonds')} 💎'),
-                    backgroundColor: const Color(0xFF16213E),
+                    backgroundColor: AppTheme.surfaceDark,
                   ),
                 );
               }
             },
-            child: const Text('💎 10 алмазов', style: TextStyle(color: Color(0xFFE91E63))),
+            child: const Text('💎 10 алмазов', style: TextStyle(color: AppTheme.primary)),
           ),
         ],
       ),
@@ -254,11 +255,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   // Прогресс по главе
-                  ChapterProgressIndicator(
+                  Expanded(child: ChapterProgressIndicator(
                     currentSceneIndex: engine.currentSceneIndex,
                     totalScenes: engine.totalScenes,
                     chapterTitle: engine.currentChapter?.title,
-                  ),
+                  )),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -279,7 +280,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                           SnackBar(
                             content: Text(ref.tr('saved')),
                             duration: const Duration(seconds: 1),
-                            backgroundColor: const Color(0xFF16213E),
+                            backgroundColor: AppTheme.surfaceDark,
                           ),
                         );
                       }
@@ -388,7 +389,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
           SnackBar(
             content: Text('${ref.tr('not_enough_diamonds')} (${choice.cost} 💎)'),
             duration: const Duration(seconds: 2),
-            backgroundColor: const Color(0xFF16213E),
+            backgroundColor: AppTheme.surfaceDark,
           ),
         );
         return;
@@ -439,7 +440,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
             value: entry.value as num,
             color: character.color != null
                 ? _parseColor(character.color!)
-                : const Color(0xFFE91E63),
+                : AppTheme.primary,
           );
         }
       }
@@ -616,7 +617,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF0F3460), Color(0xFF1A1A2E)],
+            colors: [Color(0xFF0F3460), AppTheme.bgDark],
           ),
         ),
         child: Center(
@@ -635,7 +636,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                               ? Icons.downloading
                               : Icons.download,
                   size: 64,
-                  color: const Color(0xFFE91E63),
+                  color: AppTheme.primary,
                 ),
                 const SizedBox(height: 24),
 
@@ -677,7 +678,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 // Кнопки
                 if (transition == ChapterTransition.loading)
                   const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation(Color(0xFFE91E63)),
+                    valueColor: AlwaysStoppedAnimation(AppTheme.primary),
                   ),
 
                 if (transition == ChapterTransition.needsDownload)
@@ -688,7 +689,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     icon: const Icon(Icons.download),
                     label: Text('${ref.tr('download')} $nextNum'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE91E63),
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
@@ -745,7 +746,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // Показать выбор персонажа
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF16213E),
+      backgroundColor: AppTheme.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -759,7 +760,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
             ),
             ...characters.map((c) => ListTile(
               leading: CircleAvatar(
-                backgroundColor: c.color != null ? _parseColor(c.color!) : const Color(0xFFE91E63),
+                backgroundColor: c.color != null ? _parseColor(c.color!) : AppTheme.primary,
                 child: Text(c.name[0], style: const TextStyle(color: Colors.white)),
               ),
               title: Text(c.name, style: const TextStyle(color: Colors.white)),

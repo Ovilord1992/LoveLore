@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app/theme.dart';
 import '../models/scene.dart';
 
 /// Кнопки выбора с опциональным таймером
@@ -84,7 +85,7 @@ class _ChoiceButtonsState extends State<ChoiceButtons>
                           value: 1 - _timerController!.value,
                           strokeWidth: 3,
                           valueColor: AlwaysStoppedAnimation(
-                            _timerController!.value > 0.7 ? Colors.red : const Color(0xFFE91E63),
+                            _timerController!.value > 0.7 ? Colors.red : AppTheme.primary,
                           ),
                           backgroundColor: Colors.white12,
                         ),
@@ -168,15 +169,14 @@ class _ChoiceButtonState extends State<_ChoiceButton>
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isPremium
-                  ? [const Color(0xFF9C27B0), const Color(0xFFE91E63)]
-                  : [const Color(0xFF1A1A2E), const Color(0xFF16213E)],
-            ),
+            gradient: isPremium
+                ? AppTheme.accentGradient
+                : null,
+            color: isPremium ? null : AppTheme.surfaceColor(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isPremium
-                  ? const Color(0xFFE91E63)
+                  ? AppTheme.primary
                   : Colors.white24,
               width: 1,
             ),

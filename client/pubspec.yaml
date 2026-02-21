@@ -69,11 +69,6 @@ flutter:
   assets:
     - assets/novels/
     - assets/novels/manifest.json
-    - assets/novels/demo_novel/
-    - assets/novels/demo_novel/meta.json
-    - assets/novels/demo_novel/characters.json
-    - assets/novels/demo_novel/variables.json
-    - assets/novels/demo_novel/chapters/
     - assets/ui/
 
   # An image asset can refer to one or more resolution-specific "variants", see

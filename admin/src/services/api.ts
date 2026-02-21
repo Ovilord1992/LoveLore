@@ -25,4 +25,13 @@ api.interceptors.response.use(
   },
 );
 
+export const getReviews = (params?: { status?: string; page?: number; limit?: number }) =>
+  api.get('/admin/reviews', { params });
+export const approveReview = (id: number) =>
+  api.patch(`/admin/reviews/${id}`, { status: 'approved' });
+export const rejectReview = (id: number) =>
+  api.patch(`/admin/reviews/${id}`, { status: 'rejected' });
+export const deleteReview = (id: number) =>
+  api.delete(`/admin/reviews/${id}`);
+
 export default api;

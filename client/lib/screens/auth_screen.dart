@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../app/theme.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -78,7 +79,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final authState = ref.watch(authServiceProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(_isLogin ? 'Вход' : 'Регистрация'),
         backgroundColor: Colors.transparent,
@@ -95,7 +96,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               const Icon(
                 Icons.auto_stories,
                 size: 64,
-                color: Color(0xFFE91E8C),
+                color: AppTheme.primary,
               ),
               const SizedBox(height: 16),
               Text(
@@ -172,15 +173,22 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               // Кнопка входа/регистрации
               SizedBox(
                 height: 52,
-                child: ElevatedButton(
-                  onPressed: authState.isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE91E8C),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.accentGradient,
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  child: ElevatedButton(
+                    onPressed: authState.isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
                   child: authState.isLoading
                       ? const SizedBox(
                           width: 24,
@@ -197,6 +205,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -210,7 +219,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   _isLogin
                       ? 'Нет аккаунта? Зарегистрируйтесь'
                       : 'Уже есть аккаунт? Войдите',
-                  style: const TextStyle(color: Color(0xFFE91E8C)),
+                  style: const TextStyle(color: AppTheme.primary),
                 ),
               ),
 
@@ -305,14 +314,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         prefixIcon: Icon(icon, color: Colors.white38),
         suffixIcon: suffix,
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.08),
+        fillColor: AppTheme.surfaceColor(context),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE91E8C)),
+          borderSide: const BorderSide(color: AppTheme.primary),
         ),
       ),
     );

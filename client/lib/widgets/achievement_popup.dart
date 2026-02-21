@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app/theme.dart';
 import '../services/achievement_service.dart';
 
 /// Всплывающее уведомление о новом достижении
@@ -103,16 +104,14 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2D1854), Color(0xFF16213E)],
-                ),
+                gradient: AppTheme.accentGradient,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: const Color(0xFFE91E63).withValues(alpha: 0.5),
+                  color: AppTheme.primary.withValues(alpha: 0.5),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFE91E63).withValues(alpha: 0.2),
+                    color: AppTheme.primary.withValues(alpha: 0.2),
                     blurRadius: 20,
                     offset: const Offset(0, 4),
                   ),
@@ -125,12 +124,12 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                     height: 40,
                     decoration: BoxDecoration(
                       color:
-                          const Color(0xFFE91E63).withValues(alpha: 0.2),
+                          AppTheme.primary.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
                       child: Icon(Icons.emoji_events,
-                          color: Color(0xFFE91E63), size: 22),
+                          color: AppTheme.primary, size: 22),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -141,9 +140,9 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                       children: [
                         Text(
                           widget.header,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
-                            color: Color(0xFFE91E63),
+                            color: AppTheme.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

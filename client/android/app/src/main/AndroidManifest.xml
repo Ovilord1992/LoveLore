@@ -2,7 +2,8 @@
     <application
         android:label="Amoria"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
 
         <!-- AdMob App ID (тестовый, заменить перед релизом) -->
         <meta-data

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../app/theme.dart';
 import '../services/daily_reward_service.dart';
 import '../services/currency_service.dart';
 import '../services/remote_config_service.dart';
@@ -44,16 +45,16 @@ class _DailyRewardDialog extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF2D1854), Color(0xFF1A1A2E)],
+            colors: [Color(0xFF2D1854), AppTheme.bgDark],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: const Color(0xFFE91E63).withValues(alpha: 0.4),
+            color: AppTheme.primary.withValues(alpha: 0.4),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE91E63).withValues(alpha: 0.2),
+              color: AppTheme.primary.withValues(alpha: 0.2),
               blurRadius: 30,
               spreadRadius: 5,
             ),
@@ -133,19 +134,19 @@ class _DailyRewardDialog extends StatelessWidget {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Получено: ${parts.join(' ')}'),
-                        backgroundColor: const Color(0xFF4CAF50),
+                        backgroundColor: AppTheme.success,
                       ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE91E63),
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                     elevation: 8,
                     shadowColor:
-                        const Color(0xFFE91E63).withValues(alpha: 0.5),
+                        AppTheme.primary.withValues(alpha: 0.5),
                   ),
                   child: const Text(
                     'Забрать награду!',
@@ -185,26 +186,25 @@ class _DayCell extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: isCurrent
-                ? const LinearGradient(
-                    colors: [Color(0xFFE91E63), Color(0xFF9C27B0)])
+                ? AppTheme.accentGradient
                 : null,
             color: isPast
-                ? const Color(0xFF4CAF50).withValues(alpha: 0.3)
+                ? AppTheme.success.withValues(alpha: 0.3)
                 : isCurrent
                     ? null
-                    : const Color(0xFF16213E),
+                    : AppTheme.surfaceDark,
             border: Border.all(
               color: isCurrent
-                  ? const Color(0xFFE91E63)
+                  ? AppTheme.primary
                   : isPast
-                      ? const Color(0xFF4CAF50)
+                      ? AppTheme.success
                       : Colors.white12,
               width: isCurrent ? 2 : 1,
             ),
           ),
           child: Center(
             child: isPast
-                ? const Icon(Icons.check, size: 16, color: Color(0xFF4CAF50))
+                ? const Icon(Icons.check, size: 16, color: AppTheme.success)
                 : Text(
                     label.split(' ').last,
                     style: const TextStyle(fontSize: 14),

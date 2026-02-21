@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../app/theme.dart';
 import '../services/settings_service.dart';
 import '../services/locale_service.dart';
 
@@ -12,7 +13,7 @@ class SettingsScreen extends ConsumerWidget {
     final settingsNotifier = ref.read(settingsServiceProvider.notifier);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(ref.tr('settings')),
         backgroundColor: Colors.transparent,
@@ -96,6 +97,32 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 24),
 
+          // Тема
+          _SectionTitle('🎨 Оформление'),
+          Row(
+            children: [
+              _ThemeCard(
+                label: '🌙 Тёмная',
+                selected: settings.themeMode == 2,
+                onTap: () => settingsNotifier.setThemeMode(2),
+              ),
+              const SizedBox(width: 8),
+              _ThemeCard(
+                label: '☀️ Светлая',
+                selected: settings.themeMode == 1,
+                onTap: () => settingsNotifier.setThemeMode(1),
+              ),
+              const SizedBox(width: 8),
+              _ThemeCard(
+                label: '📱 Системная',
+                selected: settings.themeMode == 0,
+                onTap: () => settingsNotifier.setThemeMode(0),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
           // О приложении
           _SectionTitle(ref.tr('about')),
           _InfoTile(
@@ -122,7 +149,7 @@ class _SectionTitle extends StatelessWidget {
         style: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: Color(0xFFE91E63),
+          color: AppTheme.primary,
           letterSpacing: 1.2,
         ),
       ),
@@ -158,7 +185,7 @@ class _SliderTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -180,10 +207,10 @@ class _SliderTile extends StatelessWidget {
               Expanded(
                 child: SliderTheme(
                   data: SliderThemeData(
-                    activeTrackColor: const Color(0xFFE91E63),
+                    activeTrackColor: AppTheme.primary,
                     inactiveTrackColor: Colors.white12,
-                    thumbColor: const Color(0xFFE91E63),
-                    overlayColor: const Color(0x29E91E63),
+                    thumbColor: AppTheme.primary,
+                    overlayColor: AppTheme.primary.withValues(alpha: 0.16),
                     trackHeight: 3,
                   ),
                   child: Slider(
@@ -227,7 +254,7 @@ class _SwitchTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -249,7 +276,7 @@ class _SwitchTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: const Color(0xFFE91E63),
+            activeTrackColor: AppTheme.primary,
           ),
         ],
       ),
@@ -273,7 +300,7 @@ class _InfoTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -307,7 +334,7 @@ class _LanguageTile extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -338,7 +365,7 @@ class _LanguageTile extends ConsumerWidget {
               '${meta.flag} ${meta.nativeName}',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Color(0xFFE91E63),
+                color: AppTheme.primary,
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
@@ -358,6 +385,47 @@ class _LanguageTile extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ThemeCard extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThemeCard({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor(context),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppTheme.primary : Colors.white12,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? AppTheme.primary : Colors.white60,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              fontSize: 13,
+            ),
+          ),
+        ),
       ),
     );
   }

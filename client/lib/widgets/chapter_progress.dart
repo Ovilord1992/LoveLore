@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app/theme.dart';
 
 /// Индикатор прогресса по главе — показывает сколько сцен пройдено
 class ChapterProgressIndicator extends StatelessWidget {
@@ -54,7 +55,7 @@ class ChapterProgressIndicator extends StatelessWidget {
                     minHeight: 4,
                     backgroundColor: Colors.white12,
                     valueColor:
-                        const AlwaysStoppedAnimation(Color(0xFFE91E63)),
+                        const AlwaysStoppedAnimation(AppTheme.primary),
                   );
                 },
               ),

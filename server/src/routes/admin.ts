@@ -376,3 +376,70 @@ adminRouter.put('/config', async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ─── GET /v1/admin/reviews ── Список отзывов ─────────────────────────────────
+adminRouter.get('/reviews', async (req: AuthRequest, res: Response) => {
+  try {
+    const status = req.query.status as string | undefined;
+    const where = status ? { status } : {};
+
+    const reviews = await prisma.review.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { id: true, displayName: true, email: true } },
+        novel: { select: { id: true, title: true } },
+      },
+    });
+
+    res.json({ reviews });
+  } catch (err) {
+    console.error('Admin reviews error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── PATCH /v1/admin/reviews/:id ── Обновить статус отзыва ───────────────────
+adminRouter.patch('/reviews/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const { status } = req.body;
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      res.status(400).json({ error: 'Status must be "approved" or "rejected"' });
+      return;
+    }
+
+    const review = await prisma.review.findUnique({ where: { id: req.params.id } });
+    if (!review) {
+      res.status(404).json({ error: 'Review not found' });
+      return;
+    }
+
+    const updated = await prisma.review.update({
+      where: { id: req.params.id },
+      data: { status },
+    });
+
+    res.json({ review: updated });
+  } catch (err) {
+    console.error('Admin review update error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── DELETE /v1/admin/reviews/:id ── Удалить отзыв ───────────────────────────
+adminRouter.delete('/reviews/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const review = await prisma.review.findUnique({ where: { id: req.params.id } });
+    if (!review) {
+      res.status(404).json({ error: 'Review not found' });
+      return;
+    }
+
+    await prisma.review.delete({ where: { id: req.params.id } });
+
+    res.json({ message: 'Review deleted' });
+  } catch (err) {
+    console.error('Admin review delete error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});

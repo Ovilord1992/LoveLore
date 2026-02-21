@@ -7,9 +7,14 @@ import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../services/ad_service.dart';
 import '../services/remote_config_service.dart';
+import '../services/settings_service.dart';
+import '../services/save_service.dart';
+import '../services/novel_loader.dart';
+import '../models/novel.dart';
 import 'gallery_screen.dart';
 import 'auth_screen.dart';
 import 'shop_screen.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -19,6 +24,14 @@ class ProfileScreen extends ConsumerWidget {
     final profile = ref.watch(userProfileProvider);
     final currency = ref.watch(currencyServiceProvider);
 
+    // Calculate level from stats
+    final totalXp = profile.totalNovelsCompleted * 100 +
+        profile.totalChaptersRead * 20 +
+        profile.totalChoicesMade * 5;
+    final level = totalXp ~/ 500 + 1;
+    final xpInLevel = totalXp % 500;
+    const xpPerLevel = 500;
+
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
@@ -27,14 +40,24 @@ class ProfileScreen extends ConsumerWidget {
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.zero,
         children: [
-          // Аватар и имя
-          Center(
+          // ═══ Header with gradient ═══
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2D1854), Color(0xFF16213E)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
             child: Column(
               children: [
                 _AvatarWidget(
                   index: profile.avatarIndex,
+                  size: 96,
                   onTap: () => _showAvatarPicker(context, ref),
                 ),
                 const SizedBox(height: 12),
@@ -56,160 +79,219 @@ class ProfileScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Валюта
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2D1854), Color(0xFF16213E)],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _CurrencyChip(
-                  icon: '💎',
-                  label: ref.tr('diamonds'),
-                  value: currency.diamonds,
+                const SizedBox(height: 8),
+                Text(
+                  '🌸 Книголюб · Уровень $level',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFFE91E63),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-                Container(width: 1, height: 40, color: Colors.white12),
-                _CurrencyChip(
-                  icon: '⚡',
-                  label: ref.tr('tickets'),
-                  value: currency.tickets,
-                  maxValue: ref.read(remoteConfigProvider).economy.maxTickets,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Реклама за алмазы
-          _WatchAdButton(ref: ref),
-          const SizedBox(height: 8),
-
-          // Кнопка магазина
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ShopScreen()),
-                );
-              },
-              icon: const Icon(Icons.storefront, size: 18),
-              label: Text(ref.tr('shop')),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFE91E63),
-                side: const BorderSide(color: Color(0xFFE91E63)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _SectionTitle(ref.tr('statistics')),
-          _StatGrid(
-            stats: [
-              _Stat(ref.tr('novels_started'), '${profile.totalNovelsStarted}',
-                  Icons.menu_book),
-              _Stat(ref.tr('novels_completed'), '${profile.totalNovelsCompleted}',
-                  Icons.check_circle_outline),
-              _Stat(ref.tr('chapters_read'), '${profile.totalChaptersRead}',
-                  Icons.auto_stories),
-              _Stat(ref.tr('choices_made'), '${profile.totalChoicesMade}',
-                  Icons.touch_app),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Достижения
-          _SectionTitle(ref.tr('achievements')),
-          if (profile.achievements.isEmpty)
-            _EmptyPlaceholder(
-              icon: Icons.emoji_events_outlined,
-              text: ref.tr('no_achievements'),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: profile.achievements.map((a) {
-                final icon = _achievementIcons[a] ?? Icons.star;
-                final label = ref.tr('ach_$a');
-                return _AchievementBadge(
-                  icon: icon,
-                  label: label,
-                );
-              }).toList(),
-            ),
-          const SizedBox(height: 24),
-
-          // Галерея CG
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const GalleryScreen()),
-              );
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _SectionTitle(ref.tr('gallery')),
-                const Icon(Icons.chevron_right,
-                    color: Colors.white38, size: 20),
-              ],
-            ),
-          ),
-          if (profile.unlockedCGs.isEmpty)
-            _EmptyPlaceholder(
-              icon: Icons.photo_library_outlined,
-              text: ref.tr('gallery_empty'),
-            )
-          else
-            SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: profile.unlockedCGs.length,
-                itemBuilder: (_, i) {
-                  final cgId = profile.unlockedCGs.elementAt(i);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: 160,
-                        color: const Color(0xFF16213E),
-                        child: Center(
-                          child: Text(
-                            cgId,
-                            style: const TextStyle(
-                                color: Colors.white38, fontSize: 12),
-                          ),
-                        ),
-                      ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: xpInLevel / xpPerLevel,
+                    backgroundColor: Colors.white12,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFE91E63),
                     ),
-                  );
-                },
-              ),
+                    minHeight: 6,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$xpInLevel / $xpPerLevel XP',
+                  style: const TextStyle(fontSize: 11, color: Colors.white38),
+                ),
+              ],
             ),
+          ),
 
-          const SizedBox(height: 24),
+          // ═══ Content with padding ═══
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Валюта
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2D1854), Color(0xFF16213E)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _CurrencyChip(
+                        icon: '💎',
+                        label: ref.tr('diamonds'),
+                        value: currency.diamonds,
+                      ),
+                      Container(width: 1, height: 40, color: Colors.white12),
+                      _CurrencyChip(
+                        icon: '⚡',
+                        label: ref.tr('tickets'),
+                        value: currency.tickets,
+                        maxValue: ref.read(remoteConfigProvider).economy.maxTickets,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
 
-          // Аккаунт
-          _SectionTitle('Аккаунт'),
-          _AccountSection(),
+                // Реклама за алмазы
+                _WatchAdButton(ref: ref),
+                const SizedBox(height: 8),
 
-          const SizedBox(height: 40),
+                // Кнопка магазина
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ShopScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.storefront, size: 18),
+                    label: Text(ref.tr('shop')),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFE91E63),
+                      side: const BorderSide(color: Color(0xFFE91E63)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ═══ Статистика (emoji) ═══
+                _SectionTitle(ref.tr('statistics')),
+                _StatGrid(
+                  stats: [
+                    _Stat('📚', ref.tr('novels_completed'), '${profile.totalNovelsCompleted}'),
+                    _Stat('📖', ref.tr('chapters_read'), '${profile.totalChaptersRead}'),
+                    _Stat('💕', ref.tr('choices_made'), '${profile.totalChoicesMade}'),
+                    _Stat('🏆', ref.tr('achievements'), '${profile.achievements.length}'),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // ═══ Избранное ═══
+                const _SectionTitle('❤️ Избранное'),
+                const _EmptyPlaceholder(
+                  icon: Icons.favorite_border,
+                  text: 'Пока пусто',
+                ),
+                const SizedBox(height: 24),
+
+                // ═══ История чтения ═══
+                const _SectionTitle('📊 История чтения'),
+                const _ReadingHistorySection(),
+                const SizedBox(height: 24),
+
+                // ═══ Достижения ═══
+                _SectionTitle(ref.tr('achievements')),
+                if (profile.achievements.isEmpty)
+                  _EmptyPlaceholder(
+                    icon: Icons.emoji_events_outlined,
+                    text: ref.tr('no_achievements'),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: profile.achievements.map((a) {
+                      final icon = _achievementIcons[a] ?? Icons.star;
+                      final label = ref.tr('ach_$a');
+                      return _AchievementBadge(
+                        icon: icon,
+                        label: label,
+                      );
+                    }).toList(),
+                  ),
+                const SizedBox(height: 24),
+
+                // ═══ Галерея CG ═══
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const GalleryScreen()),
+                    );
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _SectionTitle(ref.tr('gallery')),
+                      const Icon(Icons.chevron_right,
+                          color: Colors.white38, size: 20),
+                    ],
+                  ),
+                ),
+                if (profile.unlockedCGs.isEmpty)
+                  _EmptyPlaceholder(
+                    icon: Icons.photo_library_outlined,
+                    text: ref.tr('gallery_empty'),
+                  )
+                else
+                  SizedBox(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: profile.unlockedCGs.length,
+                      itemBuilder: (_, i) {
+                        final cgId = profile.unlockedCGs.elementAt(i);
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: 160,
+                              color: const Color(0xFF16213E),
+                              child: Center(
+                                child: Text(
+                                  cgId,
+                                  style: const TextStyle(
+                                      color: Colors.white38, fontSize: 12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+
+                // ═══ Тема ═══
+                const _SectionTitle('🎨 Тема'),
+                const _ThemeModeToggle(),
+                const SizedBox(height: 24),
+
+                // Настройки ⚙️
+                ListTile(
+                  leading: const Icon(Icons.settings, color: Colors.white38),
+                  title: Text(ref.tr('settings'), style: Theme.of(context).textTheme.titleMedium),
+                  trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                ),
+                const SizedBox(height: 24),
+
+                // ═══ Аккаунт ═══
+                _SectionTitle('Аккаунт'),
+                _AccountSection(),
+
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -422,6 +504,13 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+class _Stat {
+  final String emoji;
+  final String label;
+  final String value;
+  const _Stat(this.emoji, this.label, this.value);
+}
+
 class _StatGrid extends StatelessWidget {
   final List<_Stat> stats;
   const _StatGrid({required this.stats});
@@ -444,7 +533,7 @@ class _StatGrid extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(s.icon, color: Colors.white24, size: 24),
+              Text(s.emoji, style: const TextStyle(fontSize: 24)),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -468,13 +557,6 @@ class _StatGrid extends StatelessWidget {
       }).toList(),
     );
   }
-}
-
-class _Stat {
-  final String label;
-  final String value;
-  final IconData icon;
-  const _Stat(this.label, this.value, this.icon);
 }
 
 class _AchievementBadge extends StatelessWidget {
@@ -612,6 +694,235 @@ class _WatchAdButton extends StatelessWidget {
     );
   }
 }
+
+// ═══ Reading history section ═══
+
+class _ReadingHistorySection extends ConsumerStatefulWidget {
+  const _ReadingHistorySection();
+
+  @override
+  ConsumerState<_ReadingHistorySection> createState() =>
+      _ReadingHistorySectionState();
+}
+
+class _ReadingHistorySectionState extends ConsumerState<_ReadingHistorySection> {
+  late final Future<List<NovelMeta>> _novelsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _novelsFuture = ref.read(novelLoaderProvider).loadAllNovels();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final saveService = ref.read(saveServiceProvider.notifier);
+    final savedIds = saveService.getSavedNovelIds();
+
+    if (savedIds.isEmpty) {
+      return const _EmptyPlaceholder(
+        icon: Icons.history,
+        text: 'Начните читать новеллы!',
+      );
+    }
+
+    return FutureBuilder<List<NovelMeta>>(
+      future: _novelsFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFE91E63),
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        }
+
+        final novels = snapshot.data!;
+        final startedNovels =
+            novels.where((n) => savedIds.contains(n.id)).toList();
+
+        if (startedNovels.isEmpty) {
+          return const _EmptyPlaceholder(
+            icon: Icons.history,
+            text: 'Начните читать новеллы!',
+          );
+        }
+
+        return Column(
+          children: startedNovels.map((novel) {
+            final gameState = saveService.loadGame(novel.id);
+            double progress = 0.0;
+            if (novel.totalChapters > 0) {
+              progress =
+                  (gameState?.history.length ?? 0) / (novel.totalChapters * 5);
+              if (progress > 1.0) progress = 1.0;
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF16213E),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 48,
+                      height: 64,
+                      color: const Color(0xFF2D1854),
+                      child: const Center(
+                        child: Text('📖', style: TextStyle(fontSize: 20)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          novel.displayTitle,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.white12,
+                            valueColor:
+                                const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFE91E63),
+                            ),
+                            minHeight: 4,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.white38,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+// ═══ Theme mode toggle ═══
+
+class _ThemeModeToggle extends ConsumerWidget {
+  const _ThemeModeToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentMode = ref.watch(settingsServiceProvider).themeMode;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _ThemeCard(
+            emoji: '🌙',
+            label: 'Тёмная',
+            selected: currentMode == 2,
+            onTap: () =>
+                ref.read(settingsServiceProvider.notifier).setThemeMode(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ThemeCard(
+            emoji: '☀️',
+            label: 'Светлая',
+            selected: currentMode == 1,
+            onTap: () =>
+                ref.read(settingsServiceProvider.notifier).setThemeMode(1),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ThemeCard(
+            emoji: '📱',
+            label: 'Системная',
+            selected: currentMode == 0,
+            onTap: () =>
+                ref.read(settingsServiceProvider.notifier).setThemeMode(0),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemeCard extends StatelessWidget {
+  final String emoji;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThemeCard({
+    required this.emoji,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16213E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? const Color(0xFFE91E63) : Colors.white12,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: selected ? const Color(0xFFE91E63) : Colors.white54,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══ Account section ═══
 
 class _AccountSection extends ConsumerWidget {
   @override

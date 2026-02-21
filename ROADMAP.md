@@ -376,13 +376,115 @@ navell/
 - [x] Админка: модалка управления переводами (просмотр, загрузка, скачивание)
 - [x] Поддержка 11 языков: ru, en, es, fr, de, it, pt, tr, ko, ja, zh
 
-### Фаза 16: Мини-игры ⬜ ОТЛОЖЕНА
+### Фаза 16: Редизайн UI V1 ✅ ЗАВЕРШЕНА
+Полная переработка UI/UX приложения на основе дизайн-системы V1 (Pink/Purple, glassmorphism, gradients, feminine aesthetic).
+
+#### 16.1 Дизайн-система V1
+- [x] theme.dart: палитра (#E91E63, #9C27B0, #1A1A2E, #16213E, #0F0F1E)
+- [x] Типографика: Nunito (body) + Playfair Display (headlines), Google Fonts
+- [x] Dark + Light тема с полной поддержкой
+- [x] Переключение темы (dark/light/system) с сохранением в Hive
+- [x] Glassmorphism helper, gradient constants
+- [x] Компонентные темы (ChipTheme, InputDecoration, ElevatedButton, Card)
+
+#### 16.2 Главный экран (Home)
+- [x] 4-tab навигация: Главная / Каталог / Магазин / Профиль
+- [x] Featured баннер-карусель с автопрокруткой (5с)
+- [x] Секция «Продолжить чтение» (горизонтальная лента с прогрессом)
+- [x] Секция «Рекомендации для тебя» (shuffle, NovelCard)
+- [x] Секция «🔥 Тренды» (пронумерованный список, мини-обложки)
+- [x] Верхняя панель: 🔔 уведомления + логотип Amoria + валюта (💎/⚡)
+
+#### 16.3 Каталог (Discovery)
+- [x] Поиск по названию/автору
+- [x] Жанровые чипы с эмодзи (💕 Романтика, ✨ Фэнтези, 🎭 Драма...)
+- [x] Сортировка (популярность, новые, рейтинг, обновление)
+- [x] Переключение grid/list вида
+- [x] Бейджи (NEW, 🔥 HOT, VIP 👑, ЗАВЕРШЕНА ✅)
+
+#### 16.4 Карточки новелл (3 варианта)
+- [x] NovelCard: вертикальная с обложкой, градиентом, бейджами, ❤️, рейтингом, scale-анимацией
+- [x] ContinueReadingCard: горизонтальная с прогресс-баром
+- [x] NovelListCard: полноширинная с мини-обложкой и статистикой
+
+#### 16.5 Все экраны на AppTheme
+- [x] novel_detail_screen: градиент-кнопки, AppTheme цвета
+- [x] game_screen: AppTheme цвета (13 замен)
+- [x] profile_screen: уровень/XP, избранное, история чтения, тема-переключатель
+- [x] shop_screen: таб-режим, VIP shimmer, 4 внутренних таба
+- [x] settings_screen: тема-карточки (🌙/☀️/📱), AppTheme слайдеры
+- [x] auth_screen: градиент-кнопки, AppTheme поля
+
+#### 16.6 Виджеты на AppTheme
+- [x] dialogue_box: glassmorphism
+- [x] choice_buttons: градиент для premium, AppTheme.surfaceColor для обычных
+- [x] daily_reward_dialog: AppTheme цвета
+- [x] achievement_popup: AppTheme.accentGradient
+- [x] relationship_bar: AppTheme.primary
+- [x] chapter_progress: AppTheme.primary
+
+#### 16.7 Дополнительные виджеты
+- [x] skeleton_loading.dart: ShimmerLoading, SkeletonNovelCard, SkeletonCatalogGrid
+- [x] EmptyStateWidget: эмодзи + текст + действие
+
+#### 16.8 Локализация
+- [x] 43 новых ключа × 11 языков (473 строки)
+- [x] Ключи: home, catalog, shop, favorites, theme, reviews, etc.
+
+#### 16.9 Тесты
+- [x] theme_test.dart: 7 тестов (цвета, яркость, gradient)
+- [x] settings_test.dart: 5 тестов (defaults, themeMode, copyWith, JSON, charDelay)
+- [x] locale_test.dart: smoke-тест ключей
+
+### Фаза 17: Социальные функции ✅ ЗАВЕРШЕНА
+- [x] Prisma модели: Rating, Review, Favorite (@@unique userId+novelId)
+- [x] Novel: averageRating + ratingCount поля
+- [x] POST /v1/novels/:id/rate — рейтинг 1-5, upsert + пересчёт среднего
+- [x] GET /v1/novels/:id/rating — текущий рейтинг пользователя
+- [x] GET/POST /v1/novels/:id/reviews — отзывы (до 500 символов)
+- [x] GET /v1/novels/popular — топ по рейтингу
+- [x] GET /v1/novels/new-chapters — новеллы с новыми главами
+- [x] GET/POST /v1/sync/favorites — избранное (toggle)
+- [x] Админка: ReviewsPage (approve/reject/delete, фильтр по статусу)
+- [x] api.ts: getReviews, approveReview, rejectReview, deleteReview
+- [x] Server тесты: social.test.ts (9 тестов — validation, calculation)
+- [ ] Prisma migration не применена (нет запущенной БД)
+
+### 💡 Идеи на будущее (UI polish, Phase 16+)
+_Не блокируют запуск. Рассмотреть после публикации или при наличии времени._
+
+**🟢 Приоритетные (высокий эффект / низкая сложность):**
+- [ ] Онбординг: splash-экран + 3-слайдовая карусель + выбор жанров
+- [ ] Pull-to-refresh на главном экране и каталоге
+- [ ] Hero-анимации на обложках новелл (переход деталь↔каталог)
+
+**🟡 Средний приоритет (полезно, не критично):**
+- [ ] Меню паузы в игровом экране (боковая шторка: сохранить, загрузить, лог, гардероб)
+- [ ] Log/History диалогов (скролл назад по тексту)
+- [ ] Quick save кнопка в игровом HUD
+- [ ] Бейджи на табах навигации (непрочитанные обновления, акции)
+- [ ] Подключить SkeletonCatalogGrid при загрузке каталога
+- [ ] Промо-таймер обратного отсчёта в магазине
+- [ ] Уведомления и события (центр уведомлений 🔔, еженедельные челленджи)
+
+**🔴 Низкий приоритет (после запуска):**
+- [ ] Параллакс-эффект на обложке в деталях новеллы
+- [ ] Карта персонажей (мини-аватары ЛИ с уровнями отношений)
+- [ ] Confetti-анимация при достижениях, shimmer на баннерах
+- [ ] Lottie-анимации для пустых состояний
+- [ ] Адаптивный layout для планшетов (iPad sidebar)
+- [ ] Настраиваемый размер шрифта / Dynamic Type
+- [ ] Высококонтрастный режим для слабовидящих
+- [ ] Галерея CG в профиле
+- [ ] История покупок в магазине
+
+### Фаза 18: Мини-игры ⬜ ОТЛОЖЕНА
 - [ ] QTE (Quick Time Events) — нажми в нужный момент
 - [ ] Простые пазлы
 - [ ] Другие интерактивные вставки между сценами
 _(отложено — требует отдельного проектирования UI/UX)_
 
-### Фаза 17: Публикация ⬜ НЕ НАЧАТА
+### Фаза 19: Публикация ⬜ НЕ НАЧАТА
 - [ ] Подготовка скриншотов для сторов
 - [ ] Описание и ключевые слова для ASO
 - [ ] Публикация в Google Play
