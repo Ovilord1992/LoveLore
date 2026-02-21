@@ -20,6 +20,7 @@ class AppSettings {
   final bool hasSeenOnboarding;
   final bool vibrationEnabled;
   final bool notificationsEnabled;
+  final int dialogueStyle; // 0=classic (bottom), 1=overlay (center)
 
   const AppSettings({
     this.textSpeed = 0.5,
@@ -32,6 +33,7 @@ class AppSettings {
     this.hasSeenOnboarding = false,
     this.vibrationEnabled = true,
     this.notificationsEnabled = true,
+    this.dialogueStyle = 1, // overlay by default
   });
 
   ThemeMode get flutterThemeMode {
@@ -41,6 +43,8 @@ class AppSettings {
       default: return ThemeMode.system;
     }
   }
+
+  bool get useOverlayDialogue => dialogueStyle == 1;
 
   AppSettings copyWith({
     double? textSpeed,
@@ -53,6 +57,7 @@ class AppSettings {
     bool? hasSeenOnboarding,
     bool? vibrationEnabled,
     bool? notificationsEnabled,
+    int? dialogueStyle,
   }) {
     return AppSettings(
       textSpeed: textSpeed ?? this.textSpeed,
@@ -65,6 +70,7 @@ class AppSettings {
       hasSeenOnboarding: hasSeenOnboarding ?? this.hasSeenOnboarding,
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      dialogueStyle: dialogueStyle ?? this.dialogueStyle,
     );
   }
 
@@ -79,6 +85,7 @@ class AppSettings {
         'hasSeenOnboarding': hasSeenOnboarding,
         'vibrationEnabled': vibrationEnabled,
         'notificationsEnabled': notificationsEnabled,
+        'dialogueStyle': dialogueStyle,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -92,6 +99,7 @@ class AppSettings {
         hasSeenOnboarding: json['hasSeenOnboarding'] as bool? ?? false,
         vibrationEnabled: json['vibrationEnabled'] as bool? ?? true,
         notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+        dialogueStyle: json['dialogueStyle'] as int? ?? 1,
       );
 
   /// Задержка печати одного символа в миллисекундах
@@ -153,6 +161,11 @@ class SettingsService extends StateNotifier<AppSettings> {
 
   void toggleNotifications() {
     state = state.copyWith(notificationsEnabled: !state.notificationsEnabled);
+    _save();
+  }
+
+  void setDialogueStyle(int style) {
+    state = state.copyWith(dialogueStyle: style);
     _save();
   }
 

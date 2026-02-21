@@ -64,6 +64,45 @@ class SettingsScreen extends ConsumerWidget {
             value: settings.vibrationEnabled,
             onChanged: (_) => settingsNotifier.toggleVibration(),
           ),
+          const SizedBox(height: 8),
+          // Стиль диалогов
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor(context),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.chat_bubble_outline, color: Colors.white54, size: 20),
+                    const SizedBox(width: 12),
+                    Text(ref.tr('dialogue_style'), style: const TextStyle(color: Colors.white)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _DialogueStyleCard(
+                      label: ref.tr('classic_style'),
+                      icon: Icons.dock,
+                      selected: settings.dialogueStyle == 0,
+                      onTap: () => settingsNotifier.setDialogueStyle(0),
+                    ),
+                    const SizedBox(width: 8),
+                    _DialogueStyleCard(
+                      label: ref.tr('overlay_style'),
+                      icon: Icons.center_focus_strong,
+                      selected: settings.dialogueStyle == 1,
+                      onTap: () => settingsNotifier.setDialogueStyle(1),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 24),
 
@@ -497,6 +536,59 @@ class _ThemeCard extends StatelessWidget {
               fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
               fontSize: 13,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogueStyleCard extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DialogueStyleCard({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppTheme.primary.withValues(alpha: 0.12)
+                : AppTheme.surfaceColor(context),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? AppTheme.primary : Colors.white12,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(icon,
+                  color: selected ? AppTheme.primary : Colors.white38,
+                  size: 22),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: selected ? AppTheme.primary : Colors.white60,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/locale_service.dart';
+import '../services/settings_service.dart';
 import 'package:path_provider/path_provider.dart';
 import '../engine/scene_engine.dart';
 import '../models/scene.dart';
@@ -13,6 +14,7 @@ import '../services/achievement_service.dart';
 import '../services/ad_service.dart';
 import '../services/vip_service.dart';
 import '../widgets/dialogue_box.dart';
+import '../widgets/dialogue_overlay.dart';
 import '../widgets/choice_buttons.dart';
 import '../widgets/scene_transitions.dart';
 import '../widgets/relationship_bar.dart';
@@ -236,12 +238,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
             if (scene != null) _buildCharacters(scene, engine),
 
             // Диалог / Выбор
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildEventUI(event, engine),
-            ),
+            _buildEventPositioned(event, engine),
 
             // Верхняя панель
             Positioned(
@@ -454,6 +451,38 @@ class _GameScreenState extends ConsumerState<GameScreen>
     if (relationships.isEmpty) return const SizedBox.shrink();
 
     return RelationshipPanel(relationships: relationships);
+  }
+
+  Widget _buildEventPositioned(SceneEvent? event, SceneEngine engine) {
+    final settings = ref.watch(settingsServiceProvider);
+    final useOverlay = settings.useOverlayDialogue;
+
+    // Overlay mode: dialogue/narration fills entire screen
+    if (useOverlay && event != null &&
+        (event.type == EventType.dialogue || event.type == EventType.narration)) {
+      final character =
+          event.speaker != null ? engine.getCharacter(event.speaker!) : null;
+      final speakerName = character != null
+          ? engine.trCharacter(character.id, character.name)
+          : null;
+      return Positioned.fill(
+        child: DialogueOverlay(
+          speakerName: speakerName,
+          speakerColor:
+              character?.color != null ? _parseColor(character!.color!) : null,
+          text: engine.tr(event.text),
+          onTap: () => engine.nextEvent(),
+        ),
+      );
+    }
+
+    // Classic mode or choices/other events: pinned to bottom
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: _buildEventUI(event, engine),
+    );
   }
 
   Widget _buildEventUI(SceneEvent? event, SceneEngine engine) {
