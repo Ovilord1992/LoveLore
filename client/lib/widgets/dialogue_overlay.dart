@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
 import '../services/settings_service.dart';
 
-/// Стиль диалога как в Romance Club — текст внизу экрана,
-/// имя в плашке над текстовым боксом, персонажи полностью видны
+/// Стиль диалога как в Romance Club — декоративная рамка с орнаментом,
+/// имя в фигурной вкладке, текст по центру-низу экрана
 class DialogueOverlay extends ConsumerStatefulWidget {
   final String? speakerName;
   final Color? speakerColor;
@@ -124,7 +124,6 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
   Widget build(BuildContext context) {
     final isNarration = widget.speakerName == null;
     final accentColor = widget.speakerColor ?? AppTheme.primary;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return GestureDetector(
       onTap: () {
@@ -140,120 +139,282 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
         height: double.infinity,
         child: Column(
           children: [
-            // Верхняя прозрачная зона — пропускает нажатия
             const Spacer(),
-
-            // Текстовый блок внизу
             FadeTransition(
               opacity: _fadeAnimation,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Плашка с именем над боксом
-                  if (!isNarration)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: accentColor.withValues(alpha: 0.5),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        widget.speakerName!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: accentColor,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ),
-                  if (isNarration)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        '· · ·',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white38,
-                          letterSpacing: 3,
-                        ),
-                      ),
-                    ),
-
-                  const SizedBox(height: 6),
-
-                  // Основной текстовый бокс
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                    padding: EdgeInsets.fromLTRB(
-                        20, 18, 20, 14 + bottomPadding.clamp(0, 16)),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
-                        bottom: Radius.circular(4),
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, -4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: isNarration
-                          ? CrossAxisAlignment.center
-                          : CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _displayedText,
-                          textAlign:
-                              isNarration ? TextAlign.center : TextAlign.left,
-                          style: TextStyle(
-                            fontSize: 17,
-                            color: isNarration
-                                ? Colors.white70
-                                : Colors.white.withValues(alpha: 0.92),
-                            height: 1.55,
-                            fontStyle: isNarration
-                                ? FontStyle.italic
-                                : FontStyle.normal,
-                          ),
-                        ),
-                        if (_isComplete) ...[
-                          const SizedBox(height: 8),
-                          const Align(
-                            alignment: Alignment.centerRight,
-                            child: _PulsingArrow(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _OrnateDialogueFrame(
+                  speakerName: widget.speakerName,
+                  speakerColor: accentColor,
+                  isNarration: isNarration,
+                  displayedText: _displayedText,
+                  isComplete: _isComplete,
+                ),
               ),
             ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
           ],
         ),
       ),
     );
   }
+}
+
+/// Декоративная рамка диалога в стиле Romance Club
+class _OrnateDialogueFrame extends StatelessWidget {
+  final String? speakerName;
+  final Color speakerColor;
+  final bool isNarration;
+  final String displayedText;
+  final bool isComplete;
+
+  const _OrnateDialogueFrame({
+    this.speakerName,
+    required this.speakerColor,
+    required this.isNarration,
+    required this.displayedText,
+    required this.isComplete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Цвета рамки — тёплые золотистые тона
+    const frameColor1 = Color(0xFFB8860B); // dark goldenrod
+    const frameColor2 = Color(0xFFDAA520); // goldenrod
+    const frameColorLight = Color(0xFFE8C872); // light gold
+    const frameBg = Color(0xFF1A1410); // тёмно-коричневый фон
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Вкладка с именем / точками
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 7),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [frameColor1, frameColor2, frameColor1],
+            ),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(14),
+            ),
+            border: Border.all(color: frameColorLight, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: frameColor1.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: isNarration
+              ? const Text(
+                  '· · ·',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white60,
+                    letterSpacing: 3,
+                  ),
+                )
+              : Text(
+                  speakerName ?? '',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                    shadows: [
+                      Shadow(color: Colors.black54, blurRadius: 4),
+                    ],
+                  ),
+                ),
+        ),
+
+        // Основной текстовый бокс с орнаментом
+        CustomPaint(
+          painter: _OrnateFramePainter(
+            frameColor: frameColor1,
+            frameColorLight: frameColorLight,
+            backgroundColor: frameBg.withValues(alpha: 0.88),
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: isNarration
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayedText,
+                  textAlign: isNarration ? TextAlign.center : TextAlign.left,
+                  style: TextStyle(
+                    fontSize: 17,
+                    color: isNarration
+                        ? Colors.white70
+                        : Colors.white.withValues(alpha: 0.92),
+                    height: 1.55,
+                    fontStyle:
+                        isNarration ? FontStyle.italic : FontStyle.normal,
+                  ),
+                ),
+                if (isComplete) ...[
+                  const SizedBox(height: 6),
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: _PulsingArrow(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// CustomPainter для декоративной рамки с орнаментальными углами
+class _OrnateFramePainter extends CustomPainter {
+  final Color frameColor;
+  final Color frameColorLight;
+  final Color backgroundColor;
+
+  _OrnateFramePainter({
+    required this.frameColor,
+    required this.frameColorLight,
+    required this.backgroundColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final r = 4.0; // corner radius
+
+    // Фон
+    final bgPaint = Paint()..color = backgroundColor;
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(rect,
+        bottomLeft: Radius.circular(r),
+        bottomRight: Radius.circular(r),
+      ),
+      bgPaint,
+    );
+
+    // Внешняя рамка
+    final outerPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [frameColorLight, frameColor, frameColorLight],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(rect,
+        bottomLeft: Radius.circular(r),
+        bottomRight: Radius.circular(r),
+      ),
+      outerPaint,
+    );
+
+    // Внутренняя тонкая рамка (inset)
+    final innerRect = rect.deflate(6);
+    final innerPaint = Paint()
+      ..color = frameColor.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(innerRect, Radius.circular(r)),
+      innerPaint,
+    );
+
+    // Декоративные углы
+    _drawCornerOrnament(canvas, size, 0, 0, 1, 1); // top-left
+    _drawCornerOrnament(canvas, size, size.width, 0, -1, 1); // top-right
+    _drawCornerOrnament(canvas, size, 0, size.height, 1, -1); // bottom-left
+    _drawCornerOrnament(canvas, size, size.width, size.height, -1, -1); // bottom-right
+
+    // Горизонтальные декоративные линии (верх и низ)
+    _drawHorizontalOrnament(canvas, size, isTop: true);
+    _drawHorizontalOrnament(canvas, size, isTop: false);
+  }
+
+  void _drawCornerOrnament(Canvas canvas, Size size, double x, double y, double dx, double dy) {
+    final paint = Paint()
+      ..color = frameColorLight
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+
+    final cornerSize = 16.0;
+
+    // L-образная фигура
+    final path = Path();
+    path.moveTo(x + dx * 4, y + dy * cornerSize);
+    path.lineTo(x + dx * 4, y + dy * 4);
+    path.lineTo(x + dx * cornerSize, y + dy * 4);
+    canvas.drawPath(path, paint);
+
+    // Маленький ромбик
+    final diamondPaint = Paint()
+      ..color = frameColorLight
+      ..style = PaintingStyle.fill;
+
+    final cx = x + dx * 10;
+    final cy = y + dy * 10;
+    final ds = 3.0;
+    final diamond = Path()
+      ..moveTo(cx, cy - ds)
+      ..lineTo(cx + ds, cy)
+      ..lineTo(cx, cy + ds)
+      ..lineTo(cx - ds, cy)
+      ..close();
+    canvas.drawPath(diamond, diamondPaint);
+  }
+
+  void _drawHorizontalOrnament(Canvas canvas, Size size, {required bool isTop}) {
+    final y = isTop ? 0.0 : size.height;
+    final centerX = size.width / 2;
+    final ornamentWidth = 40.0;
+
+    final paint = Paint()
+      ..color = frameColorLight.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+
+    // Маленькие декоративные штрихи по центру
+    final dy = isTop ? 6.0 : -6.0;
+    canvas.drawLine(
+      Offset(centerX - ornamentWidth, y + dy),
+      Offset(centerX - 8, y + dy),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(centerX + 8, y + dy),
+      Offset(centerX + ornamentWidth, y + dy),
+      paint,
+    );
+
+    // Центральный ромбик
+    final dp = Paint()
+      ..color = frameColorLight.withValues(alpha: 0.6)
+      ..style = PaintingStyle.fill;
+    final d = 3.0;
+    final diamond = Path()
+      ..moveTo(centerX, y + dy - d)
+      ..lineTo(centerX + d, y + dy)
+      ..lineTo(centerX, y + dy + d)
+      ..lineTo(centerX - d, y + dy)
+      ..close();
+    canvas.drawPath(diamond, dp);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _PulsingArrow extends StatefulWidget {
