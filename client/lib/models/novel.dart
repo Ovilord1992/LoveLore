@@ -99,6 +99,21 @@ class NovelMeta extends Equatable {
       case 'modern': return DialogueFrameTheme.modern;
       case 'glassmorphism': return DialogueFrameTheme.glassmorphism;
       case 'fantasy': return DialogueFrameTheme.fantasy;
+      case 'victorian': return DialogueFrameTheme.victorian;
+      case 'gothic': return DialogueFrameTheme.gothic;
+      case 'noir': return DialogueFrameTheme.noir;
+      case 'sakura': return DialogueFrameTheme.sakura;
+      case 'celestial': return DialogueFrameTheme.celestial;
+      case 'cyberpunk': return DialogueFrameTheme.cyberpunk;
+      case 'steampunk': return DialogueFrameTheme.steampunk;
+      case 'pirate': return DialogueFrameTheme.pirate;
+      case 'medieval': return DialogueFrameTheme.medieval;
+      case 'egyptian': return DialogueFrameTheme.egyptian;
+      case 'baroque': return DialogueFrameTheme.baroque;
+      case 'romantic': return DialogueFrameTheme.romantic;
+      case 'nordic': return DialogueFrameTheme.nordic;
+      case 'tropical': return DialogueFrameTheme.tropical;
+      case 'bloodMoon': return DialogueFrameTheme.bloodMoon;
       default: return DialogueFrameTheme.ornate;
     }
   }

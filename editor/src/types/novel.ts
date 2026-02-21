@@ -9,7 +9,10 @@ export interface NovelMeta {
   tags: string[];
   totalChapters: number;
   sourceLanguage?: string; // язык оригинала (ru, en, etc.)
-  dialogueTheme?: 'ornate' | 'artDeco' | 'modern' | 'glassmorphism' | 'fantasy';
+  dialogueTheme?: 'ornate' | 'artDeco' | 'modern' | 'glassmorphism' | 'fantasy'
+    | 'victorian' | 'gothic' | 'noir' | 'sakura' | 'celestial'
+    | 'cyberpunk' | 'steampunk' | 'pirate' | 'medieval' | 'egyptian'
+    | 'baroque' | 'romantic' | 'nordic' | 'tropical' | 'bloodMoon';
   dialogueFrameColor?: string; // hex e.g. "#B8860B"
   dialogueBgColor?: string;    // hex e.g. "#1A1410"
 }

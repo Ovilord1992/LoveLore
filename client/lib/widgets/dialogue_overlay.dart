@@ -173,7 +173,17 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
   }
 }
 
-/// Конфигурация цветов для темы рамки
+// ═══════════════════════════════════════════════════════
+// Modular theme system — 20 genre-specific frame styles
+// ═══════════════════════════════════════════════════════
+
+/// Corner ornament drawing style
+enum _CornerType { lBracket, stepped, swirl, pointed, petal, clip, gear, rope, shield, lotus, acanthus, heart, knot, leaf, thorn, none }
+
+/// Center ornament drawing style
+enum _CenterType { diamond, square, star4, cross, moon, gearSmall, compass, ankh, shell, heartSmall, rune, sun, thornStar, petalSmall, none }
+
+/// Color palette for a theme
 class _FrameColors {
   final Color primary;
   final Color secondary;
@@ -192,7 +202,7 @@ class _FrameColors {
   });
 
   static _FrameColors forTheme(DialogueFrameTheme theme, {Color? customFrame, Color? customBg}) {
-    final base = _baseForTheme(theme);
+    final base = _palettes[theme]!;
     if (customFrame == null && customBg == null) return base;
     return _FrameColors(
       primary: customFrame ?? base.primary,
@@ -204,55 +214,156 @@ class _FrameColors {
     );
   }
 
-  static _FrameColors _baseForTheme(DialogueFrameTheme theme) {
-    switch (theme) {
-      case DialogueFrameTheme.ornate:
-        return const _FrameColors(
-          primary: Color(0xFFB8860B),
-          secondary: Color(0xFFDAA520),
-          light: Color(0xFFE8C872),
-          background: Color(0xFF1A1410),
-          nameGradient1: Color(0xFFB8860B),
-          nameGradient2: Color(0xFFDAA520),
-        );
-      case DialogueFrameTheme.artDeco:
-        return const _FrameColors(
-          primary: Color(0xFF8B7355),
-          secondary: Color(0xFFC4A265),
-          light: Color(0xFFD4B896),
-          background: Color(0xFF0F1B2D),
-          nameGradient1: Color(0xFF1A2A4A),
-          nameGradient2: Color(0xFF2A3A5A),
-        );
-      case DialogueFrameTheme.modern:
-        return const _FrameColors(
-          primary: Color(0xFF6C63FF),
-          secondary: Color(0xFF8B83FF),
-          light: Color(0xFFB0ABFF),
-          background: Color(0xFF1A1A2E),
-          nameGradient1: Color(0xFF6C63FF),
-          nameGradient2: Color(0xFF8B83FF),
-        );
-      case DialogueFrameTheme.glassmorphism:
-        return const _FrameColors(
-          primary: Color(0x80FFFFFF),
-          secondary: Color(0x60FFFFFF),
-          light: Color(0x40FFFFFF),
-          background: Color(0x30FFFFFF),
-          nameGradient1: Color(0x50FFFFFF),
-          nameGradient2: Color(0x30FFFFFF),
-        );
-      case DialogueFrameTheme.fantasy:
-        return const _FrameColors(
-          primary: Color(0xFF7B2D8E),
-          secondary: Color(0xFFA855F7),
-          light: Color(0xFFD8B4FE),
-          background: Color(0xFF140A1F),
-          nameGradient1: Color(0xFF7B2D8E),
-          nameGradient2: Color(0xFFA855F7),
-        );
-    }
-  }
+  static const _palettes = <DialogueFrameTheme, _FrameColors>{
+    DialogueFrameTheme.ornate: _FrameColors(
+      primary: Color(0xFFB8860B), secondary: Color(0xFFDAA520), light: Color(0xFFE8C872),
+      background: Color(0xFF1A1410), nameGradient1: Color(0xFFB8860B), nameGradient2: Color(0xFFDAA520)),
+    DialogueFrameTheme.artDeco: _FrameColors(
+      primary: Color(0xFF8B7355), secondary: Color(0xFFC4A265), light: Color(0xFFD4B896),
+      background: Color(0xFF0F1B2D), nameGradient1: Color(0xFF1A2A4A), nameGradient2: Color(0xFF2A3A5A)),
+    DialogueFrameTheme.modern: _FrameColors(
+      primary: Color(0xFF6C63FF), secondary: Color(0xFF8B83FF), light: Color(0xFFB0ABFF),
+      background: Color(0xFF1A1A2E), nameGradient1: Color(0xFF6C63FF), nameGradient2: Color(0xFF8B83FF)),
+    DialogueFrameTheme.glassmorphism: _FrameColors(
+      primary: Color(0x80FFFFFF), secondary: Color(0x60FFFFFF), light: Color(0x40FFFFFF),
+      background: Color(0x30FFFFFF), nameGradient1: Color(0x50FFFFFF), nameGradient2: Color(0x30FFFFFF)),
+    DialogueFrameTheme.fantasy: _FrameColors(
+      primary: Color(0xFF7B2D8E), secondary: Color(0xFFA855F7), light: Color(0xFFD8B4FE),
+      background: Color(0xFF140A1F), nameGradient1: Color(0xFF7B2D8E), nameGradient2: Color(0xFFA855F7)),
+    DialogueFrameTheme.victorian: _FrameColors(
+      primary: Color(0xFF8B6914), secondary: Color(0xFFC9A84C), light: Color(0xFFDEC07C),
+      background: Color(0xFF1E150E), nameGradient1: Color(0xFF8B6914), nameGradient2: Color(0xFFC9A84C)),
+    DialogueFrameTheme.gothic: _FrameColors(
+      primary: Color(0xFF8B1A1A), secondary: Color(0xFFC62828), light: Color(0xFFE57373),
+      background: Color(0xFF0D0808), nameGradient1: Color(0xFF8B1A1A), nameGradient2: Color(0xFFC62828)),
+    DialogueFrameTheme.noir: _FrameColors(
+      primary: Color(0xFF707070), secondary: Color(0xFFA0A0A0), light: Color(0xFFC0C0C0),
+      background: Color(0xFF0F0F0F), nameGradient1: Color(0xFF404040), nameGradient2: Color(0xFF606060)),
+    DialogueFrameTheme.sakura: _FrameColors(
+      primary: Color(0xFFD4618C), secondary: Color(0xFFF06292), light: Color(0xFFF8BBD0),
+      background: Color(0xFF1A0E14), nameGradient1: Color(0xFFD4618C), nameGradient2: Color(0xFFF06292)),
+    DialogueFrameTheme.celestial: _FrameColors(
+      primary: Color(0xFF5C6BC0), secondary: Color(0xFF7986CB), light: Color(0xFFC5CAE9),
+      background: Color(0xFF0A0E1A), nameGradient1: Color(0xFF3F51B5), nameGradient2: Color(0xFF5C6BC0)),
+    DialogueFrameTheme.cyberpunk: _FrameColors(
+      primary: Color(0xFF00BCD4), secondary: Color(0xFFE91E63), light: Color(0xFF80DEEA),
+      background: Color(0xFF0A0A14), nameGradient1: Color(0xFF00BCD4), nameGradient2: Color(0xFFE91E63)),
+    DialogueFrameTheme.steampunk: _FrameColors(
+      primary: Color(0xFFB87333), secondary: Color(0xFFCD853F), light: Color(0xFFDEB887),
+      background: Color(0xFF1A1008), nameGradient1: Color(0xFFB87333), nameGradient2: Color(0xFFCD853F)),
+    DialogueFrameTheme.pirate: _FrameColors(
+      primary: Color(0xFF8B6914), secondary: Color(0xFFA0785A), light: Color(0xFFC4A882),
+      background: Color(0xFF14100A), nameGradient1: Color(0xFF6B4F0A), nameGradient2: Color(0xFF8B6914)),
+    DialogueFrameTheme.medieval: _FrameColors(
+      primary: Color(0xFF6B5B3C), secondary: Color(0xFF9C8B6C), light: Color(0xFFC4B99A),
+      background: Color(0xFF12100A), nameGradient1: Color(0xFF5B4B2C), nameGradient2: Color(0xFF6B5B3C)),
+    DialogueFrameTheme.egyptian: _FrameColors(
+      primary: Color(0xFFC5A028), secondary: Color(0xFF1565C0), light: Color(0xFFFFD54F),
+      background: Color(0xFF0D0A05), nameGradient1: Color(0xFFC5A028), nameGradient2: Color(0xFF1565C0)),
+    DialogueFrameTheme.baroque: _FrameColors(
+      primary: Color(0xFFB8860B), secondary: Color(0xFFD4AF37), light: Color(0xFFF0E68C),
+      background: Color(0xFF18120A), nameGradient1: Color(0xFFB8860B), nameGradient2: Color(0xFFD4AF37)),
+    DialogueFrameTheme.romantic: _FrameColors(
+      primary: Color(0xFFD81B60), secondary: Color(0xFFEC407A), light: Color(0xFFF8BBD0),
+      background: Color(0xFF1A0A10), nameGradient1: Color(0xFFD81B60), nameGradient2: Color(0xFFEC407A)),
+    DialogueFrameTheme.nordic: _FrameColors(
+      primary: Color(0xFF4FC3F7), secondary: Color(0xFF81D4FA), light: Color(0xFFB3E5FC),
+      background: Color(0xFF0A0E14), nameGradient1: Color(0xFF0288D1), nameGradient2: Color(0xFF4FC3F7)),
+    DialogueFrameTheme.tropical: _FrameColors(
+      primary: Color(0xFF00897B), secondary: Color(0xFF26A69A), light: Color(0xFF80CBC4),
+      background: Color(0xFF0A1410), nameGradient1: Color(0xFF00897B), nameGradient2: Color(0xFF26A69A)),
+    DialogueFrameTheme.bloodMoon: _FrameColors(
+      primary: Color(0xFFB71C1C), secondary: Color(0xFFD32F2F), light: Color(0xFFE57373),
+      background: Color(0xFF0D0505), nameGradient1: Color(0xFF7F0000), nameGradient2: Color(0xFFB71C1C)),
+  };
+}
+
+/// Visual specification for each theme — drives the universal painter
+class _ThemeSpec {
+  final double radius;
+  final double borderWidth;
+  final int borderCount;
+  final _CornerType cornerType;
+  final _CenterType centerType;
+  final bool hasSideDecor;
+  final bool topAccentStripe;
+  final double nameTabRadius;
+
+  const _ThemeSpec({
+    this.radius = 4,
+    this.borderWidth = 2.0,
+    this.borderCount = 2,
+    this.cornerType = _CornerType.lBracket,
+    this.centerType = _CenterType.diamond,
+    this.hasSideDecor = false,
+    this.topAccentStripe = false,
+    this.nameTabRadius = 14,
+  });
+
+  static _ThemeSpec forTheme(DialogueFrameTheme t) => _specs[t]!;
+
+  static const _specs = <DialogueFrameTheme, _ThemeSpec>{
+    // Classic gold L-brackets + diamonds
+    DialogueFrameTheme.ornate: _ThemeSpec(
+      cornerType: _CornerType.lBracket, centerType: _CenterType.diamond, hasSideDecor: true),
+    // 1920s geometric stepped corners
+    DialogueFrameTheme.artDeco: _ThemeSpec(
+      cornerType: _CornerType.stepped, centerType: _CenterType.square, borderCount: 3, nameTabRadius: 2),
+    // Clean minimalist — accent stripe only
+    DialogueFrameTheme.modern: _ThemeSpec(
+      radius: 8, borderCount: 1, cornerType: _CornerType.none, centerType: _CenterType.none, topAccentStripe: true),
+    // Frosted glass — handled by separate painter
+    DialogueFrameTheme.glassmorphism: _ThemeSpec(
+      radius: 16, borderCount: 1, cornerType: _CornerType.none, centerType: _CenterType.none, nameTabRadius: 12),
+    // Purple mystical swirls + stars
+    DialogueFrameTheme.fantasy: _ThemeSpec(
+      radius: 6, cornerType: _CornerType.swirl, centerType: _CenterType.star4, hasSideDecor: true),
+    // Warm brown filigree double-swirl
+    DialogueFrameTheme.victorian: _ThemeSpec(
+      cornerType: _CornerType.acanthus, centerType: _CenterType.diamond, hasSideDecor: true, borderCount: 3),
+    // Dark pointed arches + cross
+    DialogueFrameTheme.gothic: _ThemeSpec(
+      cornerType: _CornerType.pointed, centerType: _CenterType.cross, nameTabRadius: 6),
+    // Minimal silver, no ornaments
+    DialogueFrameTheme.noir: _ThemeSpec(
+      borderCount: 1, borderWidth: 1.0, cornerType: _CornerType.none, centerType: _CenterType.none, nameTabRadius: 2),
+    // Pink petals + cherry blossom
+    DialogueFrameTheme.sakura: _ThemeSpec(
+      radius: 8, cornerType: _CornerType.petal, centerType: _CenterType.petalSmall),
+    // Silver moon + stars
+    DialogueFrameTheme.celestial: _ThemeSpec(
+      radius: 6, cornerType: _CornerType.swirl, centerType: _CenterType.moon, hasSideDecor: true),
+    // Neon clipped corners + glitch
+    DialogueFrameTheme.cyberpunk: _ThemeSpec(
+      cornerType: _CornerType.clip, centerType: _CenterType.none, nameTabRadius: 2, borderWidth: 1.5),
+    // Copper gears + rivets
+    DialogueFrameTheme.steampunk: _ThemeSpec(
+      cornerType: _CornerType.gear, centerType: _CenterType.gearSmall, hasSideDecor: true, nameTabRadius: 4),
+    // Rope corners + compass
+    DialogueFrameTheme.pirate: _ThemeSpec(
+      cornerType: _CornerType.rope, centerType: _CenterType.compass, nameTabRadius: 4),
+    // Shield brackets + cross
+    DialogueFrameTheme.medieval: _ThemeSpec(
+      cornerType: _CornerType.shield, centerType: _CenterType.cross, nameTabRadius: 4, borderCount: 3),
+    // Lotus + ankh
+    DialogueFrameTheme.egyptian: _ThemeSpec(
+      cornerType: _CornerType.lotus, centerType: _CenterType.ankh, borderCount: 3),
+    // Acanthus scrollwork + shell
+    DialogueFrameTheme.baroque: _ThemeSpec(
+      cornerType: _CornerType.acanthus, centerType: _CenterType.shell, hasSideDecor: true, borderCount: 3),
+    // Heart corners + lace
+    DialogueFrameTheme.romantic: _ThemeSpec(
+      radius: 10, cornerType: _CornerType.heart, centerType: _CenterType.heartSmall),
+    // Ice knot + rune
+    DialogueFrameTheme.nordic: _ThemeSpec(
+      cornerType: _CornerType.knot, centerType: _CenterType.rune),
+    // Leaf + wave
+    DialogueFrameTheme.tropical: _ThemeSpec(
+      radius: 8, cornerType: _CornerType.leaf, centerType: _CenterType.sun),
+    // Thorns + crescent
+    DialogueFrameTheme.bloodMoon: _ThemeSpec(
+      cornerType: _CornerType.thorn, centerType: _CenterType.thornStar, hasSideDecor: true),
+  };
 }
 
 /// Декоративная рамка диалога — с разными темами
@@ -281,16 +392,18 @@ class _ThemedDialogueFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _FrameColors.forTheme(frameTheme,
         customFrame: customFrameColor, customBg: customBgColor);
+    final spec = _ThemeSpec.forTheme(frameTheme);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Вкладка с именем
-        _buildNameTab(colors),
-
-        // Основной текстовый бокс
+        _buildNameTab(colors, spec),
         CustomPaint(
-          painter: _getFramePainter(colors),
+          painter: frameTheme == DialogueFrameTheme.glassmorphism
+              ? _GlassmorphismFramePainter(
+                  backgroundColor: colors.background,
+                  borderColor: colors.primary)
+              : _UniversalFramePainter(colors: colors, spec: spec),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
@@ -328,10 +441,10 @@ class _ThemedDialogueFrame extends StatelessWidget {
     );
   }
 
-  Widget _buildNameTab(_FrameColors colors) {
-    final borderRadius = frameTheme == DialogueFrameTheme.artDeco
-        ? const BorderRadius.vertical(top: Radius.circular(2))
-        : const BorderRadius.vertical(top: Radius.circular(14));
+  Widget _buildNameTab(_FrameColors colors, _ThemeSpec spec) {
+    final borderRadius = BorderRadius.vertical(
+      top: Radius.circular(spec.nameTabRadius),
+    );
 
     Widget nameContent;
     if (isNarration) {
@@ -379,331 +492,451 @@ class _ThemedDialogueFrame extends StatelessWidget {
       child: nameContent,
     );
   }
-
-  CustomPainter _getFramePainter(_FrameColors colors) {
-    switch (frameTheme) {
-      case DialogueFrameTheme.ornate:
-        return _OrnateFramePainter(
-          frameColor: colors.primary,
-          frameColorLight: colors.light,
-          backgroundColor: colors.background.withValues(alpha: 0.88),
-        );
-      case DialogueFrameTheme.artDeco:
-        return _ArtDecoFramePainter(
-          frameColor: colors.primary,
-          frameColorLight: colors.light,
-          backgroundColor: colors.background.withValues(alpha: 0.92),
-        );
-      case DialogueFrameTheme.modern:
-        return _ModernFramePainter(
-          frameColor: colors.primary,
-          frameColorLight: colors.light,
-          backgroundColor: colors.background.withValues(alpha: 0.9),
-        );
-      case DialogueFrameTheme.glassmorphism:
-        return _GlassmorphismFramePainter(
-          backgroundColor: colors.background,
-          borderColor: colors.primary,
-        );
-      case DialogueFrameTheme.fantasy:
-        return _FantasyFramePainter(
-          frameColor: colors.primary,
-          frameColorLight: colors.light,
-          backgroundColor: colors.background.withValues(alpha: 0.88),
-        );
-    }
-  }
 }
 
-/// CustomPainter для декоративной рамки с орнаментальными углами и филигранью
-class _OrnateFramePainter extends CustomPainter {
-  final Color frameColor;
-  final Color frameColorLight;
-  final Color backgroundColor;
+// ═══════════════════════════════════════════════════════
+// Universal frame painter — renders any theme from spec
+// ═══════════════════════════════════════════════════════
+class _UniversalFramePainter extends CustomPainter {
+  final _FrameColors colors;
+  final _ThemeSpec spec;
 
-  _OrnateFramePainter({
-    required this.frameColor,
-    required this.frameColorLight,
-    required this.backgroundColor,
-  });
+  _UniversalFramePainter({required this.colors, required this.spec});
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final r = 4.0;
+    final r = spec.radius;
 
-    // Фон
+    // 1. Background
     canvas.drawRRect(
       RRect.fromRectAndCorners(rect,
-        bottomLeft: Radius.circular(r),
-        bottomRight: Radius.circular(r),
-      ),
-      Paint()..color = backgroundColor,
+        bottomLeft: Radius.circular(r), bottomRight: Radius.circular(r)),
+      Paint()..color = colors.background.withValues(alpha: 0.9),
     );
 
-    // Внешняя рамка — градиент
+    // 2. Outer border (gradient)
     final outerPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [frameColorLight, frameColor, frameColorLight, frameColor, frameColorLight],
+        colors: [colors.light, colors.primary, colors.light, colors.primary, colors.light],
         stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
+      ..strokeWidth = spec.borderWidth;
     canvas.drawRRect(
       RRect.fromRectAndCorners(rect,
-        bottomLeft: Radius.circular(r),
-        bottomRight: Radius.circular(r),
-      ),
+        bottomLeft: Radius.circular(r), bottomRight: Radius.circular(r)),
       outerPaint,
     );
 
-    // Внутренняя рамка (inset)
-    final innerRect = rect.deflate(6);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(innerRect, Radius.circular(r)),
-      Paint()
-        ..color = frameColor.withValues(alpha: 0.4)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8,
-    );
-
-    // Декоративные углы с завитками
-    _drawCornerOrnament(canvas, size, 0, 0, 1, 1);
-    _drawCornerOrnament(canvas, size, size.width, 0, -1, 1);
-    _drawCornerOrnament(canvas, size, 0, size.height, 1, -1);
-    _drawCornerOrnament(canvas, size, size.width, size.height, -1, -1);
-
-    // Горизонтальный орнамент (верх и низ)
-    _drawHorizontalOrnament(canvas, size, isTop: true);
-    _drawHorizontalOrnament(canvas, size, isTop: false);
-
-    // Вертикальные филиграни по бокам
-    _drawVerticalFiligree(canvas, size, isLeft: true);
-    _drawVerticalFiligree(canvas, size, isLeft: false);
-  }
-
-  void _drawCornerOrnament(Canvas canvas, Size size, double x, double y, double dx, double dy) {
-    final paint = Paint()
-      ..color = frameColorLight
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-
-    // L-образная фигура
-    final path = Path();
-    path.moveTo(x + dx * 4, y + dy * 18);
-    path.lineTo(x + dx * 4, y + dy * 4);
-    path.lineTo(x + dx * 18, y + dy * 4);
-    canvas.drawPath(path, paint);
-
-    // Ромбик на пересечении
-    final cx = x + dx * 11;
-    final cy = y + dy * 11;
-    final ds = 3.5;
-    final diamond = Path()
-      ..moveTo(cx, cy - ds)
-      ..lineTo(cx + ds, cy)
-      ..lineTo(cx, cy + ds)
-      ..lineTo(cx - ds, cy)
-      ..close();
-    canvas.drawPath(diamond, Paint()..color = frameColorLight..style = PaintingStyle.fill);
-
-    // Маленький завиток
-    final swirlPaint = Paint()
-      ..color = frameColorLight.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..strokeCap = StrokeCap.round;
-    final swirl = Path();
-    swirl.moveTo(x + dx * 18, y + dy * 8);
-    swirl.quadraticBezierTo(x + dx * 22, y + dy * 8, x + dx * 22, y + dy * 12);
-    canvas.drawPath(swirl, swirlPaint);
-  }
-
-  void _drawHorizontalOrnament(Canvas canvas, Size size, {required bool isTop}) {
-    final y = isTop ? 0.0 : size.height;
-    final centerX = size.width / 2;
-
-    final paint = Paint()
-      ..color = frameColorLight.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
-    final dy = isTop ? 6.0 : -6.0;
-    // Линии по сторонам от центра
-    canvas.drawLine(Offset(centerX - 40, y + dy), Offset(centerX - 8, y + dy), paint);
-    canvas.drawLine(Offset(centerX + 8, y + dy), Offset(centerX + 40, y + dy), paint);
-
-    // Маленькие точки-акценты
-    final dotPaint = Paint()..color = frameColorLight.withValues(alpha: 0.4)..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(centerX - 44, y + dy), 1.2, dotPaint);
-    canvas.drawCircle(Offset(centerX + 44, y + dy), 1.2, dotPaint);
-
-    // Центральный ромбик
-    final dp = Paint()..color = frameColorLight.withValues(alpha: 0.6)..style = PaintingStyle.fill;
-    final d = 3.5;
-    final diamond = Path()
-      ..moveTo(centerX, y + dy - d)
-      ..lineTo(centerX + d, y + dy)
-      ..lineTo(centerX, y + dy + d)
-      ..lineTo(centerX - d, y + dy)
-      ..close();
-    canvas.drawPath(diamond, dp);
-  }
-
-  void _drawVerticalFiligree(Canvas canvas, Size size, {required bool isLeft}) {
-    final x = isLeft ? 9.0 : size.width - 9.0;
-    final centerY = size.height / 2;
-    final paint = Paint()
-      ..color = frameColorLight.withValues(alpha: 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.6;
-
-    // Тонкая вертикальная линия
-    canvas.drawLine(Offset(x, centerY - 20), Offset(x, centerY + 20), paint);
-    // Маленькие точки на концах
-    final dotPaint = Paint()..color = frameColorLight.withValues(alpha: 0.3)..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(x, centerY - 22), 1.0, dotPaint);
-    canvas.drawCircle(Offset(x, centerY + 22), 1.0, dotPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ─────────────────────────────────────────────────────
-// Art Deco — геометрические угольники, строгие линии,
-// ступенчатые бордюры, лучи, веера
-// ─────────────────────────────────────────────────────
-class _ArtDecoFramePainter extends CustomPainter {
-  final Color frameColor;
-  final Color frameColorLight;
-  final Color backgroundColor;
-
-  _ArtDecoFramePainter({
-    required this.frameColor,
-    required this.frameColorLight,
-    required this.backgroundColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-
-    // Фон
-    canvas.drawRect(rect, Paint()..color = backgroundColor);
-
-    // Внешняя рамка — двойная линия
-    final outerPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [frameColorLight, frameColor, frameColorLight, frameColor],
-        stops: const [0.0, 0.3, 0.7, 1.0],
-      ).createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-    canvas.drawRect(rect, outerPaint);
-
-    // Внутренняя рамка
-    final innerRect = rect.deflate(5);
-    canvas.drawRect(innerRect, Paint()
-      ..color = frameColor.withValues(alpha: 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8);
-
-    // Третья рамка — тончайшая
-    final innerRect2 = rect.deflate(8);
-    canvas.drawRect(innerRect2, Paint()
-      ..color = frameColor.withValues(alpha: 0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5);
-
-    final linePaint = Paint()
-      ..color = frameColorLight
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.square;
-
-    // Геометрические углы со ступеньками
-    _drawDecoCorner(canvas, 0, 0, 1, 1, 22.0, linePaint);
-    _drawDecoCorner(canvas, size.width, 0, -1, 1, 22.0, linePaint);
-    _drawDecoCorner(canvas, 0, size.height, 1, -1, 22.0, linePaint);
-    _drawDecoCorner(canvas, size.width, size.height, -1, -1, 22.0, linePaint);
-
-    // Горизонтальные элементы — «ступеньки» + лучи
-    _drawDecoHLine(canvas, size, isTop: true);
-    _drawDecoHLine(canvas, size, isTop: false);
-  }
-
-  void _drawDecoCorner(Canvas canvas, double x, double y, double dx, double dy, double s, Paint paint) {
-    // Шестиугольный/геометрический уголок
-    final path = Path()
-      ..moveTo(x + dx * 3, y + dy * s)
-      ..lineTo(x + dx * 3, y + dy * 8)
-      ..lineTo(x + dx * 8, y + dy * 3)
-      ..lineTo(x + dx * s, y + dy * 3);
-    canvas.drawPath(path, paint);
-
-    // Ступенька — второй уровень
-    final step = Path()
-      ..moveTo(x + dx * 6, y + dy * (s - 4))
-      ..lineTo(x + dx * 6, y + dy * 11)
-      ..lineTo(x + dx * 11, y + dy * 6)
-      ..lineTo(x + dx * (s - 4), y + dy * 6);
-    canvas.drawPath(step, Paint()
-      ..color = frameColorLight.withValues(alpha: 0.4)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8);
-
-    // Ромб внутри угла
-    final cx = x + dx * 13;
-    final cy = y + dy * 13;
-    final d = 2.5;
-    final diamond = Path()
-      ..moveTo(cx, cy - d)
-      ..lineTo(cx + d, cy)
-      ..lineTo(cx, cy + d)
-      ..lineTo(cx - d, cy)
-      ..close();
-    canvas.drawPath(diamond, Paint()
-      ..color = frameColorLight
-      ..style = PaintingStyle.fill);
-  }
-
-  void _drawDecoHLine(Canvas canvas, Size size, {required bool isTop}) {
-    final y = isTop ? 7.0 : size.height - 7.0;
-    final centerX = size.width / 2;
-    final paint = Paint()
-      ..color = frameColor.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-
-    // Три параллельные линии (ступеньки)
-    canvas.drawLine(Offset(centerX - 40, y), Offset(centerX - 5, y), paint);
-    canvas.drawLine(Offset(centerX + 5, y), Offset(centerX + 40, y), paint);
-
-    // Маленькие лучи от центра
-    final rayPaint = Paint()
-      ..color = frameColorLight.withValues(alpha: 0.25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5;
-    for (int i = -2; i <= 2; i++) {
-      if (i == 0) continue;
-      final angle = i * 0.3;
-      final rx = centerX + 12 * math.sin(angle);
-      final ry = y + (isTop ? 1 : -1) * 12 * math.cos(angle).abs();
-      canvas.drawLine(Offset(centerX, y), Offset(rx, ry), rayPaint);
+    // 3. Inner border(s)
+    if (spec.borderCount >= 2) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect.deflate(6), Radius.circular(r)),
+        Paint()
+          ..color = colors.primary.withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8,
+      );
+    }
+    if (spec.borderCount >= 3) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect.deflate(9), Radius.circular(r)),
+        Paint()
+          ..color = colors.primary.withValues(alpha: 0.15)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.5,
+      );
     }
 
-    // Центральный квадрат
-    final sq = 3.0;
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(centerX, y), width: sq * 2, height: sq * 2),
-      Paint()..color = frameColorLight.withValues(alpha: 0.6)..style = PaintingStyle.fill,
-    );
+    // 4. Top accent stripe (modern)
+    if (spec.topAccentStripe) {
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(0, 0, size.width, 3),
+          topLeft: Radius.circular(r), topRight: Radius.circular(r)),
+        Paint()
+          ..shader = LinearGradient(colors: [colors.primary, colors.light, colors.primary]).createShader(rect),
+      );
+    }
+
+    // 5. Corner ornaments
+    if (spec.cornerType != _CornerType.none) {
+      _drawCorner(canvas, size, 0, 0, 1, 1);
+      _drawCorner(canvas, size, size.width, 0, -1, 1);
+      _drawCorner(canvas, size, 0, size.height, 1, -1);
+      _drawCorner(canvas, size, size.width, size.height, -1, -1);
+    }
+
+    // 6. Center ornaments
+    if (spec.centerType != _CenterType.none) {
+      _drawCenterOrnament(canvas, size.width / 2, 6);
+      _drawCenterOrnament(canvas, size.width / 2, size.height - 6);
+    }
+
+    // 7. Side decorations
+    if (spec.hasSideDecor) {
+      _drawSideDecor(canvas, size, isLeft: true);
+      _drawSideDecor(canvas, size, isLeft: false);
+    }
+  }
+
+  // ── Corner ornament dispatchers ──
+
+  void _drawCorner(Canvas canvas, Size size, double x, double y, double dx, double dy) {
+    switch (spec.cornerType) {
+      case _CornerType.lBracket: _drawLBracket(canvas, x, y, dx, dy);
+      case _CornerType.stepped: _drawStepped(canvas, x, y, dx, dy);
+      case _CornerType.swirl: _drawSwirl(canvas, x, y, dx, dy);
+      case _CornerType.pointed: _drawPointed(canvas, x, y, dx, dy);
+      case _CornerType.petal: _drawPetal(canvas, x, y, dx, dy);
+      case _CornerType.clip: _drawClip(canvas, x, y, dx, dy);
+      case _CornerType.gear: _drawGear(canvas, x, y, dx, dy);
+      case _CornerType.rope: _drawRope(canvas, x, y, dx, dy);
+      case _CornerType.shield: _drawShield(canvas, x, y, dx, dy);
+      case _CornerType.lotus: _drawLotus(canvas, x, y, dx, dy);
+      case _CornerType.acanthus: _drawAcanthus(canvas, x, y, dx, dy);
+      case _CornerType.heart: _drawHeart(canvas, x, y, dx, dy);
+      case _CornerType.knot: _drawKnot(canvas, x, y, dx, dy);
+      case _CornerType.leaf: _drawLeaf(canvas, x, y, dx, dy);
+      case _CornerType.thorn: _drawThorn(canvas, x, y, dx, dy);
+      case _CornerType.none: break;
+    }
+  }
+
+  Paint get _cp => Paint()..color = colors.light..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeCap = StrokeCap.round;
+  Paint get _cf => Paint()..color = colors.light..style = PaintingStyle.fill;
+  Paint get _cp2 => Paint()..color = colors.light.withValues(alpha: 0.4)..style = PaintingStyle.stroke..strokeWidth = 0.8..strokeCap = StrokeCap.round;
+
+  // Gold classic — L-bracket + diamond
+  void _drawLBracket(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*18)..lineTo(x+dx*4, y+dy*4)..lineTo(x+dx*18, y+dy*4), _cp);
+    final cx = x+dx*11, cy = y+dy*11;
+    c.drawPath(Path()..moveTo(cx, cy-3.5)..lineTo(cx+3.5, cy)..lineTo(cx, cy+3.5)..lineTo(cx-3.5, cy)..close(), _cf);
+    // Small extra swirl
+    c.drawPath(Path()..moveTo(x+dx*18, y+dy*8)..quadraticBezierTo(x+dx*22, y+dy*8, x+dx*22, y+dy*12), _cp2);
+  }
+
+  // Art Deco — stepped geometric + square
+  void _drawStepped(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*3, y+dy*22)..lineTo(x+dx*3, y+dy*8)..lineTo(x+dx*8, y+dy*3)..lineTo(x+dx*22, y+dy*3), _cp);
+    c.drawPath(Path()..moveTo(x+dx*6, y+dy*18)..lineTo(x+dx*6, y+dy*11)..lineTo(x+dx*11, y+dy*6)..lineTo(x+dx*18, y+dy*6), _cp2);
+    final cx = x+dx*13, cy = y+dy*13;
+    c.drawPath(Path()..moveTo(cx, cy-2.5)..lineTo(cx+2.5, cy)..lineTo(cx, cy+2.5)..lineTo(cx-2.5, cy)..close(), _cf);
+  }
+
+  // Fantasy / Celestial — bezier swirl + dot
+  void _drawSwirl(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*20)..quadraticBezierTo(x+dx*4, y+dy*4, x+dx*14, y+dy*4)..quadraticBezierTo(x+dx*10, y+dy*8, x+dx*7, y+dy*14), _cp);
+    c.drawPath(Path()..moveTo(x+dx*14, y+dy*7)..quadraticBezierTo(x+dx*18, y+dy*7, x+dx*18, y+dy*11), _cp2);
+    c.drawCircle(Offset(x+dx*7, y+dy*14), 2.0, _cf);
+  }
+
+  // Gothic — pointed arch + cross
+  void _drawPointed(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*3, y+dy*20)..lineTo(x+dx*3, y+dy*6)..lineTo(x+dx*10, y+dy*3)..lineTo(x+dx*20, y+dy*3), _cp);
+    // Pointed spike
+    c.drawPath(Path()..moveTo(x+dx*6, y+dy*3)..lineTo(x+dx*8, y+dy*-1)..lineTo(x+dx*10, y+dy*3), _cp2);
+    // Small cross
+    final cx = x+dx*14, cy = y+dy*10;
+    c.drawLine(Offset(cx, cy-3), Offset(cx, cy+3), Paint()..color = colors.light.withValues(alpha: 0.5)..strokeWidth = 1.0);
+    c.drawLine(Offset(cx-3, cy), Offset(cx+3, cy), Paint()..color = colors.light.withValues(alpha: 0.5)..strokeWidth = 1.0);
+  }
+
+  // Sakura — curved petal
+  void _drawPetal(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*16)..quadraticBezierTo(x+dx*4, y+dy*4, x+dx*16, y+dy*4), _cp);
+    // Two petal curves
+    c.drawPath(Path()..moveTo(x+dx*8, y+dy*8)..quadraticBezierTo(x+dx*14, y+dy*4, x+dx*12, y+dy*10), _cp2);
+    c.drawPath(Path()..moveTo(x+dx*8, y+dy*8)..quadraticBezierTo(x+dx*4, y+dy*14, x+dx*10, y+dy*12), _cp2);
+    c.drawCircle(Offset(x+dx*8, y+dy*8), 1.5, _cf);
+  }
+
+  // Cyberpunk — angled clip
+  void _drawClip(Canvas c, double x, double y, double dx, double dy) {
+    final p = Paint()..color = colors.primary..style = PaintingStyle.stroke..strokeWidth = 2.0..strokeCap = StrokeCap.square;
+    c.drawPath(Path()..moveTo(x+dx*3, y+dy*16)..lineTo(x+dx*3, y+dy*3)..lineTo(x+dx*16, y+dy*3), p);
+    // Neon glow line
+    c.drawLine(Offset(x+dx*3, y+dy*3), Offset(x+dx*10, y+dy*10),
+      Paint()..color = colors.secondary.withValues(alpha: 0.3)..strokeWidth = 0.8);
+    // Dot
+    c.drawCircle(Offset(x+dx*5, y+dy*5), 1.5, Paint()..color = colors.secondary..style = PaintingStyle.fill);
+  }
+
+  // Steampunk — gear outline
+  void _drawGear(Canvas c, double x, double y, double dx, double dy) {
+    final cx = x+dx*10, cy = y+dy*10;
+    // Gear circle
+    c.drawCircle(Offset(cx, cy), 6.0, Paint()..color = colors.light.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.2);
+    c.drawCircle(Offset(cx, cy), 2.5, _cf);
+    // 6 teeth as short spokes
+    for (int i = 0; i < 6; i++) {
+      final angle = i * math.pi / 3;
+      c.drawLine(
+        Offset(cx + 5 * math.cos(angle), cy + 5 * math.sin(angle)),
+        Offset(cx + 8 * math.cos(angle), cy + 8 * math.sin(angle)),
+        Paint()..color = colors.light..strokeWidth = 1.5..strokeCap = StrokeCap.square,
+      );
+    }
+  }
+
+  // Pirate — rope knot curve
+  void _drawRope(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*18)..quadraticBezierTo(x+dx*4, y+dy*4, x+dx*18, y+dy*4), _cp);
+    // Rope twist
+    c.drawPath(Path()..moveTo(x+dx*7, y+dy*7)..quadraticBezierTo(x+dx*12, y+dy*5, x+dx*10, y+dy*10)..quadraticBezierTo(x+dx*8, y+dy*15, x+dx*12, y+dy*12), _cp2);
+    c.drawCircle(Offset(x+dx*10, y+dy*10), 1.5, _cf);
+  }
+
+  // Medieval — shield bracket
+  void _drawShield(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*18)..lineTo(x+dx*4, y+dy*4)..lineTo(x+dx*18, y+dy*4), _cp);
+    // Shield shape inside
+    c.drawPath(Path()..moveTo(x+dx*8, y+dy*7)..lineTo(x+dx*14, y+dy*7)..lineTo(x+dx*14, y+dy*12)..lineTo(x+dx*11, y+dy*15)..lineTo(x+dx*8, y+dy*12)..close(), _cp2);
+    c.drawCircle(Offset(x+dx*11, y+dy*10), 1.2, _cf);
+  }
+
+  // Egyptian — lotus/papyrus
+  void _drawLotus(Canvas c, double x, double y, double dx, double dy) {
+    // 3-petal lotus
+    c.drawPath(Path()..moveTo(x+dx*10, y+dy*4)..quadraticBezierTo(x+dx*4, y+dy*8, x+dx*10, y+dy*16), _cp);
+    c.drawPath(Path()..moveTo(x+dx*10, y+dy*4)..quadraticBezierTo(x+dx*16, y+dy*8, x+dx*10, y+dy*16), _cp);
+    c.drawPath(Path()..moveTo(x+dx*10, y+dy*4)..lineTo(x+dx*10, y+dy*16), _cp2);
+    // Center dot
+    c.drawCircle(Offset(x+dx*10, y+dy*10), 2.0, _cf);
+  }
+
+  // Victorian / Baroque — acanthus scroll
+  void _drawAcanthus(Canvas c, double x, double y, double dx, double dy) {
+    // Double swirl
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*20)..quadraticBezierTo(x+dx*4, y+dy*4, x+dx*14, y+dy*4)..quadraticBezierTo(x+dx*10, y+dy*8, x+dx*8, y+dy*12), _cp);
+    c.drawPath(Path()..moveTo(x+dx*14, y+dy*7)..quadraticBezierTo(x+dx*20, y+dy*4, x+dx*20, y+dy*10), _cp2);
+    // Leaf curl
+    c.drawPath(Path()..moveTo(x+dx*6, y+dy*14)..quadraticBezierTo(x+dx*3, y+dy*16, x+dx*6, y+dy*18), _cp2);
+    c.drawCircle(Offset(x+dx*8, y+dy*12), 1.8, _cf);
+  }
+
+  // Romantic — heart shape
+  void _drawHeart(Canvas c, double x, double y, double dx, double dy) {
+    final cx = x+dx*10, cy = y+dy*10;
+    final path = Path()
+      ..moveTo(cx, cy+4)
+      ..cubicTo(cx-6, cy-2, cx-6, cy-6, cx, cy-3)
+      ..cubicTo(cx+6, cy-6, cx+6, cy-2, cx, cy+4);
+    c.drawPath(path, Paint()..color = colors.light.withValues(alpha: 0.6)..style = PaintingStyle.fill);
+    c.drawPath(path, _cp2);
+  }
+
+  // Nordic — interlaced knot
+  void _drawKnot(Canvas c, double x, double y, double dx, double dy) {
+    // Triangle knot (Valknut-inspired)
+    final cx = x+dx*10, cy = y+dy*10;
+    c.drawPath(Path()..moveTo(cx, cy-6)..lineTo(cx+5, cy+3)..lineTo(cx-5, cy+3)..close(), _cp);
+    c.drawPath(Path()..moveTo(cx, cy+6)..lineTo(cx+5, cy-3)..lineTo(cx-5, cy-3)..close(), _cp2);
+    c.drawCircle(Offset(cx, cy), 1.5, _cf);
+  }
+
+  // Tropical — leaf/palm curve
+  void _drawLeaf(Canvas c, double x, double y, double dx, double dy) {
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*16)..quadraticBezierTo(x+dx*4, y+dy*4, x+dx*16, y+dy*4), _cp);
+    // Leaf vein
+    c.drawPath(Path()..moveTo(x+dx*6, y+dy*14)..quadraticBezierTo(x+dx*10, y+dy*10, x+dx*14, y+dy*6), _cp2);
+    // Smaller leaf
+    c.drawPath(Path()..moveTo(x+dx*9, y+dy*9)..quadraticBezierTo(x+dx*14, y+dy*7, x+dx*12, y+dy*12), _cp2);
+    c.drawCircle(Offset(x+dx*10, y+dy*10), 1.5, _cf);
+  }
+
+  // Blood Moon — thorny spike
+  void _drawThorn(Canvas c, double x, double y, double dx, double dy) {
+    final p = Paint()..color = colors.light..style = PaintingStyle.stroke..strokeWidth = 1.5;
+    // Main lines with spikes
+    c.drawPath(Path()..moveTo(x+dx*4, y+dy*20)..lineTo(x+dx*4, y+dy*4)..lineTo(x+dx*20, y+dy*4), p);
+    // Thorn spikes along the lines
+    for (var i = 8.0; i < 18; i += 4) {
+      c.drawLine(Offset(x+dx*4, y+dy*i), Offset(x+dx*7, y+dy*(i-2)),
+        Paint()..color = colors.light.withValues(alpha: 0.5)..strokeWidth = 1.0);
+      c.drawLine(Offset(x+dx*i, y+dy*4), Offset(x+dx*(i-2), y+dy*7),
+        Paint()..color = colors.light.withValues(alpha: 0.5)..strokeWidth = 1.0);
+    }
+  }
+
+  // ── Center ornament dispatcher ──
+
+  void _drawCenterOrnament(Canvas c, double cx, double cy) {
+    switch (spec.centerType) {
+      case _CenterType.diamond: _drawDiamond(c, cx, cy);
+      case _CenterType.square: _drawSquareOrnament(c, cx, cy);
+      case _CenterType.star4: _drawStar4(c, cx, cy);
+      case _CenterType.cross: _drawCross(c, cx, cy);
+      case _CenterType.moon: _drawMoon(c, cx, cy);
+      case _CenterType.gearSmall: _drawGearSmall(c, cx, cy);
+      case _CenterType.compass: _drawCompassOrnament(c, cx, cy);
+      case _CenterType.ankh: _drawAnkh(c, cx, cy);
+      case _CenterType.shell: _drawShellOrnament(c, cx, cy);
+      case _CenterType.heartSmall: _drawHeartSmall(c, cx, cy);
+      case _CenterType.rune: _drawRuneOrnament(c, cx, cy);
+      case _CenterType.sun: _drawSunOrnament(c, cx, cy);
+      case _CenterType.thornStar: _drawThornStarOrnament(c, cx, cy);
+      case _CenterType.petalSmall: _drawPetalSmall(c, cx, cy);
+      case _CenterType.none: break;
+    }
+    // Flanking lines
+    if (spec.centerType != _CenterType.none) {
+      final lp = Paint()..color = colors.light.withValues(alpha: 0.4)..strokeWidth = 0.8;
+      c.drawLine(Offset(cx - 40, cy), Offset(cx - 8, cy), lp);
+      c.drawLine(Offset(cx + 8, cy), Offset(cx + 40, cy), lp);
+    }
+  }
+
+  void _drawDiamond(Canvas c, double cx, double cy) {
+    final d = 3.5;
+    c.drawPath(Path()..moveTo(cx, cy-d)..lineTo(cx+d, cy)..lineTo(cx, cy+d)..lineTo(cx-d, cy)..close(),
+      Paint()..color = colors.light.withValues(alpha: 0.6)..style = PaintingStyle.fill);
+  }
+
+  void _drawSquareOrnament(Canvas c, double cx, double cy) {
+    c.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: 6, height: 6),
+      Paint()..color = colors.light.withValues(alpha: 0.6)..style = PaintingStyle.fill);
+  }
+
+  void _drawStar4(Canvas c, double cx, double cy) {
+    final path = Path();
+    for (int i = 0; i < 8; i++) {
+      final r = i.isEven ? 4.5 : 1.5;
+      final angle = (i * math.pi / 4) - math.pi / 2;
+      final px = cx + r * math.cos(angle);
+      final py = cy + r * math.sin(angle);
+      i == 0 ? path.moveTo(px, py) : path.lineTo(px, py);
+    }
+    path.close();
+    c.drawPath(path, Paint()..color = colors.light.withValues(alpha: 0.7)..style = PaintingStyle.fill);
+    c.drawCircle(Offset(cx, cy), 6.0, Paint()..color = colors.light.withValues(alpha: 0.1)..style = PaintingStyle.fill);
+  }
+
+  void _drawCross(Canvas c, double cx, double cy) {
+    final p = Paint()..color = colors.light.withValues(alpha: 0.6)..strokeWidth = 1.5;
+    c.drawLine(Offset(cx, cy - 4), Offset(cx, cy + 4), p);
+    c.drawLine(Offset(cx - 3, cy - 1), Offset(cx + 3, cy - 1), p);
+  }
+
+  void _drawMoon(Canvas c, double cx, double cy) {
+    // Crescent moon
+    c.drawArc(Rect.fromCenter(center: Offset(cx, cy), width: 8, height: 8),
+      -math.pi * 0.3, math.pi * 1.2, false,
+      Paint()..color = colors.light.withValues(alpha: 0.6)..style = PaintingStyle.stroke..strokeWidth = 1.5);
+    // Small star beside
+    c.drawCircle(Offset(cx + 5, cy - 3), 1.2,
+      Paint()..color = colors.light.withValues(alpha: 0.5)..style = PaintingStyle.fill);
+  }
+
+  void _drawGearSmall(Canvas c, double cx, double cy) {
+    c.drawCircle(Offset(cx, cy), 4.0, Paint()..color = colors.light.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.0);
+    c.drawCircle(Offset(cx, cy), 1.5, _cf);
+    for (int i = 0; i < 6; i++) {
+      final angle = i * math.pi / 3;
+      c.drawLine(Offset(cx + 3.5 * math.cos(angle), cy + 3.5 * math.sin(angle)),
+        Offset(cx + 5.5 * math.cos(angle), cy + 5.5 * math.sin(angle)),
+        Paint()..color = colors.light..strokeWidth = 1.2..strokeCap = StrokeCap.square);
+    }
+  }
+
+  void _drawCompassOrnament(Canvas c, double cx, double cy) {
+    // 4-direction compass
+    final p = Paint()..color = colors.light.withValues(alpha: 0.6)..strokeWidth = 1.0;
+    c.drawLine(Offset(cx, cy - 5), Offset(cx, cy + 5), p);
+    c.drawLine(Offset(cx - 5, cy), Offset(cx + 5, cy), p);
+    c.drawCircle(Offset(cx, cy), 2.0, _cf);
+    // Small diamond on top
+    c.drawPath(Path()..moveTo(cx, cy-5)..lineTo(cx+1.5, cy-3)..lineTo(cx, cy-1)..lineTo(cx-1.5, cy-3)..close(),
+      Paint()..color = colors.light.withValues(alpha: 0.5)..style = PaintingStyle.fill);
+  }
+
+  void _drawAnkh(Canvas c, double cx, double cy) {
+    // Simplified ankh
+    c.drawOval(Rect.fromCenter(center: Offset(cx, cy - 2), width: 6, height: 5),
+      Paint()..color = colors.light.withValues(alpha: 0.6)..style = PaintingStyle.stroke..strokeWidth = 1.2);
+    c.drawLine(Offset(cx, cy + 0.5), Offset(cx, cy + 5), Paint()..color = colors.light.withValues(alpha: 0.6)..strokeWidth = 1.2);
+    c.drawLine(Offset(cx - 3, cy + 2), Offset(cx + 3, cy + 2), Paint()..color = colors.light.withValues(alpha: 0.6)..strokeWidth = 1.2);
+  }
+
+  void _drawShellOrnament(Canvas c, double cx, double cy) {
+    // Fan/shell shape
+    for (int i = -2; i <= 2; i++) {
+      final angle = i * 0.3;
+      c.drawLine(Offset(cx, cy + 3),
+        Offset(cx + 6 * math.sin(angle), cy - 4 * math.cos(angle)),
+        Paint()..color = colors.light.withValues(alpha: 0.3)..strokeWidth = 0.8);
+    }
+    c.drawArc(Rect.fromCenter(center: Offset(cx, cy - 1), width: 10, height: 8),
+      math.pi, math.pi, false,
+      Paint()..color = colors.light.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.0);
+  }
+
+  void _drawHeartSmall(Canvas c, double cx, double cy) {
+    final path = Path()
+      ..moveTo(cx, cy + 3)
+      ..cubicTo(cx - 4, cy, cx - 4, cy - 4, cx, cy - 1.5)
+      ..cubicTo(cx + 4, cy - 4, cx + 4, cy, cx, cy + 3);
+    c.drawPath(path, Paint()..color = colors.light.withValues(alpha: 0.5)..style = PaintingStyle.fill);
+  }
+
+  void _drawRuneOrnament(Canvas c, double cx, double cy) {
+    // Simple Nordic rune mark
+    final p = Paint()..color = colors.light.withValues(alpha: 0.6)..strokeWidth = 1.2;
+    c.drawLine(Offset(cx, cy - 5), Offset(cx, cy + 5), p);
+    c.drawLine(Offset(cx - 3, cy - 2), Offset(cx, cy + 1), p);
+    c.drawLine(Offset(cx + 3, cy - 2), Offset(cx, cy + 1), p);
+  }
+
+  void _drawSunOrnament(Canvas c, double cx, double cy) {
+    c.drawCircle(Offset(cx, cy), 2.5, _cf);
+    for (int i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      c.drawLine(Offset(cx + 3.5 * math.cos(angle), cy + 3.5 * math.sin(angle)),
+        Offset(cx + 5.5 * math.cos(angle), cy + 5.5 * math.sin(angle)),
+        Paint()..color = colors.light.withValues(alpha: 0.5)..strokeWidth = 0.8);
+    }
+  }
+
+  void _drawThornStarOrnament(Canvas c, double cx, double cy) {
+    // Spiky asymmetric star
+    final path = Path();
+    for (int i = 0; i < 10; i++) {
+      final r = i.isEven ? 5.0 : 2.0;
+      final angle = (i * math.pi / 5) - math.pi / 2;
+      final px = cx + r * math.cos(angle);
+      final py = cy + r * math.sin(angle);
+      i == 0 ? path.moveTo(px, py) : path.lineTo(px, py);
+    }
+    path.close();
+    c.drawPath(path, Paint()..color = colors.light.withValues(alpha: 0.5)..style = PaintingStyle.fill);
+  }
+
+  void _drawPetalSmall(Canvas c, double cx, double cy) {
+    // 5-petal cherry blossom
+    for (int i = 0; i < 5; i++) {
+      final angle = (i * math.pi * 2 / 5) - math.pi / 2;
+      final px = cx + 4 * math.cos(angle);
+      final py = cy + 4 * math.sin(angle);
+      c.drawCircle(Offset(px, py), 1.8,
+        Paint()..color = colors.light.withValues(alpha: 0.4)..style = PaintingStyle.fill);
+    }
+    c.drawCircle(Offset(cx, cy), 1.5, Paint()..color = colors.light.withValues(alpha: 0.6)..style = PaintingStyle.fill);
+  }
+
+  // ── Side decorations ──
+
+  void _drawSideDecor(Canvas c, Size size, {required bool isLeft}) {
+    final x = isLeft ? 9.0 : size.width - 9.0;
+    final centerY = size.height / 2;
+    final lp = Paint()..color = colors.light.withValues(alpha: 0.2)..style = PaintingStyle.stroke..strokeWidth = 0.6;
+    final dp = Paint()..color = colors.light.withValues(alpha: 0.3)..style = PaintingStyle.fill;
+    c.drawLine(Offset(x, centerY - 20), Offset(x, centerY + 20), lp);
+    c.drawCircle(Offset(x, centerY - 22), 1.0, dp);
+    c.drawCircle(Offset(x, centerY + 22), 1.0, dp);
+    c.drawCircle(Offset(x, centerY), 1.5, dp);
   }
 
   @override
@@ -711,262 +944,29 @@ class _ArtDecoFramePainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────
-// Modern — чистые тонкие линии, градиент
-// ─────────────────────────────────────────────
-class _ModernFramePainter extends CustomPainter {
-  final Color frameColor;
-  final Color frameColorLight;
-  final Color backgroundColor;
-
-  _ModernFramePainter({
-    required this.frameColor,
-    required this.frameColorLight,
-    required this.backgroundColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final r = 8.0;
-    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(r));
-
-    // Фон с лёгким градиентом
-    canvas.drawRRect(rrect, Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [backgroundColor, backgroundColor.withValues(alpha: 0.95)],
-      ).createShader(rect));
-
-    // Одна элегантная рамка
-    canvas.drawRRect(rrect, Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [frameColor, frameColorLight, frameColor],
-      ).createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5);
-
-    // Акцентная полоска сверху
-    final accentRect = RRect.fromRectAndCorners(
-      Rect.fromLTWH(0, 0, size.width, 3),
-      topLeft: Radius.circular(r),
-      topRight: Radius.circular(r),
-    );
-    canvas.drawRRect(accentRect, Paint()
-      ..shader = LinearGradient(
-        colors: [frameColor, frameColorLight, frameColor],
-      ).createShader(rect));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ─────────────────────────────────────────────
-// Glassmorphism — полупрозрачное стекло
+// Glassmorphism — special case, frosted glass
 // ─────────────────────────────────────────────
 class _GlassmorphismFramePainter extends CustomPainter {
   final Color backgroundColor;
   final Color borderColor;
 
-  _GlassmorphismFramePainter({
-    required this.backgroundColor,
-    required this.borderColor,
-  });
+  _GlassmorphismFramePainter({required this.backgroundColor, required this.borderColor});
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final r = 16.0;
     final rrect = RRect.fromRectAndRadius(rect, Radius.circular(r));
-
-    // Полупрозрачный фон
     canvas.drawRRect(rrect, Paint()..color = backgroundColor);
-
-    // Тонкая полупрозрачная рамка
-    canvas.drawRRect(rrect, Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8);
-
-    // Блик сверху (имитация стекла)
+    canvas.drawRRect(rrect, Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 0.8);
     final highlightRect = RRect.fromRectAndCorners(
       Rect.fromLTWH(0, 0, size.width, size.height * 0.4),
-      topLeft: Radius.circular(r),
-      topRight: Radius.circular(r),
-    );
+      topLeft: Radius.circular(r), topRight: Radius.circular(r));
     canvas.drawRRect(highlightRect, Paint()
       ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.white.withValues(alpha: 0.08),
-          Colors.white.withValues(alpha: 0.0),
-        ],
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.0)],
       ).createShader(rect));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ─────────────────────────────────────────────
-// Fantasy — завитки, звёзды, мистические рунные элементы
-// ─────────────────────────────────────────────
-class _FantasyFramePainter extends CustomPainter {
-  final Color frameColor;
-  final Color frameColorLight;
-  final Color backgroundColor;
-
-  _FantasyFramePainter({
-    required this.frameColor,
-    required this.frameColorLight,
-    required this.backgroundColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final r = 6.0;
-
-    // Фон
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(rect,
-        bottomLeft: Radius.circular(r),
-        bottomRight: Radius.circular(r)),
-      Paint()..color = backgroundColor,
-    );
-
-    // Двойная рамка
-    final outerPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [frameColorLight, frameColor, frameColorLight],
-      ).createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(rect,
-        bottomLeft: Radius.circular(r),
-        bottomRight: Radius.circular(r)),
-      outerPaint,
-    );
-
-    final innerRect = rect.deflate(5);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(innerRect, Radius.circular(r)),
-      Paint()
-        ..color = frameColor.withValues(alpha: 0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8,
-    );
-
-    // Завитки в углах
-    _drawSwirlCorner(canvas, 0, 0, 1, 1);
-    _drawSwirlCorner(canvas, size.width, 0, -1, 1);
-    _drawSwirlCorner(canvas, 0, size.height, 1, -1);
-    _drawSwirlCorner(canvas, size.width, size.height, -1, -1);
-
-    // Звёздочки-акценты
-    _drawStar(canvas, size.width / 2, 6);
-    _drawStar(canvas, size.width / 2, size.height - 6);
-
-    // Боковые мистические точки-спирали
-    _drawMysticDots(canvas, size, isLeft: true);
-    _drawMysticDots(canvas, size, isLeft: false);
-
-    // Центральный орнамент — арка
-    _drawCenterArc(canvas, size);
-  }
-
-  void _drawSwirlCorner(Canvas canvas, double x, double y, double dx, double dy) {
-    final paint = Paint()
-      ..color = frameColorLight
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-
-    // Дуга-завиток
-    final path = Path();
-    path.moveTo(x + dx * 4, y + dy * 20);
-    path.quadraticBezierTo(x + dx * 4, y + dy * 4, x + dx * 14, y + dy * 4);
-    path.quadraticBezierTo(x + dx * 10, y + dy * 8, x + dx * 7, y + dy * 14);
-    canvas.drawPath(path, paint);
-
-    // Второй завиток (внутренний)
-    final swirl2 = Path();
-    swirl2.moveTo(x + dx * 14, y + dy * 7);
-    swirl2.quadraticBezierTo(x + dx * 18, y + dy * 7, x + dx * 18, y + dy * 11);
-    canvas.drawPath(swirl2, Paint()
-      ..color = frameColorLight.withValues(alpha: 0.4)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8
-      ..strokeCap = StrokeCap.round);
-
-    // Точка на конце
-    canvas.drawCircle(
-      Offset(x + dx * 7, y + dy * 14),
-      2.0,
-      Paint()..color = frameColorLight..style = PaintingStyle.fill,
-    );
-  }
-
-  void _drawStar(Canvas canvas, double cx, double cy) {
-    final paint = Paint()
-      ..color = frameColorLight.withValues(alpha: 0.7)
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    const spikes = 4;
-    const outerR = 4.5;
-    const innerR = 1.5;
-
-    for (int i = 0; i < spikes * 2; i++) {
-      final r = i.isEven ? outerR : innerR;
-      final angle = (i * math.pi / spikes) - math.pi / 2;
-      final px = cx + r * math.cos(angle);
-      final py = cy + r * math.sin(angle);
-      if (i == 0) {
-        path.moveTo(px, py);
-      } else {
-        path.lineTo(px, py);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-
-    // Glow circle behind star
-    canvas.drawCircle(Offset(cx, cy), 6.0, Paint()
-      ..color = frameColorLight.withValues(alpha: 0.1)
-      ..style = PaintingStyle.fill);
-  }
-
-  void _drawMysticDots(Canvas canvas, Size size, {required bool isLeft}) {
-    final x = isLeft ? 8.0 : size.width - 8.0;
-    final centerY = size.height / 2;
-    final dotPaint = Paint()..color = frameColorLight.withValues(alpha: 0.25)..style = PaintingStyle.fill;
-
-    for (int i = -2; i <= 2; i++) {
-      final r = i == 0 ? 1.8 : 1.0;
-      canvas.drawCircle(Offset(x, centerY + i * 6.0), r, dotPaint);
-    }
-  }
-
-  void _drawCenterArc(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final paint = Paint()
-      ..color = frameColorLight.withValues(alpha: 0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.6;
-
-    // Маленькая дуга сверху
-    final arc = Path();
-    arc.moveTo(centerX - 25, 10);
-    arc.quadraticBezierTo(centerX, 16, centerX + 25, 10);
-    canvas.drawPath(arc, paint);
   }
 
   @override

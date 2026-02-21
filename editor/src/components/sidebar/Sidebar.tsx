@@ -120,6 +120,21 @@ function MetaTab() {
         <option value="modern">🎨 Современный</option>
         <option value="glassmorphism">🪟 Glassmorphism</option>
         <option value="fantasy">🔮 Фэнтези</option>
+        <option value="victorian">🏰 Викторианский</option>
+        <option value="gothic">🦇 Готика</option>
+        <option value="noir">🕵️ Нуар</option>
+        <option value="sakura">🌸 Сакура</option>
+        <option value="celestial">🌙 Небесная</option>
+        <option value="cyberpunk">⚡ Киберпанк</option>
+        <option value="steampunk">⚙️ Стимпанк</option>
+        <option value="pirate">🏴‍☠️ Пиратская</option>
+        <option value="medieval">⚔️ Средневековье</option>
+        <option value="egyptian">🏺 Египетская</option>
+        <option value="baroque">👑 Барокко</option>
+        <option value="romantic">💕 Романтика</option>
+        <option value="nordic">❄️ Скандинавская</option>
+        <option value="tropical">🌴 Тропики</option>
+        <option value="bloodMoon">🩸 Кровавая луна</option>
       </select>
 
       <label>Цвет рамки диалога (опционально)</label>

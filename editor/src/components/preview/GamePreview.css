@@ -246,6 +246,112 @@
 .gp-frame-fantasy .gp-corner-br { bottom: 4px; right: 4px; }
 .gp-frame-fantasy .gp-corner-br::before { bottom: 0; right: 0; }
 .gp-frame-fantasy .gp-corner-br::after { bottom: 6px; right: 8px; }
+
+/* ── Victorian (warm brown filigree) ── */
+.gp-name-victorian { background: linear-gradient(90deg, #8B6914, #C9A84C, #8B6914); border-radius: 10px 10px 0 0; border: 1px solid #DEC07C; border-bottom: none; color: #fff; }
+.gp-body-victorian { background: var(--frame-bg, rgba(30,21,14,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #DEC07C, #8B6914, #DEC07C) 1; box-shadow: inset 0 0 0 4px rgba(30,21,14,0.88), inset 0 0 0 5px rgba(139,105,20,0.2), inset 0 0 0 8px rgba(139,105,20,0.08); }
+.gp-choice-victorian { background: var(--frame-bg, rgba(30,21,14,0.85)); border-color: var(--frame-color, rgba(139,105,20,0.5)); border-radius: 12px; }
+.gp-choice-victorian:hover { background: rgba(139,105,20,0.2); border-color: var(--frame-color, #C9A84C); }
+.gp-choice-victorian.premium { background: linear-gradient(135deg, rgba(139,105,20,0.4), rgba(201,168,76,0.2)); border-color: var(--frame-color, #C9A84C); }
+
+/* ── Gothic (dark red arches) ── */
+.gp-name-gothic { background: linear-gradient(90deg, #8B1A1A, #C62828, #8B1A1A); border-radius: 6px 6px 0 0; border: 1px solid #E57373; border-bottom: none; color: #fff; }
+.gp-body-gothic { background: var(--frame-bg, rgba(13,8,8,0.9)); border: 2px solid; border-image: linear-gradient(180deg, #E57373, #8B1A1A, #E57373) 1; }
+.gp-choice-gothic { background: var(--frame-bg, rgba(13,8,8,0.85)); border-color: var(--frame-color, rgba(139,26,26,0.5)); border-radius: 6px; }
+.gp-choice-gothic:hover { background: rgba(139,26,26,0.2); border-color: var(--frame-color, #C62828); }
+.gp-choice-gothic.premium { background: linear-gradient(135deg, rgba(139,26,26,0.4), rgba(198,40,40,0.2)); border-color: var(--frame-color, #C62828); }
+
+/* ── Noir (minimal silver) ── */
+.gp-name-noir { background: linear-gradient(90deg, #404040, #606060, #404040); border-radius: 2px 2px 0 0; border: 1px solid #C0C0C0; border-bottom: none; color: #ccc; }
+.gp-body-noir { background: var(--frame-bg, rgba(15,15,15,0.9)); border: 1px solid var(--frame-color, #707070); }
+.gp-choice-noir { background: var(--frame-bg, rgba(15,15,15,0.85)); border-color: var(--frame-color, rgba(112,112,112,0.5)); border-radius: 2px; }
+.gp-choice-noir:hover { background: rgba(112,112,112,0.15); border-color: var(--frame-color, #A0A0A0); }
+.gp-choice-noir.premium { background: rgba(112,112,112,0.2); border-color: var(--frame-color, #A0A0A0); }
+
+/* ── Sakura (pink petals) ── */
+.gp-name-sakura { background: linear-gradient(90deg, #D4618C, #F06292, #D4618C); border-radius: 10px 10px 0 0; border: 1px solid #F8BBD0; border-bottom: none; color: #fff; }
+.gp-body-sakura { background: var(--frame-bg, rgba(26,14,20,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #F8BBD0, #D4618C, #F8BBD0) 1; border-radius: 0 8px 8px 8px; }
+.gp-choice-sakura { background: var(--frame-bg, rgba(26,14,20,0.85)); border-color: var(--frame-color, rgba(212,97,140,0.5)); border-radius: 8px; }
+.gp-choice-sakura:hover { background: rgba(212,97,140,0.2); border-color: var(--frame-color, #F06292); }
+.gp-choice-sakura.premium { background: linear-gradient(135deg, rgba(212,97,140,0.4), rgba(240,98,146,0.2)); border-color: var(--frame-color, #F06292); }
+
+/* ── Celestial (silver moon) ── */
+.gp-name-celestial { background: linear-gradient(90deg, #3F51B5, #5C6BC0, #3F51B5); border-radius: 10px 10px 0 0; border: 1px solid #C5CAE9; border-bottom: none; color: #fff; }
+.gp-body-celestial { background: var(--frame-bg, rgba(10,14,26,0.88)); border: 2px solid; border-image: linear-gradient(180deg, #C5CAE9, #5C6BC0, #C5CAE9) 1; }
+.gp-choice-celestial { background: var(--frame-bg, rgba(10,14,26,0.85)); border-color: var(--frame-color, rgba(92,107,192,0.5)); border-radius: 12px; }
+.gp-choice-celestial:hover { background: rgba(92,107,192,0.2); border-color: var(--frame-color, #7986CB); }
+.gp-choice-celestial.premium { background: linear-gradient(135deg, rgba(92,107,192,0.4), rgba(121,134,203,0.2)); border-color: var(--frame-color, #7986CB); }
+
+/* ── Cyberpunk (neon cyan/magenta) ── */
+.gp-name-cyberpunk { background: linear-gradient(90deg, #00BCD4, #E91E63, #00BCD4); border-radius: 2px 2px 0 0; border: 1px solid #80DEEA; border-bottom: none; color: #fff; text-shadow: 0 0 4px rgba(0,188,212,0.5); }
+.gp-body-cyberpunk { background: var(--frame-bg, rgba(10,10,20,0.9)); border: 1.5px solid var(--frame-color, #00BCD4); box-shadow: 0 0 8px rgba(0,188,212,0.2), inset 0 0 8px rgba(233,30,99,0.1); }
+.gp-choice-cyberpunk { background: var(--frame-bg, rgba(10,10,20,0.85)); border-color: var(--frame-color, rgba(0,188,212,0.5)); border-radius: 2px; }
+.gp-choice-cyberpunk:hover { background: rgba(0,188,212,0.15); border-color: var(--frame-color, #00BCD4); box-shadow: 0 0 6px rgba(0,188,212,0.3); }
+.gp-choice-cyberpunk.premium { background: linear-gradient(135deg, rgba(0,188,212,0.3), rgba(233,30,99,0.3)); border-color: var(--frame-color, #E91E63); }
+
+/* ── Steampunk (copper gears) ── */
+.gp-name-steampunk { background: linear-gradient(90deg, #B87333, #CD853F, #B87333); border-radius: 4px 4px 0 0; border: 1px solid #DEB887; border-bottom: none; color: #fff; }
+.gp-body-steampunk { background: var(--frame-bg, rgba(26,16,8,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #DEB887, #B87333, #DEB887) 1; }
+.gp-choice-steampunk { background: var(--frame-bg, rgba(26,16,8,0.85)); border-color: var(--frame-color, rgba(184,115,51,0.5)); border-radius: 4px; }
+.gp-choice-steampunk:hover { background: rgba(184,115,51,0.2); border-color: var(--frame-color, #CD853F); }
+.gp-choice-steampunk.premium { background: linear-gradient(135deg, rgba(184,115,51,0.4), rgba(205,133,63,0.2)); border-color: var(--frame-color, #CD853F); }
+
+/* ── Pirate (weathered wood) ── */
+.gp-name-pirate { background: linear-gradient(90deg, #6B4F0A, #8B6914, #6B4F0A); border-radius: 4px 4px 0 0; border: 1px solid #C4A882; border-bottom: none; color: #fff; }
+.gp-body-pirate { background: var(--frame-bg, rgba(20,16,10,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #C4A882, #8B6914, #C4A882) 1; }
+.gp-choice-pirate { background: var(--frame-bg, rgba(20,16,10,0.85)); border-color: var(--frame-color, rgba(139,105,20,0.5)); border-radius: 4px; }
+.gp-choice-pirate:hover { background: rgba(139,105,20,0.2); border-color: var(--frame-color, #A0785A); }
+.gp-choice-pirate.premium { background: linear-gradient(135deg, rgba(139,105,20,0.4), rgba(160,120,90,0.2)); border-color: var(--frame-color, #A0785A); }
+
+/* ── Medieval (parchment) ── */
+.gp-name-medieval { background: linear-gradient(90deg, #5B4B2C, #6B5B3C, #5B4B2C); border-radius: 4px 4px 0 0; border: 1px solid #C4B99A; border-bottom: none; color: #ddd; }
+.gp-body-medieval { background: var(--frame-bg, rgba(18,16,10,0.9)); border: 2px solid; border-image: linear-gradient(135deg, #C4B99A, #6B5B3C, #C4B99A) 1; box-shadow: inset 0 0 0 4px rgba(18,16,10,0.9), inset 0 0 0 5px rgba(107,91,60,0.15), inset 0 0 0 8px rgba(107,91,60,0.06); }
+.gp-choice-medieval { background: var(--frame-bg, rgba(18,16,10,0.85)); border-color: var(--frame-color, rgba(107,91,60,0.5)); border-radius: 4px; }
+.gp-choice-medieval:hover { background: rgba(107,91,60,0.2); border-color: var(--frame-color, #9C8B6C); }
+.gp-choice-medieval.premium { background: linear-gradient(135deg, rgba(107,91,60,0.4), rgba(156,139,108,0.2)); border-color: var(--frame-color, #9C8B6C); }
+
+/* ── Egyptian (gold + lapis) ── */
+.gp-name-egyptian { background: linear-gradient(90deg, #C5A028, #1565C0, #C5A028); border-radius: 10px 10px 0 0; border: 1px solid #FFD54F; border-bottom: none; color: #fff; }
+.gp-body-egyptian { background: var(--frame-bg, rgba(13,10,5,0.9)); border: 2px solid; border-image: linear-gradient(135deg, #FFD54F, #C5A028, #1565C0, #C5A028, #FFD54F) 1; box-shadow: inset 0 0 0 4px rgba(13,10,5,0.9), inset 0 0 0 5px rgba(197,160,40,0.15), inset 0 0 0 8px rgba(21,101,192,0.06); }
+.gp-choice-egyptian { background: var(--frame-bg, rgba(13,10,5,0.85)); border-color: var(--frame-color, rgba(197,160,40,0.5)); border-radius: 12px; }
+.gp-choice-egyptian:hover { background: rgba(197,160,40,0.2); border-color: var(--frame-color, #FFD54F); }
+.gp-choice-egyptian.premium { background: linear-gradient(135deg, rgba(197,160,40,0.4), rgba(255,213,79,0.2)); border-color: var(--frame-color, #FFD54F); }
+
+/* ── Baroque (gold + ivory scrollwork) ── */
+.gp-name-baroque { background: linear-gradient(90deg, #B8860B, #D4AF37, #B8860B); border-radius: 10px 10px 0 0; border: 1px solid #F0E68C; border-bottom: none; color: #fff; }
+.gp-body-baroque { background: var(--frame-bg, rgba(24,18,10,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #F0E68C, #B8860B, #D4AF37, #B8860B, #F0E68C) 1; box-shadow: inset 0 0 0 4px rgba(24,18,10,0.88), inset 0 0 0 5px rgba(184,134,11,0.2), inset 0 0 0 8px rgba(212,175,55,0.08); }
+.gp-choice-baroque { background: var(--frame-bg, rgba(24,18,10,0.85)); border-color: var(--frame-color, rgba(184,134,11,0.5)); border-radius: 12px; }
+.gp-choice-baroque:hover { background: rgba(184,134,11,0.2); border-color: var(--frame-color, #D4AF37); }
+.gp-choice-baroque.premium { background: linear-gradient(135deg, rgba(184,134,11,0.4), rgba(212,175,55,0.2)); border-color: var(--frame-color, #D4AF37); }
+
+/* ── Romantic (rose pink hearts) ── */
+.gp-name-romantic { background: linear-gradient(90deg, #D81B60, #EC407A, #D81B60); border-radius: 14px 14px 0 0; border: 1px solid #F8BBD0; border-bottom: none; color: #fff; }
+.gp-body-romantic { background: var(--frame-bg, rgba(26,10,16,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #F8BBD0, #D81B60, #F8BBD0) 1; border-radius: 0 10px 10px 10px; }
+.gp-choice-romantic { background: var(--frame-bg, rgba(26,10,16,0.85)); border-color: var(--frame-color, rgba(216,27,96,0.5)); border-radius: 14px; }
+.gp-choice-romantic:hover { background: rgba(216,27,96,0.2); border-color: var(--frame-color, #EC407A); }
+.gp-choice-romantic.premium { background: linear-gradient(135deg, rgba(216,27,96,0.4), rgba(236,64,122,0.2)); border-color: var(--frame-color, #EC407A); }
+
+/* ── Nordic (ice blue knots) ── */
+.gp-name-nordic { background: linear-gradient(90deg, #0288D1, #4FC3F7, #0288D1); border-radius: 10px 10px 0 0; border: 1px solid #B3E5FC; border-bottom: none; color: #fff; }
+.gp-body-nordic { background: var(--frame-bg, rgba(10,14,20,0.88)); border: 2px solid; border-image: linear-gradient(180deg, #B3E5FC, #4FC3F7, #B3E5FC) 1; }
+.gp-choice-nordic { background: var(--frame-bg, rgba(10,14,20,0.85)); border-color: var(--frame-color, rgba(79,195,247,0.5)); border-radius: 12px; }
+.gp-choice-nordic:hover { background: rgba(79,195,247,0.2); border-color: var(--frame-color, #81D4FA); }
+.gp-choice-nordic.premium { background: linear-gradient(135deg, rgba(79,195,247,0.4), rgba(129,212,250,0.2)); border-color: var(--frame-color, #81D4FA); }
+
+/* ── Tropical (teal + coral) ── */
+.gp-name-tropical { background: linear-gradient(90deg, #00897B, #26A69A, #00897B); border-radius: 10px 10px 0 0; border: 1px solid #80CBC4; border-bottom: none; color: #fff; }
+.gp-body-tropical { background: var(--frame-bg, rgba(10,20,16,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #80CBC4, #00897B, #80CBC4) 1; border-radius: 0 8px 8px 8px; }
+.gp-choice-tropical { background: var(--frame-bg, rgba(10,20,16,0.85)); border-color: var(--frame-color, rgba(0,137,123,0.5)); border-radius: 8px; }
+.gp-choice-tropical:hover { background: rgba(0,137,123,0.2); border-color: var(--frame-color, #26A69A); }
+.gp-choice-tropical.premium { background: linear-gradient(135deg, rgba(0,137,123,0.4), rgba(38,166,154,0.2)); border-color: var(--frame-color, #26A69A); }
+
+/* ── Blood Moon (crimson thorns) ── */
+.gp-name-bloodMoon { background: linear-gradient(90deg, #7F0000, #B71C1C, #7F0000); border-radius: 10px 10px 0 0; border: 1px solid #E57373; border-bottom: none; color: #fff; text-shadow: 0 0 6px rgba(183,28,28,0.5); }
+.gp-body-bloodMoon { background: var(--frame-bg, rgba(13,5,5,0.9)); border: 2px solid; border-image: linear-gradient(180deg, #E57373, #B71C1C, #7F0000, #B71C1C, #E57373) 1; }
+.gp-choice-bloodMoon { background: var(--frame-bg, rgba(13,5,5,0.85)); border-color: var(--frame-color, rgba(183,28,28,0.5)); border-radius: 12px; }
+.gp-choice-bloodMoon:hover { background: rgba(183,28,28,0.2); border-color: var(--frame-color, #D32F2F); }
+.gp-choice-bloodMoon.premium { background: linear-gradient(135deg, rgba(183,28,28,0.4), rgba(211,47,47,0.2)); border-color: var(--frame-color, #D32F2F); }
+
 .gp-text { font-size: 13px; line-height: 1.55; color: rgba(255,255,255,0.92); min-height: 40px; }
 .gp-text.narration { font-style: italic; color: rgba(255,255,255,0.7); }
 .gp-cursor { color: #E91E63; animation: blink 0.6s infinite; }
@@ -308,7 +414,7 @@
 .gp-choice-fantasy:hover { background: rgba(123,45,142,0.2); border-color: var(--frame-color, #A855F7); }
 .gp-choice-fantasy.premium { background: linear-gradient(135deg, rgba(123,45,142,0.4), rgba(168,85,247,0.2)); border-color: var(--frame-color, #A855F7); }
 
-/* Custom color overrides via CSS vars */
+/* Custom color overrides via CSS vars (new themes use var() inline) */
 .gp-body-ornate { background: var(--frame-bg, rgba(26,20,16,0.88)); border-color: var(--frame-color, #E8C872); }
 .gp-body-artDeco { background: var(--frame-bg, rgba(15,27,45,0.92)); border-color: var(--frame-color, #8B7355); }
 .gp-body-modern { background: var(--frame-bg, rgba(26,26,46,0.9)); }

@@ -31,40 +31,65 @@ class _ChoiceThemeColors {
   static _ChoiceThemeColors _baseForTheme(DialogueFrameTheme theme) {
     switch (theme) {
       case DialogueFrameTheme.ornate:
-        return const _ChoiceThemeColors(
-          borderColor: Color(0x80B8860B),
-          bgColor: Color(0xDD1A1410),
-          premiumBorderColor: Color(0xFFDAA520),
-          premiumGradient: [Color(0x66B8860B), Color(0x33DAA520)],
-        );
+        return const _ChoiceThemeColors(borderColor: Color(0x80B8860B), bgColor: Color(0xDD1A1410),
+          premiumBorderColor: Color(0xFFDAA520), premiumGradient: [Color(0x66B8860B), Color(0x33DAA520)]);
       case DialogueFrameTheme.artDeco:
-        return const _ChoiceThemeColors(
-          borderColor: Color(0x808B7355),
-          bgColor: Color(0xDD0F1B2D),
-          premiumBorderColor: Color(0xFFC4A265),
-          premiumGradient: [Color(0x668B7355), Color(0x33C4A265)],
-        );
+        return const _ChoiceThemeColors(borderColor: Color(0x808B7355), bgColor: Color(0xDD0F1B2D),
+          premiumBorderColor: Color(0xFFC4A265), premiumGradient: [Color(0x668B7355), Color(0x33C4A265)]);
       case DialogueFrameTheme.modern:
-        return const _ChoiceThemeColors(
-          borderColor: Color(0x806C63FF),
-          bgColor: Color(0xDD1A1A2E),
-          premiumBorderColor: Color(0xFF8B83FF),
-          premiumGradient: [Color(0x666C63FF), Color(0x338B83FF)],
-        );
+        return const _ChoiceThemeColors(borderColor: Color(0x806C63FF), bgColor: Color(0xDD1A1A2E),
+          premiumBorderColor: Color(0xFF8B83FF), premiumGradient: [Color(0x666C63FF), Color(0x338B83FF)]);
       case DialogueFrameTheme.glassmorphism:
-        return const _ChoiceThemeColors(
-          borderColor: Color(0x40FFFFFF),
-          bgColor: Color(0x30FFFFFF),
-          premiumBorderColor: Color(0x80FFFFFF),
-          premiumGradient: [Color(0x40FFFFFF), Color(0x20FFFFFF)],
-        );
+        return const _ChoiceThemeColors(borderColor: Color(0x40FFFFFF), bgColor: Color(0x30FFFFFF),
+          premiumBorderColor: Color(0x80FFFFFF), premiumGradient: [Color(0x40FFFFFF), Color(0x20FFFFFF)]);
       case DialogueFrameTheme.fantasy:
-        return const _ChoiceThemeColors(
-          borderColor: Color(0x807B2D8E),
-          bgColor: Color(0xDD140A1F),
-          premiumBorderColor: Color(0xFFA855F7),
-          premiumGradient: [Color(0x667B2D8E), Color(0x33A855F7)],
-        );
+        return const _ChoiceThemeColors(borderColor: Color(0x807B2D8E), bgColor: Color(0xDD140A1F),
+          premiumBorderColor: Color(0xFFA855F7), premiumGradient: [Color(0x667B2D8E), Color(0x33A855F7)]);
+      case DialogueFrameTheme.victorian:
+        return const _ChoiceThemeColors(borderColor: Color(0x808B6914), bgColor: Color(0xDD1E150E),
+          premiumBorderColor: Color(0xFFC9A84C), premiumGradient: [Color(0x668B6914), Color(0x33C9A84C)]);
+      case DialogueFrameTheme.gothic:
+        return const _ChoiceThemeColors(borderColor: Color(0x808B1A1A), bgColor: Color(0xDD0D0808),
+          premiumBorderColor: Color(0xFFC62828), premiumGradient: [Color(0x668B1A1A), Color(0x33C62828)]);
+      case DialogueFrameTheme.noir:
+        return const _ChoiceThemeColors(borderColor: Color(0x80707070), bgColor: Color(0xDD0F0F0F),
+          premiumBorderColor: Color(0xFFA0A0A0), premiumGradient: [Color(0x66707070), Color(0x33A0A0A0)]);
+      case DialogueFrameTheme.sakura:
+        return const _ChoiceThemeColors(borderColor: Color(0x80D4618C), bgColor: Color(0xDD1A0E14),
+          premiumBorderColor: Color(0xFFF06292), premiumGradient: [Color(0x66D4618C), Color(0x33F06292)]);
+      case DialogueFrameTheme.celestial:
+        return const _ChoiceThemeColors(borderColor: Color(0x805C6BC0), bgColor: Color(0xDD0A0E1A),
+          premiumBorderColor: Color(0xFF7986CB), premiumGradient: [Color(0x665C6BC0), Color(0x337986CB)]);
+      case DialogueFrameTheme.cyberpunk:
+        return const _ChoiceThemeColors(borderColor: Color(0x8000BCD4), bgColor: Color(0xDD0A0A14),
+          premiumBorderColor: Color(0xFFE91E63), premiumGradient: [Color(0x6600BCD4), Color(0x33E91E63)]);
+      case DialogueFrameTheme.steampunk:
+        return const _ChoiceThemeColors(borderColor: Color(0x80B87333), bgColor: Color(0xDD1A1008),
+          premiumBorderColor: Color(0xFFCD853F), premiumGradient: [Color(0x66B87333), Color(0x33CD853F)]);
+      case DialogueFrameTheme.pirate:
+        return const _ChoiceThemeColors(borderColor: Color(0x808B6914), bgColor: Color(0xDD14100A),
+          premiumBorderColor: Color(0xFFA0785A), premiumGradient: [Color(0x668B6914), Color(0x33A0785A)]);
+      case DialogueFrameTheme.medieval:
+        return const _ChoiceThemeColors(borderColor: Color(0x806B5B3C), bgColor: Color(0xDD12100A),
+          premiumBorderColor: Color(0xFF9C8B6C), premiumGradient: [Color(0x666B5B3C), Color(0x339C8B6C)]);
+      case DialogueFrameTheme.egyptian:
+        return const _ChoiceThemeColors(borderColor: Color(0x80C5A028), bgColor: Color(0xDD0D0A05),
+          premiumBorderColor: Color(0xFFFFD54F), premiumGradient: [Color(0x66C5A028), Color(0x33FFD54F)]);
+      case DialogueFrameTheme.baroque:
+        return const _ChoiceThemeColors(borderColor: Color(0x80B8860B), bgColor: Color(0xDD18120A),
+          premiumBorderColor: Color(0xFFD4AF37), premiumGradient: [Color(0x66B8860B), Color(0x33D4AF37)]);
+      case DialogueFrameTheme.romantic:
+        return const _ChoiceThemeColors(borderColor: Color(0x80D81B60), bgColor: Color(0xDD1A0A10),
+          premiumBorderColor: Color(0xFFEC407A), premiumGradient: [Color(0x66D81B60), Color(0x33EC407A)]);
+      case DialogueFrameTheme.nordic:
+        return const _ChoiceThemeColors(borderColor: Color(0x804FC3F7), bgColor: Color(0xDD0A0E14),
+          premiumBorderColor: Color(0xFF81D4FA), premiumGradient: [Color(0x664FC3F7), Color(0x3381D4FA)]);
+      case DialogueFrameTheme.tropical:
+        return const _ChoiceThemeColors(borderColor: Color(0x8000897B), bgColor: Color(0xDD0A1410),
+          premiumBorderColor: Color(0xFF26A69A), premiumGradient: [Color(0x6600897B), Color(0x3326A69A)]);
+      case DialogueFrameTheme.bloodMoon:
+        return const _ChoiceThemeColors(borderColor: Color(0x80B71C1C), bgColor: Color(0xDD0D0505),
+          premiumBorderColor: Color(0xFFD32F2F), premiumGradient: [Color(0x66B71C1C), Color(0x33D32F2F)]);
     }
   }
 }
@@ -250,9 +275,11 @@ class _ChoiceButtonState extends State<_ChoiceButton>
 
     // Border radius depends on theme
     final radius = switch (widget.frameTheme) {
-      DialogueFrameTheme.artDeco => BorderRadius.circular(2),
+      DialogueFrameTheme.artDeco || DialogueFrameTheme.noir || DialogueFrameTheme.cyberpunk => BorderRadius.circular(2),
       DialogueFrameTheme.glassmorphism => BorderRadius.circular(16),
-      DialogueFrameTheme.modern => BorderRadius.circular(8),
+      DialogueFrameTheme.modern || DialogueFrameTheme.sakura || DialogueFrameTheme.tropical => BorderRadius.circular(8),
+      DialogueFrameTheme.romantic => BorderRadius.circular(14),
+      DialogueFrameTheme.steampunk || DialogueFrameTheme.pirate || DialogueFrameTheme.medieval => BorderRadius.circular(4),
       _ => BorderRadius.circular(12),
     };
 
