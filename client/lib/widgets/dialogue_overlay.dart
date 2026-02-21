@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
 import '../services/settings_service.dart';
 
-/// Overlay-стиль диалога (как в Romance Club) — текст по центру экрана
-/// поверх полупрозрачного затемнения
+/// Стиль диалога как в Romance Club — текст внизу экрана,
+/// имя в плашке над текстовым боксом, персонажи полностью видны
 class DialogueOverlay extends ConsumerStatefulWidget {
   final String? speakerName;
   final Color? speakerColor;
@@ -38,7 +38,7 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
     super.initState();
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 250),
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
@@ -123,6 +123,8 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
   @override
   Widget build(BuildContext context) {
     final isNarration = widget.speakerName == null;
+    final accentColor = widget.speakerColor ?? AppTheme.primary;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return GestureDetector(
       onTap: () {
@@ -133,57 +135,91 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
         }
       },
       behavior: HitTestBehavior.opaque,
-      child: Container(
+      child: SizedBox(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.black.withValues(alpha: 0.45),
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 60),
+        child: Column(
+          children: [
+            // Верхняя прозрачная зона — пропускает нажатия
+            const Spacer(),
+
+            // Текстовый блок внизу
+            FadeTransition(
+              opacity: _fadeAnimation,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Имя говорящего
-                  if (!isNarration) ...[
+                  // Плашка с именем над боксом
+                  if (!isNarration)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
+                          horizontal: 18, vertical: 6),
                       decoration: BoxDecoration(
-                        color: (widget.speakerColor ?? AppTheme.primary)
-                            .withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: (widget.speakerColor ?? AppTheme.primary)
-                              .withValues(alpha: 0.4),
+                          color: accentColor.withValues(alpha: 0.5),
+                          width: 1.5,
                         ),
                       ),
                       child: Text(
                         widget.speakerName!,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: widget.speakerColor ?? AppTheme.primary,
-                          letterSpacing: 0.5,
+                          color: accentColor,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                  // Текст
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
+                  if (isNarration)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Text(
+                        '· · ·',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white38,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 6),
+
+                  // Основной текстовый бокс
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: EdgeInsets.fromLTRB(
+                        20, 18, 20, 14 + bottomPadding.clamp(0, 16)),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
+                        bottom: Radius.circular(4),
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: isNarration
+                          ? CrossAxisAlignment.center
+                          : CrossAxisAlignment.start,
                       children: [
                         Text(
                           _displayedText,
@@ -194,14 +230,18 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
                             color: isNarration
                                 ? Colors.white70
                                 : Colors.white.withValues(alpha: 0.92),
-                            height: 1.6,
-                            fontStyle:
-                                isNarration ? FontStyle.italic : FontStyle.normal,
+                            height: 1.55,
+                            fontStyle: isNarration
+                                ? FontStyle.italic
+                                : FontStyle.normal,
                           ),
                         ),
                         if (_isComplete) ...[
-                          const SizedBox(height: 12),
-                          _PulsingTriangle(),
+                          const SizedBox(height: 8),
+                          const Align(
+                            alignment: Alignment.centerRight,
+                            child: _PulsingArrow(),
+                          ),
                         ],
                       ],
                     ),
@@ -209,19 +249,21 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _PulsingTriangle extends StatefulWidget {
+class _PulsingArrow extends StatefulWidget {
+  const _PulsingArrow();
+
   @override
-  State<_PulsingTriangle> createState() => _PulsingTriangleState();
+  State<_PulsingArrow> createState() => _PulsingArrowState();
 }
 
-class _PulsingTriangleState extends State<_PulsingTriangle>
+class _PulsingArrowState extends State<_PulsingArrow>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
@@ -244,14 +286,14 @@ class _PulsingTriangleState extends State<_PulsingTriangle>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) => Opacity(
+      builder: (context, child) => Opacity(
         opacity: 0.3 + 0.5 * _controller.value,
         child: Transform.translate(
-          offset: Offset(0, 2 * _controller.value),
+          offset: Offset(2 * _controller.value, 0),
           child: const Icon(
-            Icons.keyboard_arrow_down,
-            color: Colors.white54,
-            size: 20,
+            Icons.arrow_forward_ios,
+            color: Colors.white38,
+            size: 14,
           ),
         ),
       ),
