@@ -33,6 +33,7 @@ class SceneEngine extends StateNotifier<GameState?> {
   List<Character> _characters = [];
   int _nextChapterNumber = 0;
   NovelTranslation? _translation;
+  NovelMeta? _novelMeta;
 
   SceneEngine(this._ref) : super(null);
 
@@ -42,6 +43,7 @@ class SceneEngine extends StateNotifier<GameState?> {
   List<Character> get characters => _characters;
   int get nextChapterNumber => _nextChapterNumber;
   NovelTranslation? get translation => _translation;
+  NovelMeta? get novelMeta => _novelMeta;
 
   /// Установить перевод для текущей новеллы
   void setTranslation(NovelTranslation? translation) {
@@ -84,7 +86,7 @@ class SceneEngine extends StateNotifier<GameState?> {
   /// Начать новеллу (или продолжить с сохранения)
   Future<void> startNovel(String novelId, {bool forceNew = false}) async {
     final loader = _ref.read(novelLoaderProvider);
-    await loader.loadNovelMeta(novelId);
+    _novelMeta = await loader.loadNovelMeta(novelId);
     _characters = await loader.loadCharacters(novelId);
 
     // Загрузить перевод по текущему языку

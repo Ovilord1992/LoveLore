@@ -472,6 +472,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
               character?.color != null ? _parseColor(character!.color!) : null,
           text: engine.tr(event.text),
           onTap: () => engine.nextEvent(),
+          frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
         ),
       );
     }

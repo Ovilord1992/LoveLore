@@ -3,7 +3,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { validateProject, type ValidationError } from '../../utils/validator';
 import { exportAsZip, exportAsJson, importProject, importProjectFromZip } from '../../utils/exporter';
 import { Plus, Trash2, Download, Upload, AlertTriangle, CheckCircle, Users, BookOpen, Settings, Hash, Image, Globe } from 'lucide-react';
-import type { Scene, CharacterSprite, NovelTranslation } from '../../types/novel';
+import type { Scene, CharacterSprite, NovelTranslation, NovelMeta } from '../../types/novel';
 import './Sidebar.css';
 
 type Tab = 'meta' | 'characters' | 'chapters' | 'variables' | 'validate' | 'translations';
@@ -109,6 +109,18 @@ function MetaTab() {
         onChange={(e) => updateMeta({ tags: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })}
         placeholder="романтика, мистика"
       />
+
+      <label>Тема диалогов</label>
+      <select
+        value={meta.dialogueTheme || 'ornate'}
+        onChange={(e) => updateMeta({ dialogueTheme: e.target.value as NovelMeta['dialogueTheme'] })}
+      >
+        <option value="ornate">🏛️ Золотая классика</option>
+        <option value="artDeco">💎 Art Deco</option>
+        <option value="modern">🎨 Современный</option>
+        <option value="glassmorphism">🪟 Glassmorphism</option>
+        <option value="fantasy">🔮 Фэнтези</option>
+      </select>
 
       <div className="actions-group">
         <button onClick={() => exportAsZip(project, images)} className="primary"><Download size={14} /> ZIP для Amoria</button>

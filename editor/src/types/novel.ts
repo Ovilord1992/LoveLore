@@ -9,6 +9,7 @@ export interface NovelMeta {
   tags: string[];
   totalChapters: number;
   sourceLanguage?: string; // язык оригинала (ru, en, etc.)
+  dialogueTheme?: 'ornate' | 'artDeco' | 'modern' | 'glassmorphism' | 'fantasy';
 }
 
 export interface Character {

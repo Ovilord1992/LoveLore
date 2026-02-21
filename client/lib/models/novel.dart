@@ -49,6 +49,7 @@ class NovelMeta extends Equatable {
   final List<String> tags;
   final int totalChapters;
   final int releasedChapters;
+  final String? dialogueTheme;
 
   /// Локализованное название (заполняется из перевода если доступен)
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -68,6 +69,7 @@ class NovelMeta extends Equatable {
     this.tags = const [],
     this.totalChapters = 0,
     this.releasedChapters = 0,
+    this.dialogueTheme,
     this.localizedTitle,
     this.localizedDescription,
   });
@@ -82,6 +84,17 @@ class NovelMeta extends Equatable {
   /// Возвращает отображаемое описание (локализованное если есть, иначе оригинал)
   String get displayDescription => localizedDescription ?? description;
 
+  /// Тема диалогового окна
+  DialogueFrameTheme get frameTheme {
+    switch (dialogueTheme) {
+      case 'artDeco': return DialogueFrameTheme.artDeco;
+      case 'modern': return DialogueFrameTheme.modern;
+      case 'glassmorphism': return DialogueFrameTheme.glassmorphism;
+      case 'fantasy': return DialogueFrameTheme.fantasy;
+      default: return DialogueFrameTheme.ornate;
+    }
+  }
+
   /// Создать копию с переводом
   NovelMeta copyWithTranslation(String? translatedTitle, String? translatedDescription) {
     return NovelMeta(
@@ -94,13 +107,14 @@ class NovelMeta extends Equatable {
       tags: tags,
       totalChapters: totalChapters,
       releasedChapters: releasedChapters,
+      dialogueTheme: dialogueTheme,
       localizedTitle: translatedTitle,
       localizedDescription: translatedDescription,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters, localizedTitle, localizedDescription];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters, dialogueTheme, localizedTitle, localizedDescription];
 }
 
 /// Информация о главе с сервера

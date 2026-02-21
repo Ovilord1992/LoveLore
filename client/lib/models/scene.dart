@@ -21,6 +21,20 @@ enum CgTransition { fade, zoomIn }
 /// Тип эмоции-иконки
 enum EmotionType { heart, sweatDrop, question, exclamation, anger, sparkle, musicNote, zzz }
 
+/// Тема диалогового окна — стиль рамки для каждой новеллы
+enum DialogueFrameTheme {
+  /// Золотая классика с L-углами и ромбами
+  ornate,
+  /// Art Deco — геометрические шестиугольники
+  artDeco,
+  /// Современный минимализм
+  modern,
+  /// Glassmorphism — стекло/blur
+  glassmorphism,
+  /// Фэнтези — закрученные углы
+  fantasy,
+}
+
 /// Настройки перехода между сценами
 @JsonSerializable()
 class SceneTransition extends Equatable {
