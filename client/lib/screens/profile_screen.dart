@@ -512,7 +512,7 @@ class _StatGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 8,
       crossAxisSpacing: 8,
-      childAspectRatio: 2.2,
+      childAspectRatio: 2.0,
       children: stats.map((s) {
         return Container(
           padding: const EdgeInsets.all(12),
@@ -528,6 +528,7 @@ class _StatGrid extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(s.value,
                         style: const TextStyle(
