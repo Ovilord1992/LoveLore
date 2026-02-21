@@ -197,8 +197,10 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                   // Инфо
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
                       children: [
                         _infoChip(Icons.menu_book, '${novel.totalChapters} ${ref.tr('chapters_count')}'),
                         _infoChip(Icons.access_time, '~15 мин/глава'),
