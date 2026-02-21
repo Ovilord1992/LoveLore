@@ -196,6 +196,8 @@ export function GamePreview() {
     ? project.characters.find(c => c.id === currentEvent.speaker)
     : null;
 
+  const dialogueTheme = project.meta.dialogueTheme || 'ornate';
+
   return (
     <div className="game-preview">
       <div className="phone-frame">
@@ -228,19 +230,36 @@ export function GamePreview() {
             })}
           </div>
 
-          {/* Dialogue/Narration */}
+          {/* Dialogue/Narration — themed frame */}
           {currentEvent && (currentEvent.type === 'dialogue' || currentEvent.type === 'narration') && (
-            <div className="gp-dialogue-box">
-              {currentEvent.type === 'dialogue' && speakerChar && (
-                <div className="gp-speaker" style={{ color: speakerChar.color }}>
-                  {speakerChar.name}
-                </div>
-              )}
-              <div className={`gp-text ${currentEvent.type === 'narration' ? 'narration' : ''}`}>
-                {displayedText}
-                {isTyping && <span className="gp-cursor">|</span>}
+            <div className={`gp-frame gp-frame-${dialogueTheme}`}>
+              {/* Name tab */}
+              <div className={`gp-frame-name gp-name-${dialogueTheme}`}>
+                {currentEvent.type === 'dialogue' && speakerChar ? (
+                  <span style={dialogueTheme === 'ornate' || dialogueTheme === 'fantasy' ? { color: '#fff' } : { color: speakerChar.color }}>
+                    {speakerChar.name}
+                  </span>
+                ) : (
+                  <span className="gp-narration-dots">· · ·</span>
+                )}
               </div>
-              {!isTyping && <div className="gp-advance-hint">▼</div>}
+              {/* Text body */}
+              <div className={`gp-frame-body gp-body-${dialogueTheme}`}>
+                <div className={`gp-text ${currentEvent.type === 'narration' ? 'narration' : ''}`}>
+                  {displayedText}
+                  {isTyping && <span className="gp-cursor">|</span>}
+                </div>
+                {!isTyping && <div className="gp-advance-hint">▼</div>}
+                {/* Corner ornaments for ornate/artDeco/fantasy */}
+                {(dialogueTheme === 'ornate' || dialogueTheme === 'fantasy' || dialogueTheme === 'artDeco') && (
+                  <>
+                    <span className="gp-corner gp-corner-tl" />
+                    <span className="gp-corner gp-corner-tr" />
+                    <span className="gp-corner gp-corner-bl" />
+                    <span className="gp-corner gp-corner-br" />
+                  </>
+                )}
+              </div>
             </div>
           )}
 
