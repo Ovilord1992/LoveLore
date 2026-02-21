@@ -20,6 +20,7 @@ import '../widgets/chapter_progress.dart';
 import '../widgets/achievement_popup.dart';
 import 'wardrobe_screen.dart';
 import '../app/theme.dart';
+import 'settings_screen.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final String novelId;
@@ -286,6 +287,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       }
                       },
                     ),
+                      IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.white70),
+                        onPressed: () => _showPauseMenu(context),
+                      ),
                     ],
                   ),
                 ],
@@ -726,6 +731,25 @@ class _GameScreenState extends ConsumerState<GameScreen>
     );
   }
 
+  void _showPauseMenu(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (ctx) => _PauseMenuDialog(
+        onResume: () => Navigator.of(ctx).pop(),
+        onSave: () { _autoSave(); Navigator.of(ctx).pop(); },
+        onSettings: () {
+          Navigator.of(ctx).pop();
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+        },
+        onExit: () {
+          Navigator.of(ctx).pop();
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+
   void _showWardrobePicker(BuildContext context, SceneEngine engine) {
     final characters = engine.characters;
     if (characters.isEmpty) return;
@@ -776,6 +800,78 @@ class _GameScreenState extends ConsumerState<GameScreen>
               },
             )),
             const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PauseMenuDialog extends ConsumerWidget {
+  final VoidCallback onResume;
+  final VoidCallback onSave;
+  final VoidCallback onSettings;
+  final VoidCallback onExit;
+
+  const _PauseMenuDialog({required this.onResume, required this.onSave, required this.onSettings, required this.onExit});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF16213E),
+            borderRadius: BorderRadius.circular(24),
+            border: const Border(top: BorderSide(width: 2, color: Color(0xFFE91E63))),
+            boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 20)],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('⏸ Pause', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              const SizedBox(height: 20),
+              _menuItem(Icons.save, '💾 ${ref.tr("save")}', onSave),
+              const Divider(color: Colors.white10),
+              _menuItem(Icons.checkroom, '👗 ${ref.tr("wardrobe")}', () { Navigator.of(context).pop(); }),
+              const Divider(color: Colors.white10),
+              _menuItem(Icons.settings, '⚙️ ${ref.tr("settings")}', onSettings),
+              const Divider(color: Colors.white10),
+              _menuItem(Icons.exit_to_app, '🚪 Exit', onExit, isDestructive: true),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: onResume,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFF9C27B0)]),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('Resume', textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menuItem(IconData icon, String label, VoidCallback onTap, {bool isDestructive = false}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: isDestructive ? Colors.redAccent : Colors.white70, size: 22),
+            const SizedBox(width: 12),
+            Text(label, style: TextStyle(fontSize: 16, color: isDestructive ? Colors.redAccent : Colors.white)),
           ],
         ),
       ),

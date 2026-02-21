@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme.dart';
 import '../screens/library_screen.dart';
+import '../screens/onboarding_screen.dart';
 import '../services/locale_service.dart';
 import '../services/settings_service.dart';
 
@@ -19,7 +20,9 @@ class NavellApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.flutterThemeMode,
       locale: Locale(locale.name),
-      home: const LibraryScreen(),
+      home: settings.hasSeenOnboarding
+          ? const LibraryScreen()
+          : const OnboardingScreen(),
     );
   }
 }

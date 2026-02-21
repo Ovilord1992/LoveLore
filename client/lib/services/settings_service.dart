@@ -17,6 +17,9 @@ class AppSettings {
   final int autoPlayDelay; // секунды
   final bool isMuted;
   final int themeMode; // 0=system, 1=light, 2=dark
+  final bool hasSeenOnboarding;
+  final bool vibrationEnabled;
+  final bool notificationsEnabled;
 
   const AppSettings({
     this.textSpeed = 0.5,
@@ -26,6 +29,9 @@ class AppSettings {
     this.autoPlayDelay = 3,
     this.isMuted = false,
     this.themeMode = 2, // dark by default
+    this.hasSeenOnboarding = false,
+    this.vibrationEnabled = true,
+    this.notificationsEnabled = true,
   });
 
   ThemeMode get flutterThemeMode {
@@ -44,6 +50,9 @@ class AppSettings {
     int? autoPlayDelay,
     bool? isMuted,
     int? themeMode,
+    bool? hasSeenOnboarding,
+    bool? vibrationEnabled,
+    bool? notificationsEnabled,
   }) {
     return AppSettings(
       textSpeed: textSpeed ?? this.textSpeed,
@@ -53,6 +62,9 @@ class AppSettings {
       autoPlayDelay: autoPlayDelay ?? this.autoPlayDelay,
       isMuted: isMuted ?? this.isMuted,
       themeMode: themeMode ?? this.themeMode,
+      hasSeenOnboarding: hasSeenOnboarding ?? this.hasSeenOnboarding,
+      vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     );
   }
 
@@ -64,6 +76,9 @@ class AppSettings {
         'autoPlayDelay': autoPlayDelay,
         'isMuted': isMuted,
         'themeMode': themeMode,
+        'hasSeenOnboarding': hasSeenOnboarding,
+        'vibrationEnabled': vibrationEnabled,
+        'notificationsEnabled': notificationsEnabled,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
@@ -74,6 +89,9 @@ class AppSettings {
         autoPlayDelay: json['autoPlayDelay'] as int? ?? 3,
         isMuted: json['isMuted'] as bool? ?? false,
         themeMode: json['themeMode'] as int? ?? 2,
+        hasSeenOnboarding: json['hasSeenOnboarding'] as bool? ?? false,
+        vibrationEnabled: json['vibrationEnabled'] as bool? ?? true,
+        notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
       );
 
   /// Задержка печати одного символа в миллисекундах
@@ -120,6 +138,21 @@ class SettingsService extends StateNotifier<AppSettings> {
 
   void setThemeMode(int mode) {
     state = state.copyWith(themeMode: mode);
+    _save();
+  }
+
+  void setOnboardingComplete() {
+    state = state.copyWith(hasSeenOnboarding: true);
+    _save();
+  }
+
+  void toggleVibration() {
+    state = state.copyWith(vibrationEnabled: !state.vibrationEnabled);
+    _save();
+  }
+
+  void toggleNotifications() {
+    state = state.copyWith(notificationsEnabled: !state.notificationsEnabled);
     _save();
   }
 

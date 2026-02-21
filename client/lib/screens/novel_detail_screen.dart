@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
 import '../services/locale_service.dart';
 import '../models/novel.dart';
+import '../models/character.dart';
 import '../services/save_service.dart';
 import '../services/novel_loader.dart';
 import '../services/novel_api_service.dart';
@@ -21,11 +22,27 @@ class NovelDetailScreen extends ConsumerStatefulWidget {
 class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
   bool _isAvailableLocally = true;
   bool _checking = true;
+  List<Character> _characters = [];
+  List<ChapterInfo> _chapterInfos = [];
 
   @override
   void initState() {
     super.initState();
     _checkAvailability();
+    _loadDetails();
+  }
+
+  Future<void> _loadDetails() async {
+    final loader = ref.read(novelLoaderProvider);
+    try {
+      final chars = await loader.loadCharacters(widget.novel.id);
+      if (mounted) setState(() => _characters = chars);
+    } catch (_) {}
+    try {
+      final api = ref.read(novelApiServiceProvider);
+      final chapters = await api.fetchChaptersList(widget.novel.id);
+      if (mounted) setState(() => _chapterInfos = chapters);
+    } catch (_) {}
   }
 
   Future<void> _checkAvailability() async {
@@ -178,22 +195,70 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                   const SizedBox(height: 12),
 
                   // Инфо
-                  Row(
-                    children: [
-                      _InfoChip(
-                        icon: Icons.menu_book,
-                        label: novel.releasedChapters > 0
-                            ? '${novel.releasedChapters}/${novel.totalChapters} ${ref.tr('chapters_count')}'
-                            : '${novel.totalChapters} ${ref.tr('chapters_count')}',
-                      ),
-                      const SizedBox(width: 12),
-                      if (hasSave)
-                        _InfoChip(
-                          icon: Icons.bookmark,
-                          label: ref.tr('has_save'),
-                        ),
-                    ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _infoChip(Icons.menu_book, '${novel.totalChapters} ${ref.tr('chapters_count')}'),
+                        _infoChip(Icons.access_time, '~15 мин/глава'),
+                        _infoChip(Icons.calendar_today, 'Обновлено'),
+                      ],
+                    ),
                   ),
+
+                  // Персонажи
+                  if (_characters.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 8),
+                      child: Text('Персонажи', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                    SizedBox(
+                      height: 100,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _characters.length,
+                        itemBuilder: (context, i) {
+                          final char = _characters[i];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 64, height: 64,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFFE91E63), width: 2),
+                                    color: const Color(0xFF16213E),
+                                  ),
+                                  child: Center(child: Text(char.name[0], style: const TextStyle(fontSize: 24, color: Colors.white))),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(char.name, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+
+                  // Главы
+                  if (_chapterInfos.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16, bottom: 8),
+                      child: Text(ref.tr('chapters'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                    ...List.generate(_chapterInfos.length, (i) {
+                      final ch = _chapterInfos[i];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Text('${i + 1}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE91E63))),
+                        title: Text(ch.title, style: const TextStyle(color: Colors.white)),
+                        trailing: Icon(ch.isReleased ? Icons.lock_open : Icons.lock, color: ch.isReleased ? Colors.green : Colors.white24, size: 20),
+                      );
+                    }),
+                  ],
 
                   const SizedBox(height: 32),
 
@@ -296,6 +361,24 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
     );
   }
 
+  Widget _infoChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16213E),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFFE91E63)),
+          const SizedBox(width: 6),
+          Text(text, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+
   void _startNewGame(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -334,26 +417,6 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: Colors.white38),
-        const SizedBox(width: 4),
-        Text(label,
-            style: const TextStyle(fontSize: 13, color: Colors.white38)),
-      ],
     );
   }
 }

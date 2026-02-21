@@ -11,7 +11,6 @@ import '../services/settings_service.dart';
 import '../services/save_service.dart';
 import '../services/novel_loader.dart';
 import '../models/novel.dart';
-import 'gallery_screen.dart';
 import 'auth_screen.dart';
 import 'shop_screen.dart';
 import 'settings_screen.dart';
@@ -197,76 +196,78 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
 
                 // ═══ Достижения ═══
-                _SectionTitle(ref.tr('achievements')),
-                if (profile.achievements.isEmpty)
-                  _EmptyPlaceholder(
-                    icon: Icons.emoji_events_outlined,
-                    text: ref.tr('no_achievements'),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: profile.achievements.map((a) {
-                      final icon = _achievementIcons[a] ?? Icons.star;
-                      final label = ref.tr('ach_$a');
-                      return _AchievementBadge(
-                        icon: icon,
-                        label: label,
-                      );
-                    }).toList(),
-                  ),
-                const SizedBox(height: 24),
-
-                // ═══ Галерея CG ═══
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const GalleryScreen()),
-                    );
-                  },
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _SectionTitle(ref.tr('gallery')),
-                      const Icon(Icons.chevron_right,
-                          color: Colors.white38, size: 20),
+                      const Text('🏆', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
+                      Text(ref.tr('achievements'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                     ],
                   ),
                 ),
-                if (profile.unlockedCGs.isEmpty)
-                  _EmptyPlaceholder(
-                    icon: Icons.photo_library_outlined,
-                    text: ref.tr('gallery_empty'),
-                  )
-                else
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: profile.unlockedCGs.length,
-                      itemBuilder: (_, i) {
-                        final cgId = profile.unlockedCGs.elementAt(i);
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              width: 160,
-                              color: const Color(0xFF16213E),
-                              child: Center(
-                                child: Text(
-                                  cgId,
-                                  style: const TextStyle(
-                                      color: Colors.white38, fontSize: 12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                SizedBox(
+                  height: 100,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    children: const [
+                      _AchievementBadge(icon: '📚', label: 'Книголюб', progress: '5/5', completed: true),
+                      _AchievementBadge(icon: '💕', label: 'Романтик', progress: '3/5', completed: false),
+                      _AchievementBadge(icon: '🔍', label: 'Детектив', progress: '1/3', completed: false),
+                      _AchievementBadge(icon: '⭐', label: 'Критик', progress: '2/10', completed: false),
+                      _AchievementBadge(icon: '🏆', label: 'Коллекционер', progress: '8/24', completed: false),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 24),
+
+                // ═══ Галерея CG ═══
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                  child: Row(
+                    children: [
+                      const Text('🖼', style: TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
+                      const Text('Галерея CG', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                      const Spacer(),
+                      Text('8/24 →', style: TextStyle(fontSize: 13, color: Color(0xFFE91E63))),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    children: List.generate(8, (i) {
+                      final locked = i >= 3;
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16213E),
+                          borderRadius: BorderRadius.circular(12),
+                          border: !locked && i == 2 ? Border.all(color: Color(0xFFE91E63), width: 1.5) : null,
+                        ),
+                        child: locked
+                          ? Center(child: Icon(Icons.lock, color: Colors.white24, size: 20))
+                          : Stack(
+                              children: [
+                                Center(child: Icon(Icons.image, color: Colors.white24, size: 24)),
+                                if (i == 2)
+                                  Positioned(top: 4, right: 4, child: Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(color: Color(0xFFE91E63), borderRadius: BorderRadius.circular(4)),
+                                    child: Text('NEW', style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+                                  )),
+                              ],
+                            ),
+                      );
+                    }),
+                  ),
+                ),
 
                 const SizedBox(height: 24),
 
@@ -383,19 +384,7 @@ class ProfileScreen extends ConsumerWidget {
 
 }
 
-// --- Иконки достижений ---
-const _achievementIcons = <String, IconData>{
-  'first_story': Icons.auto_stories,
-  'first_choice': Icons.touch_app,
-  'five_chapters': Icons.menu_book,
-  'first_love': Icons.favorite,
-  'completionist': Icons.emoji_events,
-  'collector': Icons.collections,
-  'brave_heart': Icons.shield,
-  'mystery_solver': Icons.search,
-  'ten_choices': Icons.checklist,
-  'diamond_spender': Icons.diamond,
-};
+// --- Достижения ---
 
 // --- Виджеты ---
 
@@ -560,30 +549,56 @@ class _StatGrid extends StatelessWidget {
 }
 
 class _AchievementBadge extends StatelessWidget {
-  final IconData icon;
+  final String icon;
   final String label;
-
-  const _AchievementBadge({required this.icon, required this.label});
+  final String progress;
+  final bool completed;
+  const _AchievementBadge({required this.icon, required this.label, required this.progress, required this.completed});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF16213E),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE91E63).withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: Column(
         children: [
-          Icon(icon, size: 16, color: const Color(0xFFE91E63)),
-          const SizedBox(width: 6),
-          Text(label,
-              style: const TextStyle(fontSize: 12, color: Colors.white70)),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 56, height: 56,
+                child: CircularProgressIndicator(
+                  value: _parseProgress(progress),
+                  backgroundColor: Colors.white10,
+                  valueColor: AlwaysStoppedAnimation(completed ? Colors.green : const Color(0xFFE91E63)),
+                  strokeWidth: 3,
+                ),
+              ),
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: completed ? Colors.green.withValues(alpha: 0.2) : const Color(0xFF16213E),
+                ),
+                child: Center(child: Text(icon, style: const TextStyle(fontSize: 22))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.white54)),
+          Text(progress, style: const TextStyle(fontSize: 10, color: Colors.white24)),
         ],
       ),
     );
+  }
+
+  double _parseProgress(String progress) {
+    final parts = progress.split('/');
+    if (parts.length == 2) {
+      final current = int.tryParse(parts[0]) ?? 0;
+      final total = int.tryParse(parts[1]) ?? 1;
+      return current / total;
+    }
+    return 0;
   }
 }
 

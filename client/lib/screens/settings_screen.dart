@@ -56,6 +56,14 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (v) => settingsNotifier.setAutoPlayDelay(v.toInt()),
             ),
           ],
+          const SizedBox(height: 8),
+          _SwitchTile(
+            icon: Icons.vibration,
+            label: ref.tr('vibration'),
+            subtitle: null,
+            value: settings.vibrationEnabled,
+            onChanged: (_) => settingsNotifier.toggleVibration(),
+          ),
 
           const SizedBox(height: 24),
 
@@ -119,6 +127,71 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => settingsNotifier.setThemeMode(0),
               ),
             ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Приложение
+          _SectionTitle('📱 ${ref.tr("app")}'),
+          _SwitchTile(
+            icon: Icons.notifications_outlined,
+            label: ref.tr('notifications'),
+            subtitle: null,
+            value: settings.notificationsEnabled,
+            onChanged: (_) => settingsNotifier.toggleNotifications(),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor(context),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(ref.tr('cache_cleared')), duration: const Duration(seconds: 2)),
+                );
+              },
+              child: Row(
+                children: [
+                  const Icon(Icons.cleaning_services, color: Colors.white54, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(ref.tr('clear_cache'), style: const TextStyle(color: Colors.white)),
+                      const Text('~45 MB', style: TextStyle(fontSize: 12, color: Colors.white38)),
+                    ],
+                  )),
+                  const Icon(Icons.chevron_right, color: Colors.white24),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor(context),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(ref.tr('purchases_restored')), duration: const Duration(seconds: 2)),
+                );
+              },
+              child: Row(
+                children: [
+                  const Icon(Icons.restore, color: Colors.white54, size: 20),
+                  const SizedBox(width: 12),
+                  Text(ref.tr('restore_purchases'), style: const TextStyle(color: Colors.white)),
+                  const Spacer(),
+                  const Icon(Icons.chevron_right, color: Colors.white24),
+                ],
+              ),
+            ),
           ),
 
           const SizedBox(height: 24),
