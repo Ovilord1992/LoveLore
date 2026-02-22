@@ -549,47 +549,49 @@ class _UniversalFramePainter extends CustomPainter {
       ));
     }
 
-    // Tail dimensions
-    const tailW = 22.0; // base width
-    const tailH = 12.0; // how far it extends below
+    // Tail on TOP edge, on the OPPOSITE side of the speaker
+    const tailW = 24.0; // base width
+    const tailH = 14.0; // how far up it extends
+    const curveMag = 5.0; // how much the tip curves toward the speaker
 
-    // Position tail along bottom edge based on speaker side
+    // Tail position (opposite side of speaker)
     double tailCX;
+    double curveBias; // horizontal offset of the tip toward the speaker
     if (speakerSide == 'left') {
-      tailCX = size.width * 0.22;
+      tailCX = size.width * 0.75; // tail on right
+      curveBias = -curveMag; // tip curves left (toward speaker)
     } else if (speakerSide == 'right') {
-      tailCX = size.width * 0.78;
+      tailCX = size.width * 0.25; // tail on left
+      curveBias = curveMag; // tip curves right (toward speaker)
     } else {
       tailCX = size.width * 0.5;
+      curveBias = 0;
     }
-    // Keep tail within the flat portion of the bottom edge (between arcs)
-    tailCX = tailCX.clamp(r + tailW / 2 + 2, size.width - r - tailW / 2 - 2);
+    tailCX = tailCX.clamp(tailW / 2 + 2, size.width - tailW / 2 - 2);
 
     final path = Path();
 
-    // Top edge
+    // Top edge with tail (left to right)
     path.moveTo(0, 0);
+    path.lineTo(tailCX - tailW / 2, 0);
+    // Smooth curved tail pointing up, leaning toward speaker
+    path.quadraticBezierTo(
+      tailCX - tailW * 0.12 + curveBias * 0.5, -tailH * 0.55,
+      tailCX + curveBias, -tailH,
+    );
+    path.quadraticBezierTo(
+      tailCX + tailW * 0.12 + curveBias * 0.5, -tailH * 0.55,
+      tailCX + tailW / 2, 0,
+    );
     path.lineTo(size.width, 0);
 
     // Right side
     path.lineTo(size.width, size.height - r);
 
-    // Bottom-right corner arc
+    // Bottom-right corner
     path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
-
-    // Bottom edge with speech bubble tail (right to left)
-    path.lineTo(tailCX + tailW / 2, size.height);
-    path.quadraticBezierTo(
-      tailCX + tailW * 0.1, size.height + tailH * 0.45,
-      tailCX, size.height + tailH,
-    );
-    path.quadraticBezierTo(
-      tailCX - tailW * 0.1, size.height + tailH * 0.45,
-      tailCX - tailW / 2, size.height,
-    );
     path.lineTo(r, size.height);
-
-    // Bottom-left corner arc
+    // Bottom-left corner
     path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
 
     path.close();
@@ -1055,40 +1057,48 @@ class _GlassmorphismFramePainter extends CustomPainter {
       return Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(r)));
     }
 
-    const tailW = 22.0;
-    const tailH = 12.0;
+    const tailW = 24.0;
+    const tailH = 14.0;
+    const curveMag = 5.0;
+
     double tailCX;
+    double curveBias;
     if (speakerSide == 'left') {
-      tailCX = size.width * 0.22;
+      tailCX = size.width * 0.75;
+      curveBias = -curveMag;
     } else if (speakerSide == 'right') {
-      tailCX = size.width * 0.78;
+      tailCX = size.width * 0.25;
+      curveBias = curveMag;
     } else {
       tailCX = size.width * 0.5;
+      curveBias = 0;
     }
     tailCX = tailCX.clamp(r + tailW / 2 + 2, size.width - r - tailW / 2 - 2);
 
     final path = Path();
-    path.moveTo(r, 0);
+
+    // Top-left corner
+    path.moveTo(0, r);
+    path.arcToPoint(Offset(r, 0), radius: Radius.circular(r));
+
+    // Top edge with tail (left to right)
+    path.lineTo(tailCX - tailW / 2, 0);
+    path.quadraticBezierTo(
+      tailCX - tailW * 0.12 + curveBias * 0.5, -tailH * 0.55,
+      tailCX + curveBias, -tailH,
+    );
+    path.quadraticBezierTo(
+      tailCX + tailW * 0.12 + curveBias * 0.5, -tailH * 0.55,
+      tailCX + tailW / 2, 0,
+    );
     path.lineTo(size.width - r, 0);
+
+    // Top-right corner
     path.arcToPoint(Offset(size.width, r), radius: Radius.circular(r));
     path.lineTo(size.width, size.height - r);
     path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
-
-    // Bottom edge with tail (right to left)
-    path.lineTo(tailCX + tailW / 2, size.height);
-    path.quadraticBezierTo(
-      tailCX + tailW * 0.1, size.height + tailH * 0.45,
-      tailCX, size.height + tailH,
-    );
-    path.quadraticBezierTo(
-      tailCX - tailW * 0.1, size.height + tailH * 0.45,
-      tailCX - tailW / 2, size.height,
-    );
-
     path.lineTo(r, size.height);
     path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
-    path.lineTo(0, r);
-    path.arcToPoint(Offset(r, 0), radius: Radius.circular(r));
     path.close();
     return path;
   }

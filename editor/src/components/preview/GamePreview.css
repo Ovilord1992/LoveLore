@@ -139,21 +139,32 @@
   position: relative;
   min-height: 72px;
 }
-/* Speech bubble tail on the bottom edge */
+/* Speech bubble tail on the TOP edge, opposite side of speaker, curved toward speaker */
 .gp-frame-body::after {
   content: '';
   position: absolute;
-  bottom: -7px;
-  width: 16px;
+  top: -7px;
+  width: 14px;
   height: 8px;
   background: inherit;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
   z-index: 1;
 }
-/* Position tail based on speaker side */
-.gp-frame-body.gp-tail-left::after { left: 20%; }
-.gp-frame-body.gp-tail-right::after { right: 20%; }
-.gp-frame-body.gp-tail-center::after { left: 50%; transform: translateX(-50%); }
+/* Speaker LEFT → name left → tail on RIGHT top, tip leans left */
+.gp-frame-body.gp-tail-left::after {
+  right: 22%;
+  clip-path: polygon(0% 100%, 100% 100%, 30% 0%);
+}
+/* Speaker RIGHT → name right → tail on LEFT top, tip leans right */
+.gp-frame-body.gp-tail-right::after {
+  left: 22%;
+  clip-path: polygon(0% 100%, 100% 100%, 70% 0%);
+}
+/* Speaker CENTER → tail centered, straight up */
+.gp-frame-body.gp-tail-center::after {
+  left: 50%;
+  transform: translateX(-50%);
+  clip-path: polygon(0% 100%, 100% 100%, 50% 0%);
+}
 /* Hide tail for narration */
 .gp-frame-body.gp-narration::after { display: none; }
 
