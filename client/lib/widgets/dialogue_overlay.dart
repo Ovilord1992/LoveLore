@@ -419,65 +419,50 @@ class _ThemedDialogueFrame extends StatelessWidget {
       crossAxisAlignment: nameAlignment,
       children: [
         _buildNameTab(colors, spec),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            CustomPaint(
-              painter: frameTheme == DialogueFrameTheme.glassmorphism
-                  ? _GlassmorphismFramePainter(
-                      backgroundColor: colors.background,
-                      borderColor: colors.primary)
-                  : _UniversalFramePainter(colors: colors, spec: spec),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: isNarration
-                      ? CrossAxisAlignment.center
-                      : CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayedText,
-                      textAlign: isNarration ? TextAlign.center : TextAlign.left,
-                      style: TextStyle(
-                        fontSize: 17,
-                        color: isNarration
-                            ? Colors.white70
-                            : Colors.white.withValues(alpha: 0.92),
-                        height: 1.55,
-                        fontStyle:
-                            isNarration ? FontStyle.italic : FontStyle.normal,
-                      ),
-                    ),
-                    if (isComplete) ...[
-                      const SizedBox(height: 6),
-                      const Align(
-                        alignment: Alignment.centerRight,
-                        child: _PulsingArrow(),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            // Decorative tail on the opposite side of speaker
-            if (!isNarration && speakerSide != 'center')
-              Positioned(
-                top: -6,
-                left: speakerSide == 'right' ? -10 : null,
-                right: speakerSide == 'left' ? -10 : null,
-                child: CustomPaint(
-                  size: const Size(18, 14),
-                  painter: _TailPainter(
-                    color: colors.primary,
-                    fillColor: colors.background,
-                    borderWidth: spec.borderWidth,
-                    flipX: speakerSide == 'right',
+        CustomPaint(
+          painter: frameTheme == DialogueFrameTheme.glassmorphism
+              ? _GlassmorphismFramePainter(
+                  backgroundColor: colors.background,
+                  borderColor: colors.primary,
+                  speakerSide: speakerSide,
+                  isNarration: isNarration)
+              : _UniversalFramePainter(
+                  colors: colors,
+                  spec: spec,
+                  speakerSide: speakerSide,
+                  isNarration: isNarration),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: isNarration
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayedText,
+                  textAlign: isNarration ? TextAlign.center : TextAlign.left,
+                  style: TextStyle(
+                    fontSize: 17,
+                    color: isNarration
+                        ? Colors.white70
+                        : Colors.white.withValues(alpha: 0.92),
+                    height: 1.55,
+                    fontStyle:
+                        isNarration ? FontStyle.italic : FontStyle.normal,
                   ),
                 ),
-              ),
-          ],
+                if (isComplete) ...[
+                  const SizedBox(height: 6),
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: _PulsingArrow(),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -542,18 +527,64 @@ class _ThemedDialogueFrame extends StatelessWidget {
 class _UniversalFramePainter extends CustomPainter {
   final _FrameColors colors;
   final _ThemeSpec spec;
+  final String speakerSide;
+  final bool isNarration;
 
-  _UniversalFramePainter({required this.colors, required this.spec});
+  _UniversalFramePainter({
+    required this.colors,
+    required this.spec,
+    this.speakerSide = 'center',
+    this.isNarration = false,
+  });
+
+  /// Builds frame outline with integrated tail on the opposite side of speaker
+  Path _buildFramePath(Size size) {
+    final r = spec.radius;
+    final showTail = !isNarration && speakerSide != 'center';
+    final tailOnRight = speakerSide == 'left';
+
+    const tailW = 10.0; // protrusion distance
+    const tailH = 18.0; // height of triangle
+    const tailTopY = 10.0; // distance from top edge
+
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width, 0);
+
+    // Right side (with optional tail)
+    if (showTail && tailOnRight) {
+      path.lineTo(size.width, tailTopY);
+      path.lineTo(size.width + tailW, tailTopY + tailH / 2);
+      path.lineTo(size.width, tailTopY + tailH);
+    }
+    path.lineTo(size.width, size.height - r);
+
+    // Bottom-right corner
+    path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
+    path.lineTo(r, size.height);
+    // Bottom-left corner
+    path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
+
+    // Left side (with optional tail, going upward)
+    if (showTail && !tailOnRight) {
+      path.lineTo(0, tailTopY + tailH);
+      path.lineTo(-tailW, tailTopY + tailH / 2);
+      path.lineTo(0, tailTopY);
+    }
+
+    path.close();
+    return path;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final r = spec.radius;
+    final framePath = _buildFramePath(size);
 
     // 1. Background
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(rect,
-        bottomLeft: Radius.circular(r), bottomRight: Radius.circular(r)),
+    canvas.drawPath(
+      framePath,
       Paint()..color = colors.background.withValues(alpha: 0.9),
     );
 
@@ -567,11 +598,7 @@ class _UniversalFramePainter extends CustomPainter {
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = spec.borderWidth;
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(rect,
-        bottomLeft: Radius.circular(r), bottomRight: Radius.circular(r)),
-      outerPaint,
-    );
+    canvas.drawPath(framePath, outerPaint);
 
     // 3. Inner border(s)
     if (spec.borderCount >= 2) {
@@ -991,16 +1018,58 @@ class _UniversalFramePainter extends CustomPainter {
 class _GlassmorphismFramePainter extends CustomPainter {
   final Color backgroundColor;
   final Color borderColor;
+  final String speakerSide;
+  final bool isNarration;
 
-  _GlassmorphismFramePainter({required this.backgroundColor, required this.borderColor});
+  _GlassmorphismFramePainter({
+    required this.backgroundColor,
+    required this.borderColor,
+    this.speakerSide = 'center',
+    this.isNarration = false,
+  });
+
+  Path _buildFramePath(Size size) {
+    final r = 16.0;
+    final showTail = !isNarration && speakerSide != 'center';
+    final tailOnRight = speakerSide == 'left';
+    const tailW = 10.0;
+    const tailH = 18.0;
+    const tailTopY = 10.0;
+
+    final path = Path();
+    path.moveTo(r, 0);
+    path.lineTo(size.width - r, 0);
+    path.arcToPoint(Offset(size.width, r), radius: Radius.circular(r));
+
+    if (showTail && tailOnRight) {
+      path.lineTo(size.width, tailTopY);
+      path.lineTo(size.width + tailW, tailTopY + tailH / 2);
+      path.lineTo(size.width, tailTopY + tailH);
+    }
+    path.lineTo(size.width, size.height - r);
+    path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
+    path.lineTo(r, size.height);
+    path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
+
+    if (showTail && !tailOnRight) {
+      path.lineTo(0, tailTopY + tailH);
+      path.lineTo(-tailW, tailTopY + tailH / 2);
+      path.lineTo(0, tailTopY);
+    }
+    path.lineTo(0, r);
+    path.arcToPoint(Offset(r, 0), radius: Radius.circular(r));
+    path.close();
+    return path;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
+    final framePath = _buildFramePath(size);
+    canvas.drawPath(framePath, Paint()..color = backgroundColor);
+    canvas.drawPath(framePath, Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 0.8);
+    // Highlight (keep as RRect, it's inside the frame)
     final r = 16.0;
-    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(r));
-    canvas.drawRRect(rrect, Paint()..color = backgroundColor);
-    canvas.drawRRect(rrect, Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 0.8);
     final highlightRect = RRect.fromRectAndCorners(
       Rect.fromLTWH(0, 0, size.width, size.height * 0.4),
       topLeft: Radius.circular(r), topRight: Radius.circular(r));
@@ -1009,51 +1078,6 @@ class _GlassmorphismFramePainter extends CustomPainter {
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
         colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.0)],
       ).createShader(rect));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Decorative chevron/tail on the side of the dialogue frame
-class _TailPainter extends CustomPainter {
-  final Color color;
-  final Color fillColor;
-  final double borderWidth;
-  final bool flipX;
-
-  _TailPainter({
-    required this.color,
-    required this.fillColor,
-    required this.borderWidth,
-    this.flipX = false,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (flipX) {
-      canvas.save();
-      canvas.translate(size.width, 0);
-      canvas.scale(-1, 1);
-    }
-
-    // Chevron pointing outward: >
-    final path = Path()
-      ..moveTo(size.width, 0)
-      ..lineTo(0, size.height * 0.5)
-      ..lineTo(size.width, size.height)
-      ..close();
-
-    canvas.drawPath(path, Paint()..color = fillColor.withValues(alpha: 0.9));
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = borderWidth * 0.8,
-    );
-
-    if (flipX) canvas.restore();
   }
 
   @override

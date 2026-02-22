@@ -139,24 +139,27 @@
   position: relative;
   min-height: 72px;
 }
-/* Decorative tail chevron on opposite side */
-.gp-tail {
+/* Decorative tail as part of frame (::after pseudo-element) */
+.gp-frame-body.gp-tail-left::after,
+.gp-frame-body.gp-tail-right::after {
+  content: '';
   position: absolute;
-  top: -4px;
-  width: 10px;
-  height: 10px;
-  display: block;
-  background: inherit;
-  border: 1px solid;
-  border-color: inherit;
+  top: 8px;
+  width: 0;
+  height: 0;
+  border-style: solid;
 }
-.gp-tail-left {
-  left: -6px;
-  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+.gp-frame-body.gp-tail-left::after {
+  left: -7px;
+  border-width: 7px 7px 7px 0;
+  border-color: transparent;
+  border-right-color: inherit;
 }
-.gp-tail-right {
-  right: -6px;
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
+.gp-frame-body.gp-tail-right::after {
+  right: -7px;
+  border-width: 7px 0 7px 7px;
+  border-color: transparent;
+  border-left-color: inherit;
 }
 
 /* ── Ornate (gold classic) ── */
