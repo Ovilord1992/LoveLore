@@ -573,17 +573,41 @@ my_novel.zip
 - `label` — текст в UI ячейке
 
 #### 🏆 Достижения (JSON)
-Массив определений достижений:
+Массив из 102 достижений с категориями, редкостью и триггерами:
 ```json
 [
-  { "id": "first_story",   "title": "Первая история", "icon": "auto_stories", "diamondReward": 10, "description": "Начни первую новеллу" },
-  { "id": "five_chapters", "title": "5 глав",         "icon": "menu_book",    "diamondReward": 15, "description": "Прочитай 5 глав" },
-  { "id": "completionist", "title": "Прохождение",    "icon": "emoji_events", "diamondReward": 25, "description": "Пройди новеллу до конца" }
+  {
+    "id": "first_story",
+    "category": "story",
+    "rarity": "common",
+    "icon": "auto_stories",
+    "diamondReward": 10,
+    "hidden": false,
+    "trigger": "novels_started",
+    "targetValue": 1
+  },
+  {
+    "id": "speed_reader_5",
+    "category": "speed",
+    "rarity": "rare",
+    "icon": "speed",
+    "diamondReward": 25,
+    "hidden": false,
+    "trigger": "chapters_read",
+    "targetValue": 5
+  }
 ]
 ```
-- `id` — уникальный идентификатор (используется в коде)
-- `icon` — имя Material Icon
+- `id` — уникальный идентификатор
+- `category` — категория: story, chapters, relationships, cg, economy, daily, vip, exploration, secret
+- `rarity` — редкость: common / rare / epic / legendary
+- `icon` — имя Material Icon (53 уникальные иконки, фоллбэк на `emoji_events`)
 - `diamondReward` — награда за разблокировку
+- `hidden` — скрытое достижение (показывает «???» до разблокировки)
+- `trigger` — событие-триггер (novels_started, chapters_read, choices_made, cg_unlocked, diamonds_spent и др.)
+- `targetValue` — целевое значение для разблокировки
+
+Заголовки и описания берутся из локализации по ключам `ach_{id}_title` / `ach_{id}_desc`.
 
 #### 🌍 Локализация (JSON)
 Словари строк по языкам:
@@ -703,7 +727,12 @@ novel_id.zip/
 - 🎁 Ежедневные награды (Daily Login) — 7-дневный цикл, серия с нарастающими бонусами
 - 👗 Гардероб — смена одежды персонажей
 - 🖼️ Галерея CG-артов
-- 🏆 Система достижений
+- 🏆 Система достижений (102 достижения, 9 категорий, 4 уровня редкости, скрытые достижения)
+
+### Иммерсивный режим
+- 🎬 Автоскрытие верхней панели — чистый кинематографический вид
+- 💬 Хвостик речевого пузыря — SVG-path, направлен к говорящему персонажу
+- 🎭 Имя говорящего со стороны персонажа
 
 ### Авторизация и синхронизация
 - 📧 Вход по email + пароль (JWT, 30 дней)
@@ -722,7 +751,7 @@ novel_id.zip/
 - 👤 Профиль: аватар, статистика, настройки, аккаунт
 - 🔽 Нижняя навигация: Главная / Каталог / Профиль
 - 🌙 Тёмная тема (розово-фиолетовая палитра)
-- 🇷🇺🇬🇧 Русский и английский языки
+- 🌍 11 языков интерфейса (ru, en, it, fr, de, es, pt, tr, ja, ko, zh)
 
 ---
 
