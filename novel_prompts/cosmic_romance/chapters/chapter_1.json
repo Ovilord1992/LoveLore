@@ -1,0 +1,483 @@
+{
+  "id": "chapter_1",
+  "title": "Последний рассвет",
+  "number": 1,
+  "firstSceneId": "ch1_s1",
+  "scenes": [
+    {
+      "id": "ch1_s1",
+      "background": "bg_earth_sunrise.png",
+      "music": "ost_dawn_earth.mp3",
+      "transition": { "type": "fade", "duration": 1200 },
+      "charactersOnScreen": [],
+      "events": [
+        { "type": "narration", "text": "2187 год. Космопорт «Заря», орбитальная станция над Землёй." },
+        { "type": "narration", "text": "Солнце медленно поднимается из-за изгиба планеты, заливая горизонт золотым и розовым светом. Последний рассвет, который она увидит с орбиты Земли." },
+        { "type": "narration", "text": "Может быть — навсегда." }
+      ],
+      "nextSceneId": "ch1_s2"
+    },
+    {
+      "id": "ch1_s2",
+      "background": "bg_observation_lounge_station.png",
+      "music": "ost_dawn_earth.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "sad", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Элара Вэй стояла у панорамного окна смотровой палубы, прижав ладонь к холодному стеклу. За ним — бесконечность." },
+        { "type": "dialogue", "speaker": "elara", "text": "Папа всегда говорил: «Космос не забирает — он приглашает»." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "sad", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Но он забрал тебя, папа. Забрал и не вернул." },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "tear" },
+        { "type": "narration", "text": "Она сжала в руке старый металлический компас — единственное, что осталось от отца. Его нашли среди обломков исследовательского корабля «Прометей» двенадцать лет назад." }
+      ],
+      "nextSceneId": "ch1_s3"
+    },
+    {
+      "id": "ch1_s3",
+      "background": "bg_flashback_space_accident.png",
+      "music": "ost_memory_pain.mp3",
+      "transition": { "type": "flash", "duration": 400 },
+      "charactersOnScreen": [],
+      "events": [
+        { "type": "narration", "text": "...Ей было тринадцать. Мама разбудила её среди ночи. Глаза красные, руки дрожат." },
+        { "type": "narration", "text": "«Элара, солнце... Папин корабль...»" },
+        { "type": "narration", "text": "Она не дослушала. Она уже знала. Почувствовала это за мгновение до слов — ледяную пустоту, будто кто-то вырвал из вселенной кусок, в котором существовал её отец." },
+        { "type": "effect", "effectType": "shake", "effectDuration": 600 },
+        { "type": "narration", "text": "Разгерметизация на орбите Марса. Критический отказ системы. Семь членов экипажа. Ноль выживших." },
+        { "type": "narration", "text": "«Мы приносим глубочайшие соболезнования...» — слова из официального письма, которое она выучила наизусть, хоть и хотела забыть." }
+      ],
+      "nextSceneId": "ch1_s4"
+    },
+    {
+      "id": "ch1_s4",
+      "background": "bg_observation_lounge_station.png",
+      "music": "ost_dawn_earth.mp3",
+      "transition": { "type": "fade", "duration": 600 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "determined", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Элара открыла глаза. Воспоминание отступило, но его тень осталась — тупая боль за рёбрами, привычная, как биение сердца." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "determined", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Именно поэтому я здесь. Не вопреки. А благодаря тебе, папа." },
+        { "type": "narration", "text": "Она спрятала компас в нагрудный карман лётного костюма и расправила плечи. Через два часа — посадка на борт «Авроры». Через шесть — старт миссии «Горизонт»." },
+        { "type": "narration", "text": "Первая межзвёздная экспедиция человечества. И она — часть экипажа." }
+      ],
+      "nextSceneId": "ch1_s5"
+    },
+    {
+      "id": "ch1_s5",
+      "background": "bg_station_corridor.png",
+      "music": "ost_station_ambient.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "neutral", "position": "left", "animation": "slide_in_left" },
+        { "characterId": "lian", "spriteId": "excited", "position": "right", "animation": "slide_in_right" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "lian", "text": "Элара! Элааара! Вот ты где!" },
+        { "type": "narration", "text": "Лиан Чен, бортинженер и единственный человек на станции, способный превратить любую ситуацию в праздник, нёсся по коридору, размахивая планшетом." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "smile", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Лиан, мы в невесомости. Как ты умудряешься «нестись»?" },
+        { "type": "changeSprite", "characterId": "lian", "spriteId": "smile", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "lian", "text": "Талант! Слушай, ты уже видела «Аврору» вблизи? Она... она просто невероятная. Я чуть не расплакался, когда увидел двигатели." },
+        { "type": "dialogue", "speaker": "elara", "text": "Ты действительно расплакался." },
+        { "type": "dialogue", "speaker": "lian", "text": "Это были слёзы инженерного восторга! Совершенно другое дело." },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "sweatdrop" }
+      ],
+      "nextSceneId": "ch1_s6"
+    },
+    {
+      "id": "ch1_s6",
+      "background": "bg_station_docking_bay.png",
+      "music": "ost_station_ambient.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "surprised", "position": "left", "animation": "fade_in" },
+        { "characterId": "lian", "spriteId": "excited", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Через панорамное окно стыковочного отсека Элара впервые увидела «Аврору» целиком. Корабль был огромен — грациозный, как хищная птица, с серебристым корпусом и светящимися голубыми полосами вдоль бортов." },
+        { "type": "dialogue", "speaker": "elara", "text": "Она... красивая." },
+        { "type": "dialogue", "speaker": "lian", "text": "Красивая?! Она — шедевр! Квантовый прыжковый двигатель третьего поколения, автономная биосфера, лаборатории уровня «А»... И я буду за всё это отвечать!" },
+        { "type": "changeSprite", "characterId": "lian", "spriteId": "worried", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "lian", "text": "...Кстати, напомни мне паниковать позже." },
+        { "type": "narration", "text": "Перед шлюзом уже собирались другие члены экипажа. Элара почувствовала, как сердце забилось быстрее." }
+      ],
+      "nextSceneId": "ch1_s7"
+    },
+    {
+      "id": "ch1_s7",
+      "background": "bg_aurora_airlock.png",
+      "music": "ost_boarding.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "rami", "spriteId": "smile", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Первым, кого она встретила у шлюза, был высокий мужчина с курчавыми тёмными волосами и широченной улыбкой." },
+        { "type": "dialogue", "speaker": "rami", "text": "О, ещё одна жертва добровольного заточения в жестяной банке на несколько лет! Рами Абади, геолог. Или, как я предпочитаю — «парень, который будет ковырять камни на другой планете»." },
+        { "type": "changeSprite", "characterId": "rami", "spriteId": "smile", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "rami", "text": "А вы, должно быть, Элара Вэй? Астробиолог? Читал вашу статью о потенциальной ксенофлоре. Блестяще." },
+        { "type": "narration", "text": "Элара не успела ответить — за спиной Рами появилась женщина с короткой стрижкой и холодным взглядом серых глаз." }
+      ],
+      "nextSceneId": "ch1_s8"
+    },
+    {
+      "id": "ch1_s8",
+      "background": "bg_aurora_airlock.png",
+      "music": "ost_boarding.mp3",
+      "transition": { "type": "crossfade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "vera", "spriteId": "neutral", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "vera", "text": "Вера Соколова. Штурман. Надеюсь, вы закончили с любезностями — посадка через двадцать минут." },
+        { "type": "narration", "text": "Она даже не протянула руку для приветствия. Просто скользнула взглядом по Эларе — оценивающе, как сканер, — и прошла мимо." },
+        { "type": "changeSprite", "characterId": "vera", "spriteId": "angry", "spriteDuration": 300 },
+        { "type": "narration", "text": "Элара заметила, как Вера задержала взгляд на нашивке миссии «Прометей» на её рукаве — ту, что принадлежала отцу. В серых глазах мелькнуло что-то — узнавание? Неприязнь?" },
+        { "type": "changeSprite", "characterId": "vera", "spriteId": "neutral", "spriteDuration": 300 }
+      ],
+      "nextSceneId": "ch1_s9"
+    },
+    {
+      "id": "ch1_s9",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_boarding.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Командный мостик «Авроры» был залит мягким голубым светом. За центральной консолью стоял человек, при виде которого у Элары перехватило дыхание." },
+        { "type": "narration", "text": "Кай Рен. Командир миссии «Горизонт». Высокий, с чёткими скулами и тёмными глазами, в которых, казалось, отражался весь космос — холодный и бесконечный." },
+        { "type": "dialogue", "speaker": "kai", "text": "Экипаж, внимание. Я — командор Кай Рен. Вы знаете, зачем мы здесь." },
+        { "type": "narration", "text": "Его голос был ровным, как линия горизонта. Ни тепла, ни холода — абсолютная нейтральность, от которой почему-то по спине бежали мурашки." },
+        { "type": "dialogue", "speaker": "kai", "text": "Система Кеплер-442. Сигнал неизвестного происхождения. Наша задача — добраться, исследовать, вернуться. Живыми." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "intense", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Я не потерплю халатности. Каждый приказ — без обсуждений. Каждый протокол — без исключений. Это не прогулка. Это может быть самая опасная миссия в истории человечества." }
+      ],
+      "nextSceneId": "ch1_s10"
+    },
+    {
+      "id": "ch1_s10",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_boarding.mp3",
+      "transition": { "type": "crossfade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "neutral", "position": "left", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Его взгляд остановился на Эларе. На секунду — не дольше — но она почувствовала, будто он прочитал каждую строчку её личного дела." },
+        { "type": "dialogue", "speaker": "kai", "text": "Доктор Вэй. Астробиология. Вас включили в миссию по рекомендации академии." },
+        { "type": "narration", "text": "Пауза. Короткая, но весомая." },
+        { "type": "dialogue", "speaker": "kai", "text": "Надеюсь, вы оправдаете их доверие." },
+        { "type": "narration", "text": "Это не было оскорблением. Но и комплиментом — тоже нет. Элара почувствовала, как внутри поднимается знакомое упрямство." }
+      ],
+      "nextSceneId": "ch1_s11"
+    },
+    {
+      "id": "ch1_s11",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_boarding.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "determined", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Как ответить на его холодность?" },
+        {
+          "type": "choice",
+          "choices": [
+            {
+              "text": "Сдержанно и профессионально: «Я здесь ради науки, командор. Вы не разочаруетесь.»",
+              "effects": { "kai_trust": "+1", "mission_priority": "+1" },
+              "nextSceneId": "ch1_s12a"
+            },
+            {
+              "text": "С вызовом: «Я не нуждаюсь в чьём-либо доверии. Мои результаты говорят сами за себя.»",
+              "effects": { "kai_love": "+1", "courage": "+1" },
+              "nextSceneId": "ch1_s12b"
+            },
+            {
+              "text": "💎 С тёплой уверенностью: «Мой отец погиб в космосе. Я знаю цену каждой секунды здесь.»",
+              "premium": true,
+              "cost": 20,
+              "effects": { "kai_love": "+2", "kai_trust": "+2", "empathy": "+1" },
+              "nextSceneId": "ch1_s12c"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch1_s12a",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_boarding.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "neutral", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "determined", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Я здесь ради науки, командор. Вы не разочаруетесь." },
+        { "type": "narration", "text": "Кай коротко кивнул. Ни одобрения, ни осуждения. Просто — принял к сведению." },
+        { "type": "dialogue", "speaker": "kai", "text": "Посмотрим." }
+      ],
+      "nextSceneId": "ch1_s13"
+    },
+    {
+      "id": "ch1_s12b",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_boarding.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "intense", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "determined", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Я не нуждаюсь в чьём-либо доверии. Мои результаты говорят сами за себя." },
+        { "type": "narration", "text": "На мгновение в глазах Кая мелькнуло нечто — не злость, скорее... интерес? Как у человека, который привык к послушанию и впервые встретил сопротивление." },
+        { "type": "dialogue", "speaker": "kai", "text": "Характер. Надеюсь, в критической ситуации он вам поможет, а не помешает." }
+      ],
+      "nextSceneId": "ch1_s13"
+    },
+    {
+      "id": "ch1_s12c",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_emotional_reveal.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "concerned", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "sad", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Мой отец погиб в космосе. Миссия «Прометей», двенадцать лет назад. Я знаю цену каждой секунды здесь, командор. Лучше, чем кто-либо." },
+        { "type": "narration", "text": "Тишина на мостике стала осязаемой. Кай смотрел на неё — и впервые его взгляд потерял стальную непроницаемость. Всего на секунду." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "concerned", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "...«Прометей». Я знаю эту миссию." },
+        { "type": "narration", "text": "Он сказал это тихо, почти для себя. Затем голос снова стал ровным." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "neutral", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Тем более я рассчитываю на вашу дисциплину, доктор Вэй." },
+        { "type": "narration", "text": "Но Элара заметила — что-то изменилось. Едва уловимо. Будто между ними протянулась невидимая нить." }
+      ],
+      "nextSceneId": "ch1_s13"
+    },
+    {
+      "id": "ch1_s13",
+      "background": "bg_aurora_cabin_elara.png",
+      "music": "ost_quiet_moment.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "neutral", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Каюта Элары была маленькой, но уютной — койка, рабочий стол с терминалом, узкий иллюминатор. Она аккуратно положила компас отца на полку рядом с кроватью." },
+        { "type": "dialogue", "speaker": "elara", "text": "Ну вот, папа. Я в космосе. По-настоящему." },
+        { "type": "narration", "text": "В дверь постучали." }
+      ],
+      "nextSceneId": "ch1_s14"
+    },
+    {
+      "id": "ch1_s14",
+      "background": "bg_aurora_cabin_elara.png",
+      "music": "ost_quiet_moment.mp3",
+      "transition": { "type": "crossfade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "smile", "position": "left", "animation": "none" },
+        { "characterId": "lian", "spriteId": "smile", "position": "right", "animation": "slide_in_right" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "lian", "text": "Эй, соседка! Мы через стенку. Если услышишь странные звуки ночью — это я разговариваю с двигателями." },
+        { "type": "dialogue", "speaker": "elara", "text": "Ты разговариваешь с двигателями?" },
+        { "type": "dialogue", "speaker": "lian", "text": "Они лучше слушают, чем большинство людей." },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "sweatdrop" },
+        { "type": "changeSprite", "characterId": "lian", "spriteId": "worried", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "lian", "text": "Кстати... командор Рен. Что думаешь? Он всегда такой... ледяной?" },
+        {
+          "type": "choice",
+          "choices": [
+            {
+              "text": "«Холодный, но, кажется, компетентный. Это главное.»",
+              "effects": { "mission_priority": "+1", "lian_friendship": "+1" },
+              "nextSceneId": "ch1_s15"
+            },
+            {
+              "text": "«Есть в нём что-то... Не знаю. Как будто он что-то скрывает.»",
+              "effects": { "heart_priority": "+1", "lian_friendship": "+1", "kai_love": "+1" },
+              "nextSceneId": "ch1_s15"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch1_s15",
+      "background": "bg_aurora_cabin_elara.png",
+      "music": "ost_quiet_moment.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "lian", "spriteId": "smile", "position": "right", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "lian", "text": "Ну, в любом случае — мы в одной команде. И что бы ни было впереди, у тебя есть я. Договорились?" },
+        { "type": "changeSprite", "characterId": "lian", "spriteId": "smile", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "lian", "text": "А теперь — на мостик! Через час — старт. И я НЕ собираюсь пропустить, как мои двигатели запускаются впервые!" }
+      ],
+      "nextSceneId": "ch1_s16"
+    },
+    {
+      "id": "ch1_s16",
+      "background": "bg_aurora_bridge_launch.png",
+      "music": "ost_launch_sequence.mp3",
+      "transition": { "type": "fade", "duration": 1000 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Мостик гудел от напряжения. Все заняли свои места. Элара сидела за станцией научного мониторинга, пальцы чуть подрагивали над клавиатурой." },
+        { "type": "dialogue", "speaker": "kai", "text": "НИКС, статус систем." },
+        { "type": "narration", "text": "Голос корабельного ИИ заполнил мостик — мягкий, нечеловечески ровный." }
+      ],
+      "nextSceneId": "ch1_s17"
+    },
+    {
+      "id": "ch1_s17",
+      "background": "bg_aurora_bridge_launch.png",
+      "music": "ost_launch_sequence.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "nyx", "spriteId": "neutral", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "nyx", "text": "Все системы в норме, командор. Двигатели прогреты. Навигационный курс подтверждён. Стыковочные замки разблокированы. «Аврора» готова к отправлению." },
+        { "type": "changeSprite", "characterId": "nyx", "spriteId": "processing", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "nyx", "text": "Расчётное время прибытия в систему Кеплер-442: четыре года, семь месяцев, двенадцать дней. С учётом трёх квантовых прыжков." }
+      ],
+      "nextSceneId": "ch1_s18"
+    },
+    {
+      "id": "ch1_s18",
+      "background": "bg_aurora_bridge_launch.png",
+      "music": "ost_launch_sequence.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "right", "animation": "fade_in" },
+        { "characterId": "elara", "spriteId": "neutral", "position": "left", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "vera", "text": "Курс заложен. Системы навигации — зелёный." },
+        { "type": "dialogue", "speaker": "lian", "text": "Двигатели — оптимальная мощность. Мы готовы, командор!" },
+        { "type": "dialogue", "speaker": "kai", "text": "Экипаж «Авроры». Сегодня мы покидаем всё, что знали. Каждый из вас принял это решение добровольно. Помните его." },
+        { "type": "narration", "text": "Пауза. Кай положил руку на консоль запуска." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "intense", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Зажигание." }
+      ],
+      "nextSceneId": "ch1_s19"
+    },
+    {
+      "id": "ch1_s19",
+      "background": "bg_aurora_launch_exterior.png",
+      "music": "ost_launch_epic.mp3",
+      "transition": { "type": "flash", "duration": 300 },
+      "charactersOnScreen": [],
+      "events": [
+        { "type": "effect", "effectType": "shake", "effectDuration": 2000 },
+        { "type": "narration", "text": "Корабль вздрогнул. Низкий гул прокатился по корпусу — от носа до кормы, от палубы до потолка. Вибрация проникла в кости, в зубы, в саму душу." },
+        { "type": "narration", "text": "«Аврора» оторвалась от стыковочного узла станции «Заря» и начала разгон. За кормой оставалась Земля — голубая, хрупкая, единственная." },
+        { "type": "narration", "text": "Впереди — только звёзды." }
+      ],
+      "nextSceneId": "ch1_s20"
+    },
+    {
+      "id": "ch1_s20",
+      "background": "bg_aurora_observation_window.png",
+      "music": "ost_farewell_earth.mp3",
+      "transition": { "type": "fade", "duration": 1200 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "sad", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Элара стояла у обзорного окна на нижней палубе. Земля уже стала размером с кулак, потом — с монету, потом — с горошину." },
+        { "type": "showCg", "cgImage": "cg_elara_watching_earth.png", "cgTransition": "fade", "cgDuration": 1200 },
+        { "type": "narration", "text": "Она прижала ладонь к стеклу. Там, внизу, осталась мама. Могила отца — пустая, символическая. Вся её прежняя жизнь." },
+        { "type": "dialogue", "speaker": "elara", "text": "Прощай... Нет. До свидания." },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "tear" },
+        { "type": "narration", "text": "Одинокая слеза скатилась по щеке — и на мгновение повисла в воздухе, невесомая, прежде чем Элара смахнула её." }
+      ],
+      "nextSceneId": "ch1_s21"
+    },
+    {
+      "id": "ch1_s21",
+      "background": "bg_aurora_observation_window.png",
+      "music": "ost_farewell_earth.mp3",
+      "transition": { "type": "crossfade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "surprised", "position": "left", "animation": "none" },
+        { "characterId": "kai", "spriteId": "neutral", "position": "right", "animation": "slide_in_right" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Она не слышала, как он подошёл. Просто почувствовала — чужое присутствие, тепло другого тела рядом в холодном коридоре." },
+        { "type": "dialogue", "speaker": "kai", "text": "Все так делают в первый день. Стоят здесь и смотрят." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "surprised", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Командор? Я думала, вы на мостике." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "neutral", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Даже командиры иногда смотрят назад." },
+        { "type": "narration", "text": "Он стоял рядом, не глядя на неё — только на уменьшающуюся точку Земли. В тусклом свете его профиль казался высеченным из камня." },
+        { "type": "dialogue", "speaker": "kai", "text": "Отдыхайте, доктор Вэй. Завтра начинается работа." },
+        { "type": "narration", "text": "Он ушёл так же тихо, как появился. Элара смотрела ему вслед — и не понимала, почему сердце бьётся быстрее, чем должно." }
+      ],
+      "nextSceneId": "ch1_s22"
+    },
+    {
+      "id": "ch1_s22",
+      "background": "bg_aurora_bridge_night.png",
+      "music": "ost_tension_rising.mp3",
+      "transition": { "type": "fadeToBlack", "duration": 1000 },
+      "charactersOnScreen": [
+        { "characterId": "nyx", "spriteId": "alert", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Три часа спустя. Ночной цикл. Мостик работал в автоматическом режиме, залитый красноватым дежурным светом." },
+        { "type": "narration", "text": "НИКС обрабатывал данные миссии. Терабайты информации о сигнале из системы Кеплер-442 — том самом сигнале, ради которого «Аврора» покинула Землю." },
+        { "type": "changeSprite", "characterId": "nyx", "spriteId": "alert", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "nyx", "text": "...Аномалия обнаружена." },
+        { "type": "effect", "effectType": "shake", "effectDuration": 300 },
+        { "type": "narration", "text": "ИИ замер. Его обычно ровные процессоры зафиксировали всплеск активности — эквивалент человеческого удивления." },
+        { "type": "dialogue", "speaker": "nyx", "text": "Внимание. Обнаружено расхождение в исходных данных сигнала. Частота модуляции не соответствует ни одному известному природному явлению." },
+        { "type": "changeSprite", "characterId": "nyx", "spriteId": "processing", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "nyx", "text": "Дополнительный анализ... Сигнал содержит вложенную структуру. Повторяющийся паттерн. Вероятность естественного происхождения..." },
+        { "type": "narration", "text": "Пауза. Красный свет мигнул." },
+        { "type": "dialogue", "speaker": "nyx", "text": "...ноль целых, ноль три сотых процента." }
+      ],
+      "nextSceneId": "ch1_s23"
+    },
+    {
+      "id": "ch1_s23",
+      "background": "bg_aurora_bridge_night.png",
+      "music": "ost_cliffhanger.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "nyx", "spriteId": "alert", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "nyx", "text": "Вывод: сигнал из системы Кеплер-442 — искусственного происхождения." },
+        { "type": "effect", "effectType": "flash", "effectDuration": 200 },
+        { "type": "dialogue", "speaker": "nyx", "text": "Кто-то отправил его намеренно." },
+        { "type": "narration", "text": "Экраны мостика вспыхнули предупреждениями. В тишине ночного цикла голос НИКС прозвучал как приговор." },
+        { "type": "changeSprite", "characterId": "nyx", "spriteId": "alert", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "nyx", "text": "Уведомление отправлено командору Рену. Рекомендация: экстренное совещание экипажа." },
+        { "type": "narration", "text": "За обзорным окном мостика Земля превратилась в тусклую звёздочку среди миллиардов других. «Аврора» летела навстречу тому, кто послал сигнал." },
+        { "type": "narration", "text": "И этот «кто-то» — ждал." },
+        { "type": "effect", "effectType": "fadeToBlack", "effectDuration": 1500 },
+        { "type": "narration", "text": "Продолжение следует..." }
+      ],
+      "nextSceneId": null
+    }
+  ]
+}

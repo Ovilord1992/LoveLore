@@ -1,0 +1,81 @@
+{
+  "characters": [
+    {
+      "id": "elara",
+      "name": "Элара",
+      "color": "#64B5F6",
+      "sprites": [
+        { "id": "neutral", "image": "elara_neutral.png", "label": "Спокойная" },
+        { "id": "smile", "image": "elara_smile.png", "label": "Улыбка" },
+        { "id": "surprised", "image": "elara_surprised.png", "label": "Удивление" },
+        { "id": "sad", "image": "elara_sad.png", "label": "Грусть" },
+        { "id": "determined", "image": "elara_determined.png", "label": "Решимость" },
+        { "id": "scared", "image": "elara_scared.png", "label": "Страх" },
+        { "id": "blushing", "image": "elara_blushing.png", "label": "Смущение" },
+        { "id": "angry", "image": "elara_angry.png", "label": "Злость" },
+        { "id": "crying", "image": "elara_crying.png", "label": "Слёзы" },
+        { "id": "spacesuit", "image": "elara_spacesuit.png", "label": "В скафандре" }
+      ]
+    },
+    {
+      "id": "kai",
+      "name": "Кай",
+      "color": "#9575CD",
+      "sprites": [
+        { "id": "neutral", "image": "kai_neutral.png", "label": "Сдержанный" },
+        { "id": "smile", "image": "kai_smile.png", "label": "Улыбка" },
+        { "id": "serious", "image": "kai_serious.png", "label": "Серьёзный" },
+        { "id": "concerned", "image": "kai_concerned.png", "label": "Обеспокоенный" },
+        { "id": "intense", "image": "kai_intense.png", "label": "Напряжённый" },
+        { "id": "tender", "image": "kai_tender.png", "label": "Нежный" },
+        { "id": "angry", "image": "kai_angry.png", "label": "Злость" },
+        { "id": "wounded", "image": "kai_wounded.png", "label": "Ранен" },
+        { "id": "spacesuit", "image": "kai_spacesuit.png", "label": "В скафандре" }
+      ]
+    },
+    {
+      "id": "lian",
+      "name": "Лиан",
+      "color": "#4DB6AC",
+      "sprites": [
+        { "id": "neutral", "image": "lian_neutral.png", "label": "Спокойный" },
+        { "id": "smile", "image": "lian_smile.png", "label": "Улыбка" },
+        { "id": "worried", "image": "lian_worried.png", "label": "Тревога" },
+        { "id": "excited", "image": "lian_excited.png", "label": "Восторг" },
+        { "id": "sad", "image": "lian_sad.png", "label": "Грусть" }
+      ]
+    },
+    {
+      "id": "nyx",
+      "name": "НИКС",
+      "color": "#80DEEA",
+      "sprites": [
+        { "id": "neutral", "image": "nyx_neutral.png", "label": "Стандарт" },
+        { "id": "alert", "image": "nyx_alert.png", "label": "Тревога" },
+        { "id": "processing", "image": "nyx_processing.png", "label": "Обработка" }
+      ]
+    },
+    {
+      "id": "vera",
+      "name": "Вера",
+      "color": "#F48FB1",
+      "sprites": [
+        { "id": "neutral", "image": "vera_neutral.png", "label": "Спокойная" },
+        { "id": "smile", "image": "vera_smile.png", "label": "Улыбка" },
+        { "id": "worried", "image": "vera_worried.png", "label": "Тревога" },
+        { "id": "angry", "image": "vera_angry.png", "label": "Злость" }
+      ]
+    },
+    {
+      "id": "rami",
+      "name": "Рами",
+      "color": "#FFB74D",
+      "sprites": [
+        { "id": "neutral", "image": "rami_neutral.png", "label": "Спокойный" },
+        { "id": "smile", "image": "rami_smile.png", "label": "Улыбка" },
+        { "id": "serious", "image": "rami_serious.png", "label": "Серьёзный" },
+        { "id": "scared", "image": "rami_scared.png", "label": "Испуг" }
+      ]
+    }
+  ]
+}

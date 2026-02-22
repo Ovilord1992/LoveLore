@@ -1,0 +1,357 @@
+{
+  "id": "chapter_9",
+  "title": "На краю",
+  "number": 9,
+  "firstSceneId": "ch9_s1",
+  "scenes": [
+    {
+      "id": "ch9_s1",
+      "background": "bg_aurora_bridge.png",
+      "music": "music_military_arrival.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "left", "animation": "fade_in" },
+        { "characterId": "elara", "spriteId": "determined", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "«Немезида» вышла на орбиту рядом с «Авророй». Громада военного крейсера затмила их исследовательское судно — как волк, нависший над ягнёнком." },
+        { "type": "playSound", "asset": "sfx_docking_clamps.mp3" },
+        { "type": "effect", "effectType": "shake", "effectDuration": 500 },
+        { "type": "narration", "text": "Стыковочные захваты соединили корабли. Тяжёлые шаги загремели в переходном шлюзе." },
+        { "type": "dialogue", "speaker": "kai", "text": "Помни: что бы ни случилось — я на твоей стороне. Я выбрал." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "neutral", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Посмотрим." }
+      ],
+      "nextSceneId": "ch9_s2"
+    },
+    {
+      "id": "ch9_s2",
+      "background": "bg_aurora_bridge.png",
+      "music": "music_military_arrival.mp3",
+      "transition": { "type": "fade", "duration": 500 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "left", "animation": "none" },
+        { "characterId": "elara", "spriteId": "neutral", "position": "right", "animation": "none" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Двери мостика разъехались. Вошёл человек в чёрной форме с серебряными знаками различия. Полковник Сато — невысокий, сухощавый, с глазами, в которых не было ничего, кроме стали." },
+        { "type": "playSound", "asset": "sfx_door_hiss.mp3" },
+        { "type": "narration", "text": "«Командир Рен. По протоколу «Архонт-7» принимаю командование миссией «Горизонт». Ваши полномочия приостановлены.»" },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "angry", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Полковник Сато, этот экипаж — научная команда. Мы здесь для исследований, а не для военных операций." },
+        { "type": "narration", "text": "Сато даже не посмотрел на него. Его взгляд был прикован к планшету с данными." },
+        { "type": "narration", "text": "«Ваши исследования привели к обнаружению объектов, классифицированных как стратегический актив первого уровня. С этого момента — всё подчиняется военному протоколу.»" },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "angry", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Стратегический актив? Вы говорите о живом разумном существе! О контакте с другой цивилизацией!" },
+        { "type": "narration", "text": "Сато впервые посмотрел на неё. Без злости, без интереса. Как на помеху." },
+        { "type": "narration", "text": "«Доктор Вэй, вы будете переведены на «Немезиду» для дебрифинга. Ваш контакт с инопланетным объектом — предмет особого протокола.»" },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "exclamation" }
+      ],
+      "nextSceneId": "ch9_s3"
+    },
+    {
+      "id": "ch9_s3",
+      "background": "bg_aurora_bridge.png",
+      "music": "music_tension.mp3",
+      "transition": { "type": "fade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "angry", "position": "left", "animation": "none" },
+        { "characterId": "elara", "spriteId": "scared", "position": "center", "animation": "none" },
+        { "characterId": "lian", "spriteId": "worried", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "kai", "text": "Она никуда не пойдёт." },
+        { "type": "narration", "text": "Голос Кая был тихим. Опаснее тихим, чем если бы он кричал. Рука легла на стол — жест, который для военного означал: «Я готов к конфликту.»" },
+        { "type": "narration", "text": "Сато приподнял бровь. «Командир Рен, вы отказываетесь выполнить приказ? Напоминаю — за неподчинение в условиях специального протокола предусмотрен трибунал.»" },
+        { "type": "dialogue", "speaker": "lian", "text": "Это безумие... Мы же одна сторона, разве нет?" },
+        { "type": "choice", "choices": [
+          {
+            "text": "Встать рядом с Каем и открыто выступить против Сато",
+            "effects": { "courage": "+3", "kai_love": "+2", "kai_trust": "+2" },
+            "nextSceneId": "ch9_s4a"
+          },
+          {
+            "text": "Согласиться на дебрифинг, чтобы выиграть время",
+            "effects": { "empathy": "+2", "mission_priority": "+2" },
+            "nextSceneId": "ch9_s4b"
+          },
+          {
+            "text": "💎 Использовать связь с Люминаром, чтобы произвести впечатление",
+            "premium": true,
+            "cost": 15,
+            "effects": { "alien_contact": "+3", "courage": "+3", "science_knowledge": "+2" },
+            "nextSceneId": "ch9_s4c"
+          }
+        ]}
+      ]
+    },
+    {
+      "id": "ch9_s4a",
+      "background": "bg_aurora_bridge.png",
+      "music": "music_tension.mp3",
+      "transition": { "type": "fade", "duration": 300 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "intense", "position": "left", "animation": "none" },
+        { "characterId": "elara", "spriteId": "determined", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Элара встала рядом с Каем. Плечом к плечу. Единый фронт." },
+        { "type": "dialogue", "speaker": "elara", "text": "Полковник, я — ведущий специалист по ксенобиологии на этой миссии. Без моего сотрудничества ваши люди не смогут даже приблизиться к руинам. Люминар общается только со мной." },
+        { "type": "narration", "text": "Впервые во взгляде Сато мелькнуло что-то, похожее на интерес." },
+        { "type": "showEmotion", "characterId": "kai", "emotionType": "heart" }
+      ],
+      "nextSceneId": "ch9_s5"
+    },
+    {
+      "id": "ch9_s4b",
+      "background": "bg_aurora_bridge.png",
+      "music": "music_tension.mp3",
+      "transition": { "type": "fade", "duration": 300 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "concerned", "position": "left", "animation": "none" },
+        { "characterId": "elara", "spriteId": "neutral", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Хорошо, полковник. Я пройду дебрифинг. Но на «Авроре», в присутствии командира Рена." },
+        { "type": "narration", "text": "Кай бросил на неё быстрый взгляд — удивлённый, но понимающий. Элара играла вдолгую." },
+        { "type": "narration", "text": "Сато кивнул. Маленькая уступка. Но Элара уже просчитывала следующие ходы." }
+      ],
+      "nextSceneId": "ch9_s5"
+    },
+    {
+      "id": "ch9_s4c",
+      "background": "bg_aurora_bridge.png",
+      "music": "music_alien_mystery.mp3",
+      "transition": { "type": "fade", "duration": 300 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "determined", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Элара закрыла глаза и потянулась к связи с Люминаром. Тепло чужого сознания откликнулось мгновенно." },
+        { "type": "effect", "effectType": "flash", "effectDuration": 600 },
+        { "type": "playSound", "asset": "sfx_alien_pulse.mp3" },
+        { "type": "narration", "text": "Огни на мостике замигали. Голографические дисплеи показали символы Люминаров — древние, прекрасные, непонятные. Все на мостике замерли." },
+        { "type": "dialogue", "speaker": "elara", "text": "Видите, полковник? Это не ресурс. Это разум, которому миллионы лет. И он выбирает, с кем говорить." },
+        { "type": "narration", "text": "Сато отступил на шаг. Впервые." }
+      ],
+      "nextSceneId": "ch9_s5"
+    },
+    {
+      "id": "ch9_s5",
+      "background": "bg_aurora_observation_deck.png",
+      "music": "music_romantic_tension.mp3",
+      "transition": { "type": "fade", "duration": 600 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "sad", "position": "left", "animation": "fade_in" },
+        { "characterId": "kai", "spriteId": "tender", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Ночной цикл. Элара стояла у обзорного окна, глядя на две луны чужой планеты. За стеклом — бесконечность. Внутри — хаос." },
+        { "type": "playSound", "asset": "sfx_footsteps_soft.mp3" },
+        { "type": "dialogue", "speaker": "kai", "text": "Не спится?" },
+        { "type": "narration", "text": "Он встал рядом. Близко. Ближе, чем командиру положено стоять рядом с членом экипажа." },
+        { "type": "dialogue", "speaker": "elara", "text": "Слишком много всего в голове. Люминар, Сато, миссия... ты." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "intense", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Я?" },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "blushing", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Не делай вид, что не понимаешь, Кай. Ты прекрасно знаешь, что между нами..." },
+        { "type": "narration", "text": "Она замолчала. Слова казались слишком маленькими для того, что она чувствовала." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "tender", "spriteDuration": 400 },
+        { "type": "dialogue", "speaker": "kai", "text": "Я знаю. Я пытался это игнорировать. Говорил себе — миссия важнее, субординация, ответственность... Но знаешь, что я понял там, в руинах, когда ты стояла в этом свете?" },
+        { "type": "dialogue", "speaker": "elara", "text": "Что?" },
+        { "type": "dialogue", "speaker": "kai", "text": "Что если мы не скажем этого сейчас — может не быть другого шанса. Завтра Сато может разделить нас. Или хуже." }
+      ],
+      "nextSceneId": "ch9_s6"
+    },
+    {
+      "id": "ch9_s6",
+      "background": "bg_aurora_observation_deck.png",
+      "music": "music_first_kiss.mp3",
+      "transition": { "type": "fade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "blushing", "position": "left", "animation": "none" },
+        { "characterId": "kai", "spriteId": "tender", "position": "right", "animation": "none" }
+      ],
+      "events": [
+        { "type": "choice", "choices": [
+          {
+            "text": "Поцеловать его первой",
+            "effects": { "kai_love": "+4", "first_kiss": "+1", "courage": "+2", "confessed_feelings": "+1" },
+            "nextSceneId": "ch9_s6_kiss"
+          },
+          {
+            "text": "Признаться в чувствах словами",
+            "effects": { "kai_love": "+3", "empathy": "+2", "confessed_feelings": "+1" },
+            "nextSceneId": "ch9_s6_confess"
+          },
+          {
+            "text": "💎 Притянуть его за форму и поцеловать под звёздами",
+            "premium": true,
+            "cost": 15,
+            "effects": { "kai_love": "+6", "first_kiss": "+1", "courage": "+3", "heart_priority": "+3", "confessed_feelings": "+1" },
+            "nextSceneId": "ch9_s6_premium_kiss"
+          }
+        ]}
+      ]
+    },
+    {
+      "id": "ch9_s6_kiss",
+      "background": "bg_aurora_observation_deck.png",
+      "music": "music_first_kiss.mp3",
+      "transition": { "type": "fade", "duration": 400 },
+      "charactersOnScreen": [],
+      "events": [
+        { "type": "narration", "text": "Элара не стала ждать. Она приподнялась на носках, положила ладонь ему на щёку и поцеловала." },
+        { "type": "showCg", "cgImage": "cg_first_kiss_alien_moons.png", "cgTransition": "fade", "cgDuration": 1000 },
+        { "type": "narration", "text": "Две луны заливали их серебристым светом. За стеклом кружилась чужая вселенная, а здесь, в этом поцелуе, было всё, о чём оба молчали месяцами." },
+        { "type": "narration", "text": "Кай замер на секунду — а потом обнял её так, будто боялся, что она исчезнет." },
+        { "type": "showEmotion", "characterId": "kai", "emotionType": "heart" },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "heart" }
+      ],
+      "nextSceneId": "ch9_s7"
+    },
+    {
+      "id": "ch9_s6_confess",
+      "background": "bg_aurora_observation_deck.png",
+      "music": "music_first_kiss.mp3",
+      "transition": { "type": "fade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "blushing", "position": "left", "animation": "none" },
+        { "characterId": "kai", "spriteId": "tender", "position": "right", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Кай... Я не хочу жалеть. Не здесь, на краю всего. Ты важен мне. Не как командир. Как... человек, без которого мне холодно в этом космосе." },
+        { "type": "narration", "text": "Он молча взял её руку, поднёс к губам и поцеловал костяшки пальцев. Его глаза блестели." },
+        { "type": "dialogue", "speaker": "kai", "text": "Ты — единственная причина, по которой этот космос кажется мне домом." },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "heart" },
+        { "type": "showEmotion", "characterId": "kai", "emotionType": "heart" }
+      ],
+      "nextSceneId": "ch9_s7"
+    },
+    {
+      "id": "ch9_s6_premium_kiss",
+      "background": "bg_aurora_observation_deck.png",
+      "music": "music_first_kiss.mp3",
+      "transition": { "type": "fade", "duration": 400 },
+      "charactersOnScreen": [],
+      "events": [
+        { "type": "narration", "text": "Элара сжала ворот его форменной куртки и притянула к себе. Кай выдохнул от неожиданности — и она поцеловала его." },
+        { "type": "showCg", "cgImage": "cg_first_kiss_alien_moons.png", "cgTransition": "fade", "cgDuration": 1200 },
+        { "type": "narration", "text": "Мир остановился. Две луны, миллиарды звёзд, чужая планета внизу — всё исчезло. Остались только его губы, его руки на её талии, его сердце, бьющееся так близко к её собственному." },
+        { "type": "narration", "text": "Когда они наконец оторвались друг от друга, оба тяжело дышали. Кай прижался лбом к её лбу." },
+        { "type": "dialogue", "speaker": "kai", "text": "Ты сумасшедшая. Прекрасная, невозможная, сумасшедшая..." },
+        { "type": "dialogue", "speaker": "elara", "text": "Ты тоже. Мы оба." },
+        { "type": "showEmotion", "characterId": "kai", "emotionType": "heart" },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "heart" },
+        { "type": "narration", "text": "Он поцеловал её снова — медленнее, нежнее. Как обещание." }
+      ],
+      "nextSceneId": "ch9_s7"
+    },
+    {
+      "id": "ch9_s7",
+      "background": "bg_aurora_corridor.png",
+      "music": "music_tension.mp3",
+      "transition": { "type": "fade", "duration": 600 },
+      "charactersOnScreen": [
+        { "characterId": "vera", "spriteId": "worried", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Утренний цикл принёс новую боль." },
+        { "type": "changeSprite", "characterId": "vera", "spriteId": "angry", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "vera", "text": "Прежде чем ты узнаешь от кого-то другого — да. Это была я." },
+        { "type": "narration", "text": "Элара остановилась в коридоре. Вера стояла напротив, скрестив руки на груди, но в её глазах было что-то... виноватое." },
+        { "type": "dialogue", "speaker": "vera", "text": "Я передавала данные о руинах на Землю. По защищённому каналу. Военные получали мои отчёты ещё до того, как «Немезида» стартовала." },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "exclamation" }
+      ],
+      "nextSceneId": "ch9_s8"
+    },
+    {
+      "id": "ch9_s8",
+      "background": "bg_aurora_corridor.png",
+      "music": "music_betrayal.mp3",
+      "transition": { "type": "fade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "angry", "position": "left", "animation": "fade_in" },
+        { "characterId": "vera", "spriteId": "sad", "position": "right", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Вера... как ты могла?" },
+        { "type": "changeSprite", "characterId": "vera", "spriteId": "worried", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "vera", "text": "У меня не было выбора! Моя семья, Элара. У них контракт... Если я не выполню — мой брат потеряет медицинскую страховку. Он болен. Ты это знаешь." },
+        { "type": "narration", "text": "Элара знала. И от этого было только больнее." },
+        { "type": "dialogue", "speaker": "elara", "text": "Ты привела сюда людей, которые хотят уничтожить всё, что мы нашли. Ради страховки?" },
+        { "type": "dialogue", "speaker": "vera", "text": "Я не знала, что они пришлют военных! Мне сказали — «просто данные». «Для науки.» Я была наивной. Я знаю." },
+        { "type": "narration", "text": "В коридоре послышался шум. Крики. Звук удара." },
+        { "type": "playSound", "asset": "sfx_crash.mp3" },
+        { "type": "effect", "effectType": "shake", "effectDuration": 400 }
+      ],
+      "nextSceneId": "ch9_s9"
+    },
+    {
+      "id": "ch9_s9",
+      "background": "bg_aurora_corridor.png",
+      "music": "music_danger.mp3",
+      "transition": { "type": "fade", "duration": 400 },
+      "charactersOnScreen": [
+        { "characterId": "lian", "spriteId": "sad", "position": "center", "animation": "fade_in" },
+        { "characterId": "rami", "spriteId": "scared", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Лиан лежала на полу, прижимая руку к рассечённому виску. Рами склонился над ней." },
+        { "type": "dialogue", "speaker": "rami", "text": "Лиан! Не двигайся, у тебя кровь..." },
+        { "type": "dialogue", "speaker": "lian", "text": "Солдаты Сато... Я пыталась не пустить их в лабораторию. Они забирают образцы с планеты." },
+        { "type": "showEmotion", "characterId": "elara", "emotionType": "exclamation" },
+        { "type": "narration", "text": "Элара опустилась на колени рядом с подругой. Кровь Лиан была яркой на белом полу коридора." },
+        { "type": "dialogue", "speaker": "elara", "text": "Рами, отведи её в медотсек. Я разберусь с этим." },
+        { "type": "changeSprite", "characterId": "rami", "spriteId": "serious", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "rami", "text": "Будь осторожна, Элара. Эти люди... они не шутят." }
+      ],
+      "nextSceneId": "ch9_s10"
+    },
+    {
+      "id": "ch9_s10",
+      "background": "bg_aurora_bridge.png",
+      "music": "music_dread.mp3",
+      "transition": { "type": "fade", "duration": 600 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "angry", "position": "left", "animation": "fade_in" },
+        { "characterId": "kai", "spriteId": "intense", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Элара ворвалась на мостик. Кай уже был там, бледный от ярости." },
+        { "type": "dialogue", "speaker": "kai", "text": "Я только что получил приказ Сато. Он..." },
+        { "type": "dialogue", "speaker": "elara", "text": "Что?" },
+        { "type": "dialogue", "speaker": "kai", "text": "Он приказал уничтожить руины. Направленный орбитальный удар. Через двенадцать часов." },
+        { "type": "effect", "effectType": "shake", "effectDuration": 600 },
+        { "type": "playSound", "asset": "sfx_alarm.mp3" },
+        { "type": "narration", "text": "Мир замер. Двенадцать часов — и миллионы лет истории превратятся в пыль. Люминар — живой, разумный, ждавший так долго — будет уничтожен." },
+        { "type": "choice", "choices": [
+          {
+            "text": "Открыто противостоять Сато — пусть все знают правду",
+            "effects": { "courage": "+3", "kai_trust": "+2" },
+            "nextSceneId": "ch9_s11"
+          },
+          {
+            "text": "Действовать тайно — саботаж изнутри",
+            "effects": { "mission_priority": "+2", "science_knowledge": "+2" },
+            "nextSceneId": "ch9_s11"
+          }
+        ]}
+      ]
+    },
+    {
+      "id": "ch9_s11",
+      "background": "bg_space_two_ships.png",
+      "music": "music_dread.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [],
+      "events": [
+        { "type": "narration", "text": "Элара посмотрела на Кая. Он посмотрел на неё. В этом взгляде было всё: страх, решимость, и обещание, данное поцелуем под чужими звёздами." },
+        { "type": "narration", "text": "Двенадцать часов. Обратный отсчёт начался." },
+        { "type": "effect", "effectType": "fadeToBlack", "effectDuration": 1000 },
+        { "type": "narration", "text": "А внизу, в руинах, Люминар тоже почувствовал приближение конца. И его свет стал ярче — как свет маяка, зовущего сквозь шторм." }
+      ],
+      "nextSceneId": null
+    }
+  ]
+}

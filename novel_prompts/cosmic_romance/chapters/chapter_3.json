@@ -1,0 +1,455 @@
+{
+  "id": "chapter_3",
+  "title": "Первый контакт",
+  "number": 3,
+  "firstSceneId": "ch3_s1",
+  "scenes": [
+    {
+      "id": "ch3_s1",
+      "background": "bg_aurora_bridge_red_alert.png",
+      "music": "ost_tension_high.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "intense", "position": "right", "animation": "fade_in" },
+        { "characterId": "vera", "spriteId": "worried", "position": "left", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Объект завис в трёхстах метрах от «Авроры» — неподвижный, тёмный, абсолютно чужой." },
+        { "type": "narration", "text": "На мостике царила напряжённая тишина. Экипаж смотрел на главный экран, где медленно вращалось трёхмерное изображение: идеальный цилиндр, покрытый странными бороздами — слишком ровными, чтобы быть природными." },
+        { "type": "dialogue", "speaker": "vera", "text": "Сканирование завершено. Объект полый. Внутри — остаточная атмосфера, следы... органических соединений." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "serious", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Возраст?" },
+        { "type": "dialogue", "speaker": "nyx", "text": "По состоянию поверхностного слоя — приблизительно восемьсот тысяч лет. Плюс-минус пятьдесят тысяч." },
+        { "type": "dialogue", "speaker": "rami", "text": "Восемьсот... тысяч... Когда мы ещё палками-копалками землю ковыряли, кто-то уже строил это?" },
+        { "type": "narration", "text": "Тишина стала осязаемой. Восемьсот тысяч лет. Цивилизация, которая существовала, когда Homo sapiens только появился на Земле." }
+      ],
+      "nextSceneId": "ch3_s2"
+    },
+    {
+      "id": "ch3_s2",
+      "background": "bg_aurora_bridge_red_alert.png",
+      "music": "ost_tension_high.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "determined", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "kai", "text": "Нужна внекорабельная операция. Визуальный осмотр, забор образцов, оценка конструкции." },
+        { "type": "dialogue", "speaker": "elara", "text": "Я пойду." },
+        { "type": "narration", "text": "Все повернулись к ней. Кай — медленнее остальных. Его взгляд стал тяжёлым." },
+        { "type": "dialogue", "speaker": "kai", "text": "Доктор Вэй, у вас нет опыта выхода в открытый космос." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "determined", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "У меня есть сертификат базовой ВКД. И если внутри — органические образцы, вам нужен биолог, а не инженер." },
+        { "type": "dialogue", "speaker": "lian", "text": "Она права, командор. Если там биоматериал — только Элара сможет правильно его законсервировать." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "concerned", "spriteDuration": 300 },
+        { "type": "narration", "text": "Кай смотрел на неё — долго, пристально. В его глазах боролись командир и... кто-то ещё." },
+        { "type": "dialogue", "speaker": "kai", "text": "Хорошо. Вэй и Рами — группа ВКД. Лиан — техническая поддержка с борта. Подготовка — тридцать минут." },
+        { "type": "narration", "text": "Когда остальные вышли, Кай задержал Элару за локоть." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "intense", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Будь осторожна. Это приказ." },
+        { "type": "narration", "text": "В его голосе было что-то, чего не было в приказах. Что-то тёплое и запретное." }
+      ],
+      "nextSceneId": "ch3_s3"
+    },
+    {
+      "id": "ch3_s3",
+      "background": "bg_aurora_airlock_prep.png",
+      "music": "ost_preparation.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "left", "animation": "fade_in" },
+        { "characterId": "rami", "spriteId": "scared", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Шлюзовая камера. Элара затягивала последние крепления скафандра. Руки не дрожали — она не позволяла им дрожать." },
+        { "type": "dialogue", "speaker": "rami", "text": "Знаешь, когда я подавал заявку на миссию, я представлял, что буду ковырять камни на красивой экзопланете. Не лезть в инопланетную штуковину посреди ничего." },
+        { "type": "changeSprite", "characterId": "rami", "spriteId": "scared", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "rami", "text": "Мне нужно пересмотреть свои жизненные приоритеты." },
+        { "type": "dialogue", "speaker": "elara", "text": "Ты мог отказаться." },
+        { "type": "changeSprite", "characterId": "rami", "spriteId": "serious", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "rami", "text": "И пропустить это? Ну уж нет. Если мы умрём — по крайней мере, будет что рассказать." },
+        { "type": "dialogue", "speaker": "elara", "text": "...Кому рассказать?" },
+        { "type": "dialogue", "speaker": "rami", "text": "Детали не важны." },
+        { "type": "narration", "text": "Несмотря на страх, Элара улыбнулась. Рами мог бы шутить на собственных похоронах." }
+      ],
+      "nextSceneId": "ch3_s4"
+    },
+    {
+      "id": "ch3_s4",
+      "background": "bg_aurora_airlock_prep.png",
+      "music": "ost_preparation.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "left", "animation": "none" },
+        { "characterId": "lian", "spriteId": "worried", "position": "right", "animation": "slide_in_right" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "lian", "text": "Эй. Я буду с тобой на связи каждую секунду. Если что-то пойдёт не так — я вытащу тебя лебёдкой, даже если придётся вручную крутить." },
+        { "type": "dialogue", "speaker": "elara", "text": "Спасибо, Лиан." },
+        { "type": "changeSprite", "characterId": "lian", "spriteId": "smile", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "lian", "text": "И принеси мне что-нибудь на сувенир. Инопланетный болт или шестерёнку. Для коллекции." },
+        { "type": "narration", "text": "Элара надела шлем. Щелчок герметизации прозвучал как точка в конце предложения. Обратного пути нет." },
+        { "type": "dialogue", "speaker": "nyx", "text": "Шлюзовая камера к декомпрессии готова. Начинаю обратный отсчёт." },
+        { "type": "narration", "text": "10... 9... 8..." }
+      ],
+      "nextSceneId": "ch3_s5"
+    },
+    {
+      "id": "ch3_s5",
+      "background": "bg_open_space_probe.png",
+      "music": "ost_spacewalk.mp3",
+      "transition": { "type": "fade", "duration": 1200 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Первый шаг в пустоту." },
+        { "type": "effect", "effectType": "flash", "effectDuration": 300 },
+        { "type": "narration", "text": "У Элары перехватило дыхание. Нет — не перехватило. Дыхание просто остановилось, потому что мозг не мог обработать то, что видели глаза." },
+        { "type": "narration", "text": "Бесконечность. Во все стороны — бесконечность. Ни верха, ни низа. Ни стен. Ни потолка. Ни пола. Только звёзды, звёзды, звёзды — и тёмная громада зонда впереди, висящая в ничем, как забытый сон." },
+        { "type": "showCg", "cgImage": "cg_elara_spacewalk_probe.png", "cgTransition": "fade", "cgDuration": 1200 },
+        { "type": "narration", "text": "Элара плыла в пустоте — крошечная фигурка в белом скафандре на фоне далёкой туманности. Зонд чернел перед ней, покрытый бороздами, которые складывались в узоры — спирали, линии, символы." },
+        { "type": "dialogue", "speaker": "elara", "text": "«Аврора», я... я на месте. Это... невероятно." },
+        { "type": "narration", "text": "Её голос дрожал. Не от страха — от благоговения. Или от обоих сразу." }
+      ],
+      "nextSceneId": "ch3_s6"
+    },
+    {
+      "id": "ch3_s6",
+      "background": "bg_open_space_probe.png",
+      "music": "ost_spacewalk.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "left", "animation": "none" },
+        { "characterId": "rami", "spriteId": "spacesuit", "position": "right", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "rami", "text": "Элара, ты видишь эти борозды на корпусе? Это не эрозия. Это... обработка. Кто-то вырезал их намеренно." },
+        { "type": "dialogue", "speaker": "elara", "text": "Вижу. И материал — не похож ни на что в нашей базе данных. НИКС?" },
+        { "type": "dialogue", "speaker": "nyx", "text": "Спектральный анализ показывает сплав, содержащий элементы, не встречающиеся в Солнечной системе в такой комбинации. Рекомендую забор образца." },
+        { "type": "dialogue", "speaker": "kai", "text": "Вэй, Абади — не входите внутрь, пока не закончите внешний осмотр. Это приказ." },
+        { "type": "narration", "text": "Элара вела перчаткой по поверхности зонда. Под пальцами скафандра она почти ощущала текстуру — словно кожа древнего существа, застывшая в вечности." },
+        { "type": "dialogue", "speaker": "rami", "text": "Есть вход. Овальное отверстие, полтора метра в диаметре. Выглядит как... люк? Края гладкие, никаких механизмов." },
+        { "type": "narration", "text": "Темнота внутри зонда была абсолютной. Фонари скафандров вырезали в ней конусы света, которые тут же тонули." }
+      ],
+      "nextSceneId": "ch3_s7"
+    },
+    {
+      "id": "ch3_s7",
+      "background": "bg_inside_alien_probe.png",
+      "music": "ost_alien_mystery.mp3",
+      "transition": { "type": "fade", "duration": 1000 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Внутри зонда время остановилось. Стены были покрыты теми же узорами, что и снаружи, но здесь они... светились. Тускло, едва заметно — бледно-голубым светом, пульсирующим, как далёкое сердцебиение." },
+        { "type": "dialogue", "speaker": "elara", "text": "«Аврора», я внутри. Здесь... биолюминесценция. Узоры на стенах реагируют на движение." },
+        { "type": "effect", "effectType": "shake", "effectDuration": 300 },
+        { "type": "dialogue", "speaker": "rami", "text": "Элара! Центральная камера — ты должна это видеть!" },
+        { "type": "narration", "text": "Она поплыла глубже — и замерла." },
+        { "type": "narration", "text": "В центре зонда, в прозрачных контейнерах, мерцающих тем же голубым светом, находились они. Образцы." },
+        { "type": "narration", "text": "Десятки прозрачных капсул, внутри каждой — нечто. Структуры, похожие на кристаллы, но с органической текстурой. Спирали, напоминающие ДНК, но с шестью нитями вместо двух. Ткани — живые? замороженные? — переливающиеся внутренним светом." },
+        { "type": "dialogue", "speaker": "elara", "text": "Боже мой. Это... это биологические образцы. Внеземные биологические образцы." }
+      ],
+      "nextSceneId": "ch3_s8"
+    },
+    {
+      "id": "ch3_s8",
+      "background": "bg_inside_alien_probe.png",
+      "music": "ost_alien_mystery.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "kai", "text": "Вэй, повторите. Что вы нашли?" },
+        { "type": "dialogue", "speaker": "elara", "text": "Биологический материал инопланетного происхождения. Десятки образцов. Они в контейнерах — законсервированы. Некоторые... кажется, некоторые всё ещё активны. Есть свечение, пульсация." },
+        { "type": "narration", "text": "Долгая тишина в эфире. Потом голос Кая — сухой, натянутый, как струна:" },
+        { "type": "dialogue", "speaker": "kai", "text": "Не трогайте контейнеры. Снимите визуальные данные и возвращайтесь." },
+        { "type": "dialogue", "speaker": "elara", "text": "Кай, эти образцы — величайшее открытие в истории биологии. Мне нужно хотя бы один взять на анализ—" },
+        { "type": "dialogue", "speaker": "kai", "text": "Нет. Возвращайтесь. Немедленно." },
+        { "type": "narration", "text": "В его голосе была не просто командирская жёсткость. Был страх. Элара слышала это ясно, как биение собственного сердца в тишине скафандра." },
+        {
+          "type": "choice",
+          "choices": [
+            {
+              "text": "Подчиниться: вернуться без образцов, как приказал Кай",
+              "effects": { "kai_trust": "+2", "mission_priority": "+1" },
+              "nextSceneId": "ch3_s9a"
+            },
+            {
+              "text": "Взять один образец: наука важнее приказов",
+              "effects": { "science_knowledge": "+2", "courage": "+1", "kai_trust": "-1" },
+              "nextSceneId": "ch3_s9b"
+            },
+            {
+              "text": "💎 Обнаружить скрытый отсек с записями и забрать данные",
+              "premium": true,
+              "cost": 25,
+              "effects": { "science_knowledge": "+3", "signal_decoded": "+1", "alien_contact": "+1", "courage": "+2" },
+              "nextSceneId": "ch3_s9c"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch3_s9a",
+      "background": "bg_inside_alien_probe.png",
+      "music": "ost_alien_mystery.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "...Принято, командор. Возвращаемся." },
+        { "type": "narration", "text": "Каждая клетка её тела кричала «Нет!». Уйти от величайшего открытия в истории, не забрав ничего..." },
+        { "type": "narration", "text": "Но она вспомнила отца. Он тоже однажды нарушил протокол. Его это убило." },
+        { "type": "dialogue", "speaker": "rami", "text": "Правильное решение, Элара. Мне тоже хочется эту штуку разобрать по винтикам, но... осторожность." },
+        { "type": "narration", "text": "Элара сделала десятки снимков. Записала каждую деталь. И поплыла к выходу, унося с собой только данные — и ощущение, что зонд смотрел ей вслед." }
+      ],
+      "nextSceneId": "ch3_s10"
+    },
+    {
+      "id": "ch3_s9b",
+      "background": "bg_inside_alien_probe.png",
+      "music": "ost_tension_rising.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Кай, прости. Но я биолог. И это — то, ради чего я здесь." },
+        { "type": "narration", "text": "Она аккуратно отсоединила один из контейнеров — самый маленький. Он легко отделился, будто ждал, что его возьмут." },
+        { "type": "effect", "effectType": "shake", "effectDuration": 400 },
+        { "type": "narration", "text": "В момент отсоединения по стенам зонда пробежала волна света — быстрая, яркая, как нервный импульс." },
+        { "type": "dialogue", "speaker": "kai", "text": "Вэй! Что вы сделали?!" },
+        { "type": "dialogue", "speaker": "elara", "text": "Контейнер отсоединён. Всё стабильно. Я... я возвращаюсь." },
+        { "type": "dialogue", "speaker": "rami", "text": "Элара, стены... Они стали светиться ярче. Нам, пожалуй, стоит поторопиться." },
+        { "type": "narration", "text": "Они покинули зонд быстрее, чем планировали. У Элары в руках был контейнер с инопланетным образцом — маленький, тёплый даже сквозь перчатки скафандра." }
+      ],
+      "nextSceneId": "ch3_s10"
+    },
+    {
+      "id": "ch3_s9c",
+      "background": "bg_inside_alien_probe_hidden.png",
+      "music": "ost_discovery.mp3",
+      "transition": { "type": "flash", "duration": 300 },
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "spacesuit", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Элара заметила то, чего не увидели другие. Узор на дальней стене отличался — не декоративный, а функциональный. Как панель управления." },
+        { "type": "dialogue", "speaker": "elara", "text": "Рами, подержи камеру. Я нашла кое-что." },
+        { "type": "narration", "text": "Она коснулась узора — и стена раскрылась, как лепестки цветка. За ней — крошечный отсек, в котором парил кристалл размером с кулак. Он пульсировал сложным ритмом — не хаотичным, а... информационным." },
+        { "type": "effect", "effectType": "flash", "effectDuration": 500 },
+        { "type": "dialogue", "speaker": "nyx", "text": "Доктор Вэй, объект излучает на частоте, идентичной сигналу из системы Кеплер-442. Это... носитель информации." },
+        { "type": "dialogue", "speaker": "elara", "text": "Записи. Это записи. Кто бы ни отправил этот зонд — он оставил послание." },
+        { "type": "narration", "text": "Она бережно взяла кристалл. Он был тёплым и пульсировал в её ладонях, как живое сердце." },
+        { "type": "dialogue", "speaker": "kai", "text": "Вэй... что происходит?" },
+        { "type": "dialogue", "speaker": "elara", "text": "Я нашла ответы, Кай. Или хотя бы — правильные вопросы." }
+      ],
+      "nextSceneId": "ch3_s10"
+    },
+    {
+      "id": "ch3_s10",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_debrief.mp3",
+      "transition": { "type": "fade", "duration": 800 },
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "right", "animation": "fade_in" },
+        { "characterId": "elara", "spriteId": "determined", "position": "left", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Разбор операции. Экипаж собрался на мостике — уставший, взбудораженный, напуганный." },
+        { "type": "dialogue", "speaker": "kai", "text": "Итак. Мы имеем дело с артефактом внеземной цивилизации. Возраст — около восьмисот тысяч лет. Внутри — биологические образцы неизвестного происхождения." },
+        { "type": "dialogue", "speaker": "rami", "text": "Это зонд. Исследовательский зонд. Как наши «Вояджеры», только... на несколько порядков сложнее." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "serious", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Вопрос: что нам делать дальше." }
+      ],
+      "nextSceneId": "ch3_s11"
+    },
+    {
+      "id": "ch3_s11",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_debrief.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "vera", "spriteId": "angry", "position": "right", "animation": "fade_in" },
+        { "characterId": "lian", "spriteId": "worried", "position": "left", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "vera", "text": "Продолжать миссию невозможно. Мы не знаем, кто создал этот зонд. Не знаем, существуют ли они до сих пор. Лететь к Кеплер-442 — всё равно что стучаться в дверь, не зная, кто за ней." },
+        { "type": "dialogue", "speaker": "lian", "text": "Но это и есть наша миссия, Вера. Ради этого мы здесь." },
+        { "type": "changeSprite", "characterId": "vera", "spriteId": "angry", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "vera", "text": "Наша миссия была — изучить сигнал. Сигнал изучен. Он искусственный. Контакт подтверждён. Этого достаточно. Нужно вернуться и доложить." },
+        { "type": "dialogue", "speaker": "rami", "text": "Вернуться? Через четыре с половиной года полёта? Когда ответ — вот он, впереди?" }
+      ],
+      "nextSceneId": "ch3_s12"
+    },
+    {
+      "id": "ch3_s12",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_debrief.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "determined", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "narration", "text": "Кай слушал спор молча. Его лицо было непроницаемым — но Элара научилась читать тени в его глазах. И сейчас она видела: он знает больше, чем говорит." },
+        { "type": "dialogue", "speaker": "elara", "text": "Кай." },
+        { "type": "narration", "text": "Все замолчали. Она назвала его по имени — впервые при экипаже." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "determined", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "elara", "text": "Ты знал. Ты знал до того, как мы покинули Землю, что сигнал искусственный. Поэтому были закрытые совещания. Поэтому ты прятал данные." },
+        { "type": "narration", "text": "Тишина стала оглушительной. Вера отвела взгляд. Лиан уставился на Кая. Рами медленно опустился в кресло." },
+        {
+          "type": "choice",
+          "choices": [
+            {
+              "text": "Потребовать правду: «Мы имеем право знать. Все. Сейчас.»",
+              "effects": { "courage": "+2", "kai_trust": "-1", "vera_respect": "+1" },
+              "nextSceneId": "ch3_s13a"
+            },
+            {
+              "text": "Дать шанс объясниться: «У тебя наверняка были причины. Расскажи нам.»",
+              "effects": { "kai_love": "+2", "kai_trust": "+1", "empathy": "+1" },
+              "nextSceneId": "ch3_s13b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ch3_s13a",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_confrontation.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "angry", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "angry", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "Мы имеем право знать. Все. Прямо сейчас. Без уклончивых ответов, без «это не ваша область ответственности». Мы рискуем жизнями — и заслуживаем правду." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "angry", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Ты не понимаешь—" },
+        { "type": "dialogue", "speaker": "elara", "text": "Тогда объясни!" },
+        { "type": "narration", "text": "Их взгляды столкнулись — два упрямства, две воли, два человека, которые не привыкли отступать." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "wounded", "spriteDuration": 500 },
+        { "type": "narration", "text": "И Кай сломался. Не как стена — как человек, который слишком долго нёс слишком тяжёлый груз." }
+      ],
+      "nextSceneId": "ch3_s14"
+    },
+    {
+      "id": "ch3_s13b",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_emotional_reveal.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "concerned", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "neutral", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "elara", "text": "У тебя наверняка были причины. Я... я хочу тебе верить, Кай. Помоги мне в этом. Расскажи нам." },
+        { "type": "narration", "text": "Его лицо дрогнуло. Едва заметно — как трещина в идеальной броне." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "concerned", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Ты... Ты делаешь это сложнее, чем нужно." },
+        { "type": "dialogue", "speaker": "elara", "text": "Правда всегда сложная." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "wounded", "spriteDuration": 500 },
+        { "type": "narration", "text": "Он закрыл глаза. Открыл. И заговорил." }
+      ],
+      "nextSceneId": "ch3_s14"
+    },
+    {
+      "id": "ch3_s14",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_revelation.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "wounded", "position": "center", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "kai", "text": "Да. Я знал." },
+        { "type": "narration", "text": "Слова повисли в воздухе." },
+        { "type": "dialogue", "speaker": "kai", "text": "Командование расшифровало часть сигнала ещё до формирования экипажа. Сигнал содержит... координаты. И не только системы Кеплер-442." },
+        { "type": "dialogue", "speaker": "rami", "text": "Координаты чего?" },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "serious", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Координаты Земли." },
+        { "type": "effect", "effectType": "shake", "effectDuration": 500 },
+        { "type": "narration", "text": "У Элары похолодело внутри. Координаты Земли. Кто-то в системе Кеплер-442 знал, где находится их планета. Восемьсот тысяч лет назад — знал." },
+        { "type": "dialogue", "speaker": "vera", "text": "Они знают, где мы живём... Они всегда знали." },
+        { "type": "dialogue", "speaker": "kai", "text": "Именно поэтому командование засекретило данные. И именно поэтому нас отправили. Не просто изучить сигнал. А понять — угроза это или приглашение." }
+      ],
+      "nextSceneId": "ch3_s15"
+    },
+    {
+      "id": "ch3_s15",
+      "background": "bg_aurora_bridge.png",
+      "music": "ost_revelation.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "kai", "spriteId": "serious", "position": "right", "animation": "none" },
+        { "characterId": "elara", "spriteId": "scared", "position": "left", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "lian", "text": "И... что ты думаешь? Угроза или приглашение?" },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "serious", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Я не знаю. Никто не знает. Но у нас есть шанс — единственный шанс — выяснить это, прежде чем они решат выяснить сами." },
+        { "type": "narration", "text": "Элара смотрела на Кая и видела его по-новому. Не холодный, не безразличный — раздавленный тяжестью тайны, которую нёс один." },
+        { "type": "narration", "text": "И сквозь страх, сквозь злость на ложь — она почувствовала нечто другое. Понимание. И что-то ещё, чему не хотела давать имя." }
+      ],
+      "nextSceneId": "ch3_s16"
+    },
+    {
+      "id": "ch3_s16",
+      "background": "bg_aurora_bridge_alarm.png",
+      "music": "ost_alarm_blaring.mp3",
+      "transition": { "type": "flash", "duration": 200 },
+      "charactersOnScreen": [
+        { "characterId": "nyx", "spriteId": "alert", "position": "center", "animation": "fade_in" }
+      ],
+      "events": [
+        { "type": "effect", "effectType": "shake", "effectDuration": 2000 },
+        { "type": "dialogue", "speaker": "nyx", "text": "ТРЕВОГА. Зонд активирован. Повторяю — зонд активирован." },
+        { "type": "narration", "text": "На главном экране зонд вспыхнул — борозды на его поверхности засияли ослепительным голубым светом, разгораясь как звезда." },
+        { "type": "dialogue", "speaker": "vera", "text": "Энергетический всплеск! Зонд набирает мощность!" },
+        { "type": "dialogue", "speaker": "kai", "text": "Щиты! Поднять все защитные поля!" },
+        { "type": "effect", "effectType": "flash", "effectDuration": 500 },
+        { "type": "dialogue", "speaker": "nyx", "text": "Зонд не атакует. Он... передаёт. Направленный сигнал — узкий луч, высокая мощность. Направление..." },
+        { "type": "narration", "text": "Пауза, невозможная для ИИ. Пауза, за которой скрывался ответ, способный изменить судьбу человечества." },
+        { "type": "changeSprite", "characterId": "nyx", "spriteId": "alert", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "nyx", "text": "Система Кеплер-442. Зонд отправляет сигнал в Кеплер-442." }
+      ],
+      "nextSceneId": "ch3_s17"
+    },
+    {
+      "id": "ch3_s17",
+      "background": "bg_aurora_bridge_alarm.png",
+      "music": "ost_cliffhanger.mp3",
+      "transition": null,
+      "charactersOnScreen": [
+        { "characterId": "elara", "spriteId": "scared", "position": "left", "animation": "none" },
+        { "characterId": "kai", "spriteId": "intense", "position": "right", "animation": "none" }
+      ],
+      "events": [
+        { "type": "dialogue", "speaker": "rami", "text": "Он... сообщает о нас? Как сигнализация?!" },
+        { "type": "dialogue", "speaker": "nyx", "text": "Анализ содержимого сигнала: координаты «Авроры», количество биологических единиц на борту, параметры двигательной системы... Зонд передаёт всю информацию о нас." },
+        { "type": "dialogue", "speaker": "vera", "text": "Это ловушка. Это всегда была ловушка." },
+        { "type": "changeSprite", "characterId": "kai", "spriteId": "intense", "spriteDuration": 300 },
+        { "type": "dialogue", "speaker": "kai", "text": "Или приглашение." },
+        { "type": "narration", "text": "Их глаза встретились — Элара и Кай, через мостик, через тревогу, через страх и неизвестность." },
+        { "type": "changeSprite", "characterId": "elara", "spriteId": "determined", "spriteDuration": 300 },
+        { "type": "narration", "text": "И Элара поняла: точка невозврата пройдена. Что бы ни ждало впереди — они уже замечены. Те, кто отправил зонд, теперь знают, что люди идут." },
+        { "type": "dialogue", "speaker": "nyx", "text": "Расчётное время получения сигнала адресатом в системе Кеплер-442..." },
+        { "type": "narration", "text": "Элара сжала компас отца в кармане. Металл был тёплым, будто хранил последнее прикосновение." },
+        { "type": "dialogue", "speaker": "nyx", "text": "...Сигнал уже получен. Они знают, что мы здесь." },
+        { "type": "effect", "effectType": "fadeToBlack", "effectDuration": 2000 },
+        { "type": "narration", "text": "И где-то, за миллиарды километров пустоты, в системе чужого солнца — что-то откликнулось." },
+        { "type": "narration", "text": "Продолжение следует..." }
+      ],
+      "nextSceneId": null
+    }
+  ]
+}

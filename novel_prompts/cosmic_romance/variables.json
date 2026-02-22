@@ -1,0 +1,22 @@
+{
+  "kai_love": 0,
+  "kai_trust": 0,
+  "lian_friendship": 0,
+  "vera_respect": 0,
+  "rami_friendship": 0,
+  "courage": 0,
+  "science_knowledge": 0,
+  "empathy": 0,
+  "mission_priority": 0,
+  "heart_priority": 0,
+  "alien_contact": false,
+  "signal_decoded": false,
+  "first_kiss": false,
+  "saved_kai": false,
+  "discovered_ruins": false,
+  "trusted_signal": false,
+  "confessed_feelings": false,
+  "chose_stay": false,
+  "route": "neutral",
+  "unlocked_cg": ""
+}
