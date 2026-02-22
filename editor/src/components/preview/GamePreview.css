@@ -139,27 +139,33 @@
   position: relative;
   min-height: 72px;
 }
-/* Decorative tail as part of frame (::after pseudo-element) */
-.gp-frame-body.gp-tail-left::after,
-.gp-frame-body.gp-tail-right::after {
+/* Banner/scroll pointed tips on both sides (Romance Club style) */
+.gp-frame-body::before,
+.gp-frame-body::after {
   content: '';
   position: absolute;
-  top: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 0;
   height: 0;
   border-style: solid;
 }
-.gp-frame-body.gp-tail-left::after {
-  left: -7px;
-  border-width: 7px 7px 7px 0;
+.gp-frame-body::before {
+  left: -6px;
+  border-width: 8px 6px 8px 0;
   border-color: transparent;
   border-right-color: inherit;
 }
-.gp-frame-body.gp-tail-right::after {
-  right: -7px;
-  border-width: 7px 0 7px 7px;
+.gp-frame-body::after {
+  right: -6px;
+  border-width: 8px 0 8px 6px;
   border-color: transparent;
   border-left-color: inherit;
+}
+/* Hide tips for narration */
+.gp-frame-body.gp-narration::before,
+.gp-frame-body.gp-narration::after {
+  display: none;
 }
 
 /* ── Ornate (gold classic) ── */

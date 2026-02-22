@@ -257,7 +257,7 @@ export function GamePreview() {
                 )}
               </div>
               {/* Text body */}
-              <div className={`gp-frame-body gp-body-${dialogueTheme}${currentEvent.type === 'dialogue' && speakerSide !== 'center' ? ` gp-tail-${speakerSide === 'left' ? 'right' : 'left'}` : ''}`}>
+              <div className={`gp-frame-body gp-body-${dialogueTheme}${currentEvent.type === 'narration' ? ' gp-narration' : ''}`}>
                 <div className={`gp-text ${currentEvent.type === 'narration' ? 'narration' : ''}`}>
                   {displayedText}
                   {isTyping && <span className="gp-cursor">|</span>}

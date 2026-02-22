@@ -424,12 +424,10 @@ class _ThemedDialogueFrame extends StatelessWidget {
               ? _GlassmorphismFramePainter(
                   backgroundColor: colors.background,
                   borderColor: colors.primary,
-                  speakerSide: speakerSide,
                   isNarration: isNarration)
               : _UniversalFramePainter(
                   colors: colors,
                   spec: spec,
-                  speakerSide: speakerSide,
                   isNarration: isNarration),
           child: Container(
             width: double.infinity,
@@ -527,36 +525,40 @@ class _ThemedDialogueFrame extends StatelessWidget {
 class _UniversalFramePainter extends CustomPainter {
   final _FrameColors colors;
   final _ThemeSpec spec;
-  final String speakerSide;
   final bool isNarration;
 
   _UniversalFramePainter({
     required this.colors,
     required this.spec,
-    this.speakerSide = 'center',
     this.isNarration = false,
   });
 
-  /// Builds frame outline with integrated tail on the opposite side of speaker
+  /// Banner/scroll frame shape with pointed tips on both sides (Romance Club style)
   Path _buildFramePath(Size size) {
     final r = spec.radius;
-    final showTail = !isNarration && speakerSide != 'center';
-    final tailOnRight = speakerSide == 'left';
 
-    const tailW = 10.0; // protrusion distance
-    const tailH = 18.0; // height of triangle
-    const tailTopY = 10.0; // distance from top edge
+    if (isNarration) {
+      return Path()..addRRect(RRect.fromRectAndCorners(
+        Offset.zero & size,
+        bottomLeft: Radius.circular(r),
+        bottomRight: Radius.circular(r),
+      ));
+    }
+
+    const tipW = 8.0; // how far the tip protrudes beyond the frame edge
+    final tipCY = size.height * 0.5; // vertical center of the tip
+    const tipHalfH = 14.0; // half the vertical extent of the tip triangle
 
     final path = Path();
+
+    // Top edge
     path.moveTo(0, 0);
     path.lineTo(size.width, 0);
 
-    // Right side (with optional tail)
-    if (showTail && tailOnRight) {
-      path.lineTo(size.width, tailTopY);
-      path.lineTo(size.width + tailW, tailTopY + tailH / 2);
-      path.lineTo(size.width, tailTopY + tailH);
-    }
+    // Right side with pointed tip at center
+    path.lineTo(size.width, tipCY - tipHalfH);
+    path.lineTo(size.width + tipW, tipCY);
+    path.lineTo(size.width, tipCY + tipHalfH);
     path.lineTo(size.width, size.height - r);
 
     // Bottom-right corner
@@ -565,12 +567,10 @@ class _UniversalFramePainter extends CustomPainter {
     // Bottom-left corner
     path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
 
-    // Left side (with optional tail, going upward)
-    if (showTail && !tailOnRight) {
-      path.lineTo(0, tailTopY + tailH);
-      path.lineTo(-tailW, tailTopY + tailH / 2);
-      path.lineTo(0, tailTopY);
-    }
+    // Left side with pointed tip at center (going upward)
+    path.lineTo(0, tipCY + tipHalfH);
+    path.lineTo(-tipW, tipCY);
+    path.lineTo(0, tipCY - tipHalfH);
 
     path.close();
     return path;
@@ -1018,44 +1018,45 @@ class _UniversalFramePainter extends CustomPainter {
 class _GlassmorphismFramePainter extends CustomPainter {
   final Color backgroundColor;
   final Color borderColor;
-  final String speakerSide;
   final bool isNarration;
 
   _GlassmorphismFramePainter({
     required this.backgroundColor,
     required this.borderColor,
-    this.speakerSide = 'center',
     this.isNarration = false,
   });
 
   Path _buildFramePath(Size size) {
     final r = 16.0;
-    final showTail = !isNarration && speakerSide != 'center';
-    final tailOnRight = speakerSide == 'left';
-    const tailW = 10.0;
-    const tailH = 18.0;
-    const tailTopY = 10.0;
+
+    if (isNarration) {
+      return Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(r)));
+    }
+
+    const tipW = 8.0;
+    final tipCY = size.height * 0.5;
+    const tipHalfH = 14.0;
 
     final path = Path();
     path.moveTo(r, 0);
     path.lineTo(size.width - r, 0);
     path.arcToPoint(Offset(size.width, r), radius: Radius.circular(r));
 
-    if (showTail && tailOnRight) {
-      path.lineTo(size.width, tailTopY);
-      path.lineTo(size.width + tailW, tailTopY + tailH / 2);
-      path.lineTo(size.width, tailTopY + tailH);
-    }
+    // Right side with tip
+    path.lineTo(size.width, tipCY - tipHalfH);
+    path.lineTo(size.width + tipW, tipCY);
+    path.lineTo(size.width, tipCY + tipHalfH);
+
     path.lineTo(size.width, size.height - r);
     path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
     path.lineTo(r, size.height);
     path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
 
-    if (showTail && !tailOnRight) {
-      path.lineTo(0, tailTopY + tailH);
-      path.lineTo(-tailW, tailTopY + tailH / 2);
-      path.lineTo(0, tailTopY);
-    }
+    // Left side with tip (going up)
+    path.lineTo(0, tipCY + tipHalfH);
+    path.lineTo(-tipW, tipCY);
+    path.lineTo(0, tipCY - tipHalfH);
+
     path.lineTo(0, r);
     path.arcToPoint(Offset(r, 0), radius: Radius.circular(r));
     path.close();
