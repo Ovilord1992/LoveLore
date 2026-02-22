@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
 import '../services/achievement_service.dart';
+import '../services/locale_service.dart';
 
 /// Всплывающее уведомление о новом достижении
 class AchievementPopup {
-  static void show(BuildContext context, AchievementDef achievement, {String? header}) {
+  static void show(BuildContext context, AchievementDef achievement, {WidgetRef? ref, String? header}) {
     final overlay = Overlay.of(context);
     late OverlayEntry entry;
+
+    final displayTitle = ref != null ? ref.tr(achievement.titleKey) : achievement.titleKey;
 
     entry = OverlayEntry(
       builder: (ctx) => _AchievementOverlay(
         achievement: achievement,
+        displayTitle: displayTitle,
         header: header ?? 'Achievement unlocked!',
         onDismiss: () => entry.remove(),
       ),
@@ -20,11 +25,11 @@ class AchievementPopup {
   }
 
   /// Показать несколько достижений подряд
-  static void showAll(BuildContext context, List<AchievementDef> achievements, {String? header}) {
+  static void showAll(BuildContext context, List<AchievementDef> achievements, {WidgetRef? ref, String? header}) {
     for (var i = 0; i < achievements.length; i++) {
       Future.delayed(Duration(milliseconds: i * 2500), () {
         if (context.mounted) {
-          show(context, achievements[i], header: header);
+          show(context, achievements[i], ref: ref, header: header);
         }
       });
     }
@@ -33,11 +38,13 @@ class AchievementPopup {
 
 class _AchievementOverlay extends StatefulWidget {
   final AchievementDef achievement;
+  final String displayTitle;
   final String header;
   final VoidCallback onDismiss;
 
   const _AchievementOverlay({
     required this.achievement,
+    required this.displayTitle,
     required this.header,
     required this.onDismiss,
   });
@@ -148,7 +155,7 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          widget.achievement.title,
+                          widget.displayTitle,
                           style: const TextStyle(
                             fontSize: 15,
                             color: Colors.white,

@@ -555,27 +555,46 @@ class _AchievementList extends ConsumerWidget {
         final a = achievements[index];
         final completed = profile.achievements.contains(a.id);
         final progress = achievementService.getProgress(a.id);
-        final progressStr = '${progress.current}/${progress.required}';
+        final isHidden = a.hidden && !completed;
+        final label = isHidden ? '???' : ref.tr(a.titleKey);
+        final progressStr = isHidden ? '' : '${progress.current}/${progress.required}';
         return _AchievementBadge(
-          icon: a.icon,
-          label: ref.tr(a.title),
-          progress: progressStr,
+          achievement: a,
           completed: completed,
+          label: label,
+          progress: progressStr,
         );
       },
     );
   }
 }
 
+Color _rarityColor(AchievementRarity rarity) {
+  switch (rarity) {
+    case AchievementRarity.common:
+      return Colors.blueGrey;
+    case AchievementRarity.rare:
+      return const Color(0xFF9C27B0);
+    case AchievementRarity.epic:
+      return const Color(0xFFFFD700);
+    case AchievementRarity.legendary:
+      return const Color(0xFFFF6B00);
+  }
+}
+
 class _AchievementBadge extends StatelessWidget {
-  final String icon;
+  final AchievementDef achievement;
+  final bool completed;
   final String label;
   final String progress;
-  final bool completed;
-  const _AchievementBadge({required this.icon, required this.label, required this.progress, required this.completed});
+  const _AchievementBadge({required this.achievement, required this.completed, required this.label, required this.progress});
 
   @override
   Widget build(BuildContext context) {
+    final rColor = _rarityColor(achievement.rarity);
+    final isHidden = achievement.hidden && !completed;
+    final displayIcon = isHidden ? Icons.lock : achievement.icon;
+    final isLegendary = achievement.rarity == AchievementRarity.legendary;
     return Padding(
       padding: const EdgeInsets.only(right: 16),
       child: Column(
@@ -588,7 +607,7 @@ class _AchievementBadge extends StatelessWidget {
                 child: CircularProgressIndicator(
                   value: _parseProgress(progress),
                   backgroundColor: Colors.white10,
-                  valueColor: AlwaysStoppedAnimation(completed ? Colors.green : const Color(0xFFE91E63)),
+                  valueColor: AlwaysStoppedAnimation(completed ? Colors.green : rColor),
                   strokeWidth: 3,
                 ),
               ),
@@ -597,20 +616,28 @@ class _AchievementBadge extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: completed ? Colors.green.withValues(alpha: 0.2) : const Color(0xFF16213E),
+                  boxShadow: [
+                    BoxShadow(
+                      color: rColor.withValues(alpha: isLegendary ? 0.5 : 0.3),
+                      blurRadius: isLegendary ? 12 : 8,
+                    ),
+                  ],
                 ),
-                child: Center(child: Text(icon, style: const TextStyle(fontSize: 22))),
+                child: Center(child: Icon(displayIcon, color: completed ? Colors.green : Colors.white54, size: 22)),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(label, style: const TextStyle(fontSize: 11, color: Colors.white54)),
-          Text(progress, style: const TextStyle(fontSize: 10, color: Colors.white24)),
+          if (progress.isNotEmpty)
+            Text(progress, style: const TextStyle(fontSize: 10, color: Colors.white24)),
         ],
       ),
     );
   }
 
   double _parseProgress(String progress) {
+    if (progress.isEmpty) return 0;
     final parts = progress.split('/');
     if (parts.length == 2) {
       final current = int.tryParse(parts[0]) ?? 0;
