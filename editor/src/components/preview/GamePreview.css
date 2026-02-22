@@ -69,18 +69,23 @@
 
 /* Characters */
 .gp-characters {
-  flex: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: flex-end;
-  justify-content: center;
   gap: 8px;
-  padding: 0 12px 4px;
-  position: relative;
+  padding: 0 12px;
+  z-index: 1;
+  pointer-events: none;
 }
-.gp-character { display: flex; flex-direction: column; align-items: center; }
+.gp-character { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
 .gp-character.left { margin-right: auto; }
+.gp-character.center { margin-left: auto; margin-right: auto; }
 .gp-character.right { margin-left: auto; }
-.gp-sprite { height: 140px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
+.gp-sprite { height: 420px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
 .gp-char-placeholder {
   width: 50px;
   height: 90px;
@@ -102,6 +107,18 @@
   position: relative;
   margin-top: auto;
   margin-bottom: 8px;
+  z-index: 2;
+}
+/* Center mode — dialogue in the middle of screen */
+.gp-frame-center {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  right: 10px;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0;
+  z-index: 5;
 }
 .gp-frame-name {
   align-self: flex-start;
@@ -109,6 +126,8 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.3px;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.54);
 }
 .gp-narration-dots { color: rgba(255,255,255,0.45); letter-spacing: 3px; font-size: 10px; }
 .gp-frame-body {
@@ -123,8 +142,7 @@
   border-radius: 10px 10px 0 0;
   border: 1px solid #E8C872;
   border-bottom: none;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  box-shadow: 0 -2px 8px rgba(184,134,11,0.3);
 }
 .gp-body-ornate {
   background: rgba(26,20,16,0.88);
@@ -155,7 +173,7 @@
   border: 1px solid #C4A265;
   border-bottom: none;
   border-radius: 2px 2px 0 0;
-  color: #D4B896;
+  box-shadow: 0 -2px 8px rgba(139,115,85,0.3);
 }
 .gp-body-artDeco {
   background: rgba(15,27,45,0.92);
@@ -179,7 +197,7 @@
   border-radius: 10px 10px 0 0;
   border: 1px solid #B0ABFF;
   border-bottom: none;
-  color: #fff;
+  box-shadow: 0 -2px 8px rgba(108,99,255,0.3);
 }
 .gp-body-modern {
   background: rgba(26,26,46,0.9);
@@ -197,7 +215,6 @@
   border-radius: 12px 12px 0 0;
   border: 1px solid rgba(255,255,255,0.2);
   border-bottom: none;
-  color: rgba(255,255,255,0.85);
   backdrop-filter: blur(12px);
 }
 .gp-body-glassmorphism {
@@ -222,8 +239,7 @@
   border-radius: 10px 10px 0 0;
   border: 1px solid #D8B4FE;
   border-bottom: none;
-  color: #fff;
-  text-shadow: 0 0 6px rgba(168,85,247,0.5);
+  box-shadow: 0 -2px 8px rgba(123,45,142,0.3);
 }
 .gp-body-fantasy {
   background: rgba(20,10,31,0.88);
@@ -248,109 +264,319 @@
 .gp-frame-fantasy .gp-corner-br::after { bottom: 6px; right: 8px; }
 
 /* ── Victorian (warm brown filigree) ── */
-.gp-name-victorian { background: linear-gradient(90deg, #8B6914, #C9A84C, #8B6914); border-radius: 10px 10px 0 0; border: 1px solid #DEC07C; border-bottom: none; color: #fff; }
+.gp-name-victorian { background: linear-gradient(90deg, #8B6914, #C9A84C, #8B6914); border-radius: 10px 10px 0 0; border: 1px solid #DEC07C; border-bottom: none; box-shadow: 0 -2px 8px rgba(139,105,20,0.3); }
 .gp-body-victorian { background: var(--frame-bg, rgba(30,21,14,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #DEC07C, #8B6914, #DEC07C) 1; box-shadow: inset 0 0 0 4px rgba(30,21,14,0.88), inset 0 0 0 5px rgba(139,105,20,0.2), inset 0 0 0 8px rgba(139,105,20,0.08); }
 .gp-choice-victorian { background: var(--frame-bg, rgba(30,21,14,0.85)); border-color: var(--frame-color, rgba(139,105,20,0.5)); border-radius: 12px; }
 .gp-choice-victorian:hover { background: rgba(139,105,20,0.2); border-color: var(--frame-color, #C9A84C); }
 .gp-choice-victorian.premium { background: linear-gradient(135deg, rgba(139,105,20,0.4), rgba(201,168,76,0.2)); border-color: var(--frame-color, #C9A84C); }
 
 /* ── Gothic (dark red arches) ── */
-.gp-name-gothic { background: linear-gradient(90deg, #8B1A1A, #C62828, #8B1A1A); border-radius: 6px 6px 0 0; border: 1px solid #E57373; border-bottom: none; color: #fff; }
+.gp-name-gothic { background: linear-gradient(90deg, #8B1A1A, #C62828, #8B1A1A); border-radius: 6px 6px 0 0; border: 1px solid #E57373; border-bottom: none; box-shadow: 0 -2px 8px rgba(139,26,26,0.3); }
 .gp-body-gothic { background: var(--frame-bg, rgba(13,8,8,0.9)); border: 2px solid; border-image: linear-gradient(180deg, #E57373, #8B1A1A, #E57373) 1; }
 .gp-choice-gothic { background: var(--frame-bg, rgba(13,8,8,0.85)); border-color: var(--frame-color, rgba(139,26,26,0.5)); border-radius: 6px; }
 .gp-choice-gothic:hover { background: rgba(139,26,26,0.2); border-color: var(--frame-color, #C62828); }
 .gp-choice-gothic.premium { background: linear-gradient(135deg, rgba(139,26,26,0.4), rgba(198,40,40,0.2)); border-color: var(--frame-color, #C62828); }
 
 /* ── Noir (minimal silver) ── */
-.gp-name-noir { background: linear-gradient(90deg, #404040, #606060, #404040); border-radius: 2px 2px 0 0; border: 1px solid #C0C0C0; border-bottom: none; color: #ccc; }
+.gp-name-noir { background: linear-gradient(90deg, #404040, #606060, #404040); border-radius: 2px 2px 0 0; border: 1px solid #C0C0C0; border-bottom: none; box-shadow: 0 -2px 8px rgba(112,112,112,0.3); }
 .gp-body-noir { background: var(--frame-bg, rgba(15,15,15,0.9)); border: 1px solid var(--frame-color, #707070); }
 .gp-choice-noir { background: var(--frame-bg, rgba(15,15,15,0.85)); border-color: var(--frame-color, rgba(112,112,112,0.5)); border-radius: 2px; }
 .gp-choice-noir:hover { background: rgba(112,112,112,0.15); border-color: var(--frame-color, #A0A0A0); }
 .gp-choice-noir.premium { background: rgba(112,112,112,0.2); border-color: var(--frame-color, #A0A0A0); }
 
 /* ── Sakura (pink petals) ── */
-.gp-name-sakura { background: linear-gradient(90deg, #D4618C, #F06292, #D4618C); border-radius: 10px 10px 0 0; border: 1px solid #F8BBD0; border-bottom: none; color: #fff; }
+.gp-name-sakura { background: linear-gradient(90deg, #D4618C, #F06292, #D4618C); border-radius: 10px 10px 0 0; border: 1px solid #F8BBD0; border-bottom: none; box-shadow: 0 -2px 8px rgba(212,97,140,0.3); }
 .gp-body-sakura { background: var(--frame-bg, rgba(26,14,20,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #F8BBD0, #D4618C, #F8BBD0) 1; border-radius: 0 8px 8px 8px; }
 .gp-choice-sakura { background: var(--frame-bg, rgba(26,14,20,0.85)); border-color: var(--frame-color, rgba(212,97,140,0.5)); border-radius: 8px; }
 .gp-choice-sakura:hover { background: rgba(212,97,140,0.2); border-color: var(--frame-color, #F06292); }
 .gp-choice-sakura.premium { background: linear-gradient(135deg, rgba(212,97,140,0.4), rgba(240,98,146,0.2)); border-color: var(--frame-color, #F06292); }
 
 /* ── Celestial (silver moon) ── */
-.gp-name-celestial { background: linear-gradient(90deg, #3F51B5, #5C6BC0, #3F51B5); border-radius: 10px 10px 0 0; border: 1px solid #C5CAE9; border-bottom: none; color: #fff; }
+.gp-name-celestial { background: linear-gradient(90deg, #3F51B5, #5C6BC0, #3F51B5); border-radius: 10px 10px 0 0; border: 1px solid #C5CAE9; border-bottom: none; box-shadow: 0 -2px 8px rgba(92,107,192,0.3); }
 .gp-body-celestial { background: var(--frame-bg, rgba(10,14,26,0.88)); border: 2px solid; border-image: linear-gradient(180deg, #C5CAE9, #5C6BC0, #C5CAE9) 1; }
 .gp-choice-celestial { background: var(--frame-bg, rgba(10,14,26,0.85)); border-color: var(--frame-color, rgba(92,107,192,0.5)); border-radius: 12px; }
 .gp-choice-celestial:hover { background: rgba(92,107,192,0.2); border-color: var(--frame-color, #7986CB); }
 .gp-choice-celestial.premium { background: linear-gradient(135deg, rgba(92,107,192,0.4), rgba(121,134,203,0.2)); border-color: var(--frame-color, #7986CB); }
 
 /* ── Cyberpunk (neon cyan/magenta) ── */
-.gp-name-cyberpunk { background: linear-gradient(90deg, #00BCD4, #E91E63, #00BCD4); border-radius: 2px 2px 0 0; border: 1px solid #80DEEA; border-bottom: none; color: #fff; text-shadow: 0 0 4px rgba(0,188,212,0.5); }
+.gp-name-cyberpunk { background: linear-gradient(90deg, #00BCD4, #E91E63, #00BCD4); border-radius: 2px 2px 0 0; border: 1px solid #80DEEA; border-bottom: none; box-shadow: 0 -2px 8px rgba(0,188,212,0.3); }
 .gp-body-cyberpunk { background: var(--frame-bg, rgba(10,10,20,0.9)); border: 1.5px solid var(--frame-color, #00BCD4); box-shadow: 0 0 8px rgba(0,188,212,0.2), inset 0 0 8px rgba(233,30,99,0.1); }
 .gp-choice-cyberpunk { background: var(--frame-bg, rgba(10,10,20,0.85)); border-color: var(--frame-color, rgba(0,188,212,0.5)); border-radius: 2px; }
 .gp-choice-cyberpunk:hover { background: rgba(0,188,212,0.15); border-color: var(--frame-color, #00BCD4); box-shadow: 0 0 6px rgba(0,188,212,0.3); }
 .gp-choice-cyberpunk.premium { background: linear-gradient(135deg, rgba(0,188,212,0.3), rgba(233,30,99,0.3)); border-color: var(--frame-color, #E91E63); }
 
 /* ── Steampunk (copper gears) ── */
-.gp-name-steampunk { background: linear-gradient(90deg, #B87333, #CD853F, #B87333); border-radius: 4px 4px 0 0; border: 1px solid #DEB887; border-bottom: none; color: #fff; }
+.gp-name-steampunk { background: linear-gradient(90deg, #B87333, #CD853F, #B87333); border-radius: 4px 4px 0 0; border: 1px solid #DEB887; border-bottom: none; box-shadow: 0 -2px 8px rgba(184,115,51,0.3); }
 .gp-body-steampunk { background: var(--frame-bg, rgba(26,16,8,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #DEB887, #B87333, #DEB887) 1; }
 .gp-choice-steampunk { background: var(--frame-bg, rgba(26,16,8,0.85)); border-color: var(--frame-color, rgba(184,115,51,0.5)); border-radius: 4px; }
 .gp-choice-steampunk:hover { background: rgba(184,115,51,0.2); border-color: var(--frame-color, #CD853F); }
 .gp-choice-steampunk.premium { background: linear-gradient(135deg, rgba(184,115,51,0.4), rgba(205,133,63,0.2)); border-color: var(--frame-color, #CD853F); }
 
 /* ── Pirate (weathered wood) ── */
-.gp-name-pirate { background: linear-gradient(90deg, #6B4F0A, #8B6914, #6B4F0A); border-radius: 4px 4px 0 0; border: 1px solid #C4A882; border-bottom: none; color: #fff; }
+.gp-name-pirate { background: linear-gradient(90deg, #6B4F0A, #8B6914, #6B4F0A); border-radius: 4px 4px 0 0; border: 1px solid #C4A882; border-bottom: none; box-shadow: 0 -2px 8px rgba(139,105,20,0.3); }
 .gp-body-pirate { background: var(--frame-bg, rgba(20,16,10,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #C4A882, #8B6914, #C4A882) 1; }
 .gp-choice-pirate { background: var(--frame-bg, rgba(20,16,10,0.85)); border-color: var(--frame-color, rgba(139,105,20,0.5)); border-radius: 4px; }
 .gp-choice-pirate:hover { background: rgba(139,105,20,0.2); border-color: var(--frame-color, #A0785A); }
 .gp-choice-pirate.premium { background: linear-gradient(135deg, rgba(139,105,20,0.4), rgba(160,120,90,0.2)); border-color: var(--frame-color, #A0785A); }
 
 /* ── Medieval (parchment) ── */
-.gp-name-medieval { background: linear-gradient(90deg, #5B4B2C, #6B5B3C, #5B4B2C); border-radius: 4px 4px 0 0; border: 1px solid #C4B99A; border-bottom: none; color: #ddd; }
+.gp-name-medieval { background: linear-gradient(90deg, #5B4B2C, #6B5B3C, #5B4B2C); border-radius: 4px 4px 0 0; border: 1px solid #C4B99A; border-bottom: none; box-shadow: 0 -2px 8px rgba(107,91,60,0.3); }
 .gp-body-medieval { background: var(--frame-bg, rgba(18,16,10,0.9)); border: 2px solid; border-image: linear-gradient(135deg, #C4B99A, #6B5B3C, #C4B99A) 1; box-shadow: inset 0 0 0 4px rgba(18,16,10,0.9), inset 0 0 0 5px rgba(107,91,60,0.15), inset 0 0 0 8px rgba(107,91,60,0.06); }
 .gp-choice-medieval { background: var(--frame-bg, rgba(18,16,10,0.85)); border-color: var(--frame-color, rgba(107,91,60,0.5)); border-radius: 4px; }
 .gp-choice-medieval:hover { background: rgba(107,91,60,0.2); border-color: var(--frame-color, #9C8B6C); }
 .gp-choice-medieval.premium { background: linear-gradient(135deg, rgba(107,91,60,0.4), rgba(156,139,108,0.2)); border-color: var(--frame-color, #9C8B6C); }
 
 /* ── Egyptian (gold + lapis) ── */
-.gp-name-egyptian { background: linear-gradient(90deg, #C5A028, #1565C0, #C5A028); border-radius: 10px 10px 0 0; border: 1px solid #FFD54F; border-bottom: none; color: #fff; }
+.gp-name-egyptian { background: linear-gradient(90deg, #C5A028, #1565C0, #C5A028); border-radius: 10px 10px 0 0; border: 1px solid #FFD54F; border-bottom: none; box-shadow: 0 -2px 8px rgba(197,160,40,0.3); }
 .gp-body-egyptian { background: var(--frame-bg, rgba(13,10,5,0.9)); border: 2px solid; border-image: linear-gradient(135deg, #FFD54F, #C5A028, #1565C0, #C5A028, #FFD54F) 1; box-shadow: inset 0 0 0 4px rgba(13,10,5,0.9), inset 0 0 0 5px rgba(197,160,40,0.15), inset 0 0 0 8px rgba(21,101,192,0.06); }
 .gp-choice-egyptian { background: var(--frame-bg, rgba(13,10,5,0.85)); border-color: var(--frame-color, rgba(197,160,40,0.5)); border-radius: 12px; }
 .gp-choice-egyptian:hover { background: rgba(197,160,40,0.2); border-color: var(--frame-color, #FFD54F); }
 .gp-choice-egyptian.premium { background: linear-gradient(135deg, rgba(197,160,40,0.4), rgba(255,213,79,0.2)); border-color: var(--frame-color, #FFD54F); }
 
 /* ── Baroque (gold + ivory scrollwork) ── */
-.gp-name-baroque { background: linear-gradient(90deg, #B8860B, #D4AF37, #B8860B); border-radius: 10px 10px 0 0; border: 1px solid #F0E68C; border-bottom: none; color: #fff; }
+.gp-name-baroque { background: linear-gradient(90deg, #B8860B, #D4AF37, #B8860B); border-radius: 10px 10px 0 0; border: 1px solid #F0E68C; border-bottom: none; box-shadow: 0 -2px 8px rgba(184,134,11,0.3); }
 .gp-body-baroque { background: var(--frame-bg, rgba(24,18,10,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #F0E68C, #B8860B, #D4AF37, #B8860B, #F0E68C) 1; box-shadow: inset 0 0 0 4px rgba(24,18,10,0.88), inset 0 0 0 5px rgba(184,134,11,0.2), inset 0 0 0 8px rgba(212,175,55,0.08); }
 .gp-choice-baroque { background: var(--frame-bg, rgba(24,18,10,0.85)); border-color: var(--frame-color, rgba(184,134,11,0.5)); border-radius: 12px; }
 .gp-choice-baroque:hover { background: rgba(184,134,11,0.2); border-color: var(--frame-color, #D4AF37); }
 .gp-choice-baroque.premium { background: linear-gradient(135deg, rgba(184,134,11,0.4), rgba(212,175,55,0.2)); border-color: var(--frame-color, #D4AF37); }
 
 /* ── Romantic (rose pink hearts) ── */
-.gp-name-romantic { background: linear-gradient(90deg, #D81B60, #EC407A, #D81B60); border-radius: 14px 14px 0 0; border: 1px solid #F8BBD0; border-bottom: none; color: #fff; }
+.gp-name-romantic { background: linear-gradient(90deg, #D81B60, #EC407A, #D81B60); border-radius: 14px 14px 0 0; border: 1px solid #F8BBD0; border-bottom: none; box-shadow: 0 -2px 8px rgba(216,27,96,0.3); }
 .gp-body-romantic { background: var(--frame-bg, rgba(26,10,16,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #F8BBD0, #D81B60, #F8BBD0) 1; border-radius: 0 10px 10px 10px; }
 .gp-choice-romantic { background: var(--frame-bg, rgba(26,10,16,0.85)); border-color: var(--frame-color, rgba(216,27,96,0.5)); border-radius: 14px; }
 .gp-choice-romantic:hover { background: rgba(216,27,96,0.2); border-color: var(--frame-color, #EC407A); }
 .gp-choice-romantic.premium { background: linear-gradient(135deg, rgba(216,27,96,0.4), rgba(236,64,122,0.2)); border-color: var(--frame-color, #EC407A); }
 
 /* ── Nordic (ice blue knots) ── */
-.gp-name-nordic { background: linear-gradient(90deg, #0288D1, #4FC3F7, #0288D1); border-radius: 10px 10px 0 0; border: 1px solid #B3E5FC; border-bottom: none; color: #fff; }
+.gp-name-nordic { background: linear-gradient(90deg, #0288D1, #4FC3F7, #0288D1); border-radius: 10px 10px 0 0; border: 1px solid #B3E5FC; border-bottom: none; box-shadow: 0 -2px 8px rgba(79,195,247,0.3); }
 .gp-body-nordic { background: var(--frame-bg, rgba(10,14,20,0.88)); border: 2px solid; border-image: linear-gradient(180deg, #B3E5FC, #4FC3F7, #B3E5FC) 1; }
 .gp-choice-nordic { background: var(--frame-bg, rgba(10,14,20,0.85)); border-color: var(--frame-color, rgba(79,195,247,0.5)); border-radius: 12px; }
 .gp-choice-nordic:hover { background: rgba(79,195,247,0.2); border-color: var(--frame-color, #81D4FA); }
 .gp-choice-nordic.premium { background: linear-gradient(135deg, rgba(79,195,247,0.4), rgba(129,212,250,0.2)); border-color: var(--frame-color, #81D4FA); }
 
 /* ── Tropical (teal + coral) ── */
-.gp-name-tropical { background: linear-gradient(90deg, #00897B, #26A69A, #00897B); border-radius: 10px 10px 0 0; border: 1px solid #80CBC4; border-bottom: none; color: #fff; }
+.gp-name-tropical { background: linear-gradient(90deg, #00897B, #26A69A, #00897B); border-radius: 10px 10px 0 0; border: 1px solid #80CBC4; border-bottom: none; box-shadow: 0 -2px 8px rgba(0,137,123,0.3); }
 .gp-body-tropical { background: var(--frame-bg, rgba(10,20,16,0.88)); border: 2px solid; border-image: linear-gradient(135deg, #80CBC4, #00897B, #80CBC4) 1; border-radius: 0 8px 8px 8px; }
 .gp-choice-tropical { background: var(--frame-bg, rgba(10,20,16,0.85)); border-color: var(--frame-color, rgba(0,137,123,0.5)); border-radius: 8px; }
 .gp-choice-tropical:hover { background: rgba(0,137,123,0.2); border-color: var(--frame-color, #26A69A); }
 .gp-choice-tropical.premium { background: linear-gradient(135deg, rgba(0,137,123,0.4), rgba(38,166,154,0.2)); border-color: var(--frame-color, #26A69A); }
 
 /* ── Blood Moon (crimson thorns) ── */
-.gp-name-bloodMoon { background: linear-gradient(90deg, #7F0000, #B71C1C, #7F0000); border-radius: 10px 10px 0 0; border: 1px solid #E57373; border-bottom: none; color: #fff; text-shadow: 0 0 6px rgba(183,28,28,0.5); }
+.gp-name-bloodMoon { background: linear-gradient(90deg, #7F0000, #B71C1C, #7F0000); border-radius: 10px 10px 0 0; border: 1px solid #E57373; border-bottom: none; box-shadow: 0 -2px 8px rgba(183,28,28,0.3); }
 .gp-body-bloodMoon { background: var(--frame-bg, rgba(13,5,5,0.9)); border: 2px solid; border-image: linear-gradient(180deg, #E57373, #B71C1C, #7F0000, #B71C1C, #E57373) 1; }
 .gp-choice-bloodMoon { background: var(--frame-bg, rgba(13,5,5,0.85)); border-color: var(--frame-color, rgba(183,28,28,0.5)); border-radius: 12px; }
 .gp-choice-bloodMoon:hover { background: rgba(183,28,28,0.2); border-color: var(--frame-color, #D32F2F); }
 .gp-choice-bloodMoon.premium { background: linear-gradient(135deg, rgba(183,28,28,0.4), rgba(211,47,47,0.2)); border-color: var(--frame-color, #D32F2F); }
+
+
+/* ── Corner ornaments for all themed frames ── */
+/* L-bracket style: victorian, baroque, medieval, bloodMoon, steampunk, pirate */
+.gp-frame-victorian .gp-corner, .gp-frame-baroque .gp-corner,
+.gp-frame-medieval .gp-corner, .gp-frame-bloodMoon .gp-corner,
+.gp-frame-steampunk .gp-corner, .gp-frame-pirate .gp-corner { position: absolute; width: 12px; height: 12px; }
+.gp-frame-victorian .gp-corner::before, .gp-frame-victorian .gp-corner::after,
+.gp-frame-baroque .gp-corner::before, .gp-frame-baroque .gp-corner::after,
+.gp-frame-medieval .gp-corner::before, .gp-frame-medieval .gp-corner::after,
+.gp-frame-bloodMoon .gp-corner::before, .gp-frame-bloodMoon .gp-corner::after,
+.gp-frame-steampunk .gp-corner::before, .gp-frame-steampunk .gp-corner::after,
+.gp-frame-pirate .gp-corner::before, .gp-frame-pirate .gp-corner::after { content: ''; position: absolute; }
+.gp-frame-victorian .gp-corner::before, .gp-frame-baroque .gp-corner::before,
+.gp-frame-medieval .gp-corner::before, .gp-frame-bloodMoon .gp-corner::before,
+.gp-frame-steampunk .gp-corner::before, .gp-frame-pirate .gp-corner::before { width: 10px; height: 1.5px; }
+.gp-frame-victorian .gp-corner::after, .gp-frame-baroque .gp-corner::after,
+.gp-frame-medieval .gp-corner::after, .gp-frame-bloodMoon .gp-corner::after,
+.gp-frame-steampunk .gp-corner::after, .gp-frame-pirate .gp-corner::after { width: 1.5px; height: 10px; }
+.gp-frame-victorian .gp-corner::before, .gp-frame-victorian .gp-corner::after { background: #DEC07C; }
+.gp-frame-baroque .gp-corner::before, .gp-frame-baroque .gp-corner::after { background: #F0E68C; }
+.gp-frame-medieval .gp-corner::before, .gp-frame-medieval .gp-corner::after { background: #C4B99A; }
+.gp-frame-bloodMoon .gp-corner::before, .gp-frame-bloodMoon .gp-corner::after { background: #E57373; }
+.gp-frame-steampunk .gp-corner::before, .gp-frame-steampunk .gp-corner::after { background: #DEB887; }
+.gp-frame-pirate .gp-corner::before, .gp-frame-pirate .gp-corner::after { background: #C4A882; }
+/* L-bracket corner positions */
+.gp-frame-victorian .gp-corner-tl, .gp-frame-baroque .gp-corner-tl,
+.gp-frame-medieval .gp-corner-tl, .gp-frame-bloodMoon .gp-corner-tl,
+.gp-frame-steampunk .gp-corner-tl, .gp-frame-pirate .gp-corner-tl { top: 3px; left: 3px; }
+.gp-frame-victorian .gp-corner-tl::before, .gp-frame-baroque .gp-corner-tl::before,
+.gp-frame-medieval .gp-corner-tl::before, .gp-frame-bloodMoon .gp-corner-tl::before,
+.gp-frame-steampunk .gp-corner-tl::before, .gp-frame-pirate .gp-corner-tl::before,
+.gp-frame-victorian .gp-corner-tl::after, .gp-frame-baroque .gp-corner-tl::after,
+.gp-frame-medieval .gp-corner-tl::after, .gp-frame-bloodMoon .gp-corner-tl::after,
+.gp-frame-steampunk .gp-corner-tl::after, .gp-frame-pirate .gp-corner-tl::after { top: 0; left: 0; }
+.gp-frame-victorian .gp-corner-tr, .gp-frame-baroque .gp-corner-tr,
+.gp-frame-medieval .gp-corner-tr, .gp-frame-bloodMoon .gp-corner-tr,
+.gp-frame-steampunk .gp-corner-tr, .gp-frame-pirate .gp-corner-tr { top: 3px; right: 3px; }
+.gp-frame-victorian .gp-corner-tr::before, .gp-frame-baroque .gp-corner-tr::before,
+.gp-frame-medieval .gp-corner-tr::before, .gp-frame-bloodMoon .gp-corner-tr::before,
+.gp-frame-steampunk .gp-corner-tr::before, .gp-frame-pirate .gp-corner-tr::before,
+.gp-frame-victorian .gp-corner-tr::after, .gp-frame-baroque .gp-corner-tr::after,
+.gp-frame-medieval .gp-corner-tr::after, .gp-frame-bloodMoon .gp-corner-tr::after,
+.gp-frame-steampunk .gp-corner-tr::after, .gp-frame-pirate .gp-corner-tr::after { top: 0; right: 0; }
+.gp-frame-victorian .gp-corner-bl, .gp-frame-baroque .gp-corner-bl,
+.gp-frame-medieval .gp-corner-bl, .gp-frame-bloodMoon .gp-corner-bl,
+.gp-frame-steampunk .gp-corner-bl, .gp-frame-pirate .gp-corner-bl { bottom: 3px; left: 3px; }
+.gp-frame-victorian .gp-corner-bl::before, .gp-frame-baroque .gp-corner-bl::before,
+.gp-frame-medieval .gp-corner-bl::before, .gp-frame-bloodMoon .gp-corner-bl::before,
+.gp-frame-steampunk .gp-corner-bl::before, .gp-frame-pirate .gp-corner-bl::before,
+.gp-frame-victorian .gp-corner-bl::after, .gp-frame-baroque .gp-corner-bl::after,
+.gp-frame-medieval .gp-corner-bl::after, .gp-frame-bloodMoon .gp-corner-bl::after,
+.gp-frame-steampunk .gp-corner-bl::after, .gp-frame-pirate .gp-corner-bl::after { bottom: 0; left: 0; }
+.gp-frame-victorian .gp-corner-br, .gp-frame-baroque .gp-corner-br,
+.gp-frame-medieval .gp-corner-br, .gp-frame-bloodMoon .gp-corner-br,
+.gp-frame-steampunk .gp-corner-br, .gp-frame-pirate .gp-corner-br { bottom: 3px; right: 3px; }
+.gp-frame-victorian .gp-corner-br::before, .gp-frame-baroque .gp-corner-br::before,
+.gp-frame-medieval .gp-corner-br::before, .gp-frame-bloodMoon .gp-corner-br::before,
+.gp-frame-steampunk .gp-corner-br::before, .gp-frame-pirate .gp-corner-br::before,
+.gp-frame-victorian .gp-corner-br::after, .gp-frame-baroque .gp-corner-br::after,
+.gp-frame-medieval .gp-corner-br::after, .gp-frame-bloodMoon .gp-corner-br::after,
+.gp-frame-steampunk .gp-corner-br::after, .gp-frame-pirate .gp-corner-br::after { bottom: 0; right: 0; }
+
+/* Pointed style: gothic */
+.gp-frame-gothic .gp-corner { position: absolute; width: 14px; height: 14px; }
+.gp-frame-gothic .gp-corner::before { content: ''; position: absolute; width: 12px; height: 1.5px; background: #E57373; }
+.gp-frame-gothic .gp-corner::after { content: ''; position: absolute; width: 1.5px; height: 12px; background: #E57373; }
+.gp-frame-gothic .gp-corner-tl { top: 2px; left: 2px; }
+.gp-frame-gothic .gp-corner-tl::before, .gp-frame-gothic .gp-corner-tl::after { top: 0; left: 0; }
+.gp-frame-gothic .gp-corner-tr { top: 2px; right: 2px; }
+.gp-frame-gothic .gp-corner-tr::before, .gp-frame-gothic .gp-corner-tr::after { top: 0; right: 0; }
+.gp-frame-gothic .gp-corner-bl { bottom: 2px; left: 2px; }
+.gp-frame-gothic .gp-corner-bl::before, .gp-frame-gothic .gp-corner-bl::after { bottom: 0; left: 0; }
+.gp-frame-gothic .gp-corner-br { bottom: 2px; right: 2px; }
+.gp-frame-gothic .gp-corner-br::before, .gp-frame-gothic .gp-corner-br::after { bottom: 0; right: 0; }
+
+/* Clip style: cyberpunk */
+.gp-frame-cyberpunk .gp-corner { position: absolute; width: 12px; height: 12px; }
+.gp-frame-cyberpunk .gp-corner::before { content: ''; position: absolute; width: 12px; height: 2px; background: #00BCD4; }
+.gp-frame-cyberpunk .gp-corner::after { content: ''; position: absolute; width: 2px; height: 12px; background: #00BCD4; }
+.gp-frame-cyberpunk .gp-corner-tl { top: 2px; left: 2px; }
+.gp-frame-cyberpunk .gp-corner-tl::before, .gp-frame-cyberpunk .gp-corner-tl::after { top: 0; left: 0; }
+.gp-frame-cyberpunk .gp-corner-tr { top: 2px; right: 2px; }
+.gp-frame-cyberpunk .gp-corner-tr::before, .gp-frame-cyberpunk .gp-corner-tr::after { top: 0; right: 0; }
+.gp-frame-cyberpunk .gp-corner-bl { bottom: 2px; left: 2px; }
+.gp-frame-cyberpunk .gp-corner-bl::before, .gp-frame-cyberpunk .gp-corner-bl::after { bottom: 0; left: 0; }
+.gp-frame-cyberpunk .gp-corner-br { bottom: 2px; right: 2px; }
+.gp-frame-cyberpunk .gp-corner-br::before, .gp-frame-cyberpunk .gp-corner-br::after { bottom: 0; right: 0; }
+
+/* Dot + symbol: sakura, celestial, romantic */
+.gp-frame-sakura .gp-corner { position: absolute; width: 10px; height: 10px; }
+.gp-frame-sakura .gp-corner::before { content: ''; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #F8BBD0; opacity: 0.7; }
+.gp-frame-sakura .gp-corner::after { content: '❀'; position: absolute; font-size: 7px; color: #F8BBD0; opacity: 0.6; line-height: 1; }
+.gp-frame-sakura .gp-corner-tl { top: 4px; left: 4px; }
+.gp-frame-sakura .gp-corner-tl::before { top: 0; left: 0; }
+.gp-frame-sakura .gp-corner-tl::after { top: 5px; left: 7px; }
+.gp-frame-sakura .gp-corner-tr { top: 4px; right: 4px; }
+.gp-frame-sakura .gp-corner-tr::before { top: 0; right: 0; }
+.gp-frame-sakura .gp-corner-tr::after { top: 5px; right: 7px; }
+.gp-frame-sakura .gp-corner-bl { bottom: 4px; left: 4px; }
+.gp-frame-sakura .gp-corner-bl::before { bottom: 0; left: 0; }
+.gp-frame-sakura .gp-corner-bl::after { bottom: 5px; left: 7px; }
+.gp-frame-sakura .gp-corner-br { bottom: 4px; right: 4px; }
+.gp-frame-sakura .gp-corner-br::before { bottom: 0; right: 0; }
+.gp-frame-sakura .gp-corner-br::after { bottom: 5px; right: 7px; }
+
+.gp-frame-celestial .gp-corner { position: absolute; width: 10px; height: 10px; }
+.gp-frame-celestial .gp-corner::before { content: ''; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #C5CAE9; opacity: 0.7; }
+.gp-frame-celestial .gp-corner::after { content: '✦'; position: absolute; font-size: 7px; color: #C5CAE9; opacity: 0.6; line-height: 1; }
+.gp-frame-celestial .gp-corner-tl { top: 4px; left: 4px; }
+.gp-frame-celestial .gp-corner-tl::before { top: 0; left: 0; }
+.gp-frame-celestial .gp-corner-tl::after { top: 5px; left: 7px; }
+.gp-frame-celestial .gp-corner-tr { top: 4px; right: 4px; }
+.gp-frame-celestial .gp-corner-tr::before { top: 0; right: 0; }
+.gp-frame-celestial .gp-corner-tr::after { top: 5px; right: 7px; }
+.gp-frame-celestial .gp-corner-bl { bottom: 4px; left: 4px; }
+.gp-frame-celestial .gp-corner-bl::before { bottom: 0; left: 0; }
+.gp-frame-celestial .gp-corner-bl::after { bottom: 5px; left: 7px; }
+.gp-frame-celestial .gp-corner-br { bottom: 4px; right: 4px; }
+.gp-frame-celestial .gp-corner-br::before { bottom: 0; right: 0; }
+.gp-frame-celestial .gp-corner-br::after { bottom: 5px; right: 7px; }
+
+.gp-frame-romantic .gp-corner { position: absolute; width: 10px; height: 10px; }
+.gp-frame-romantic .gp-corner::before { content: '♥'; position: absolute; font-size: 8px; color: #F8BBD0; opacity: 0.5; line-height: 1; }
+.gp-frame-romantic .gp-corner-tl { top: 4px; left: 4px; }
+.gp-frame-romantic .gp-corner-tl::before { top: 0; left: 0; }
+.gp-frame-romantic .gp-corner-tr { top: 4px; right: 4px; }
+.gp-frame-romantic .gp-corner-tr::before { top: 0; right: 0; }
+.gp-frame-romantic .gp-corner-bl { bottom: 4px; left: 4px; }
+.gp-frame-romantic .gp-corner-bl::before { bottom: 0; left: 0; }
+.gp-frame-romantic .gp-corner-br { bottom: 4px; right: 4px; }
+.gp-frame-romantic .gp-corner-br::before { bottom: 0; right: 0; }
+
+/* Special corners: egyptian, nordic, tropical */
+.gp-frame-egyptian .gp-corner { position: absolute; width: 12px; height: 12px; }
+.gp-frame-egyptian .gp-corner::before { content: ''; position: absolute; width: 10px; height: 1.5px; background: #FFD54F; }
+.gp-frame-egyptian .gp-corner::after { content: ''; position: absolute; width: 1.5px; height: 10px; background: #FFD54F; }
+.gp-frame-egyptian .gp-corner-tl { top: 3px; left: 3px; }
+.gp-frame-egyptian .gp-corner-tl::before, .gp-frame-egyptian .gp-corner-tl::after { top: 0; left: 0; }
+.gp-frame-egyptian .gp-corner-tr { top: 3px; right: 3px; }
+.gp-frame-egyptian .gp-corner-tr::before, .gp-frame-egyptian .gp-corner-tr::after { top: 0; right: 0; }
+.gp-frame-egyptian .gp-corner-bl { bottom: 3px; left: 3px; }
+.gp-frame-egyptian .gp-corner-bl::before, .gp-frame-egyptian .gp-corner-bl::after { bottom: 0; left: 0; }
+.gp-frame-egyptian .gp-corner-br { bottom: 3px; right: 3px; }
+.gp-frame-egyptian .gp-corner-br::before, .gp-frame-egyptian .gp-corner-br::after { bottom: 0; right: 0; }
+
+.gp-frame-nordic .gp-corner { position: absolute; width: 12px; height: 12px; }
+.gp-frame-nordic .gp-corner::before { content: ''; position: absolute; width: 10px; height: 1.5px; background: #B3E5FC; }
+.gp-frame-nordic .gp-corner::after { content: ''; position: absolute; width: 1.5px; height: 10px; background: #B3E5FC; }
+.gp-frame-nordic .gp-corner-tl { top: 3px; left: 3px; }
+.gp-frame-nordic .gp-corner-tl::before, .gp-frame-nordic .gp-corner-tl::after { top: 0; left: 0; }
+.gp-frame-nordic .gp-corner-tr { top: 3px; right: 3px; }
+.gp-frame-nordic .gp-corner-tr::before, .gp-frame-nordic .gp-corner-tr::after { top: 0; right: 0; }
+.gp-frame-nordic .gp-corner-bl { bottom: 3px; left: 3px; }
+.gp-frame-nordic .gp-corner-bl::before, .gp-frame-nordic .gp-corner-bl::after { bottom: 0; left: 0; }
+.gp-frame-nordic .gp-corner-br { bottom: 3px; right: 3px; }
+.gp-frame-nordic .gp-corner-br::before, .gp-frame-nordic .gp-corner-br::after { bottom: 0; right: 0; }
+
+.gp-frame-tropical .gp-corner { position: absolute; width: 10px; height: 10px; }
+.gp-frame-tropical .gp-corner::before { content: ''; position: absolute; width: 8px; height: 1.5px; background: #80CBC4; }
+.gp-frame-tropical .gp-corner::after { content: ''; position: absolute; width: 1.5px; height: 8px; background: #80CBC4; }
+.gp-frame-tropical .gp-corner-tl { top: 3px; left: 3px; }
+.gp-frame-tropical .gp-corner-tl::before, .gp-frame-tropical .gp-corner-tl::after { top: 0; left: 0; }
+.gp-frame-tropical .gp-corner-tr { top: 3px; right: 3px; }
+.gp-frame-tropical .gp-corner-tr::before, .gp-frame-tropical .gp-corner-tr::after { top: 0; right: 0; }
+.gp-frame-tropical .gp-corner-bl { bottom: 3px; left: 3px; }
+.gp-frame-tropical .gp-corner-bl::before, .gp-frame-tropical .gp-corner-bl::after { bottom: 0; left: 0; }
+.gp-frame-tropical .gp-corner-br { bottom: 3px; right: 3px; }
+.gp-frame-tropical .gp-corner-br::before, .gp-frame-tropical .gp-corner-br::after { bottom: 0; right: 0; }
+
+/* ── Center ornaments (flanking lines + symbol) ── */
+.gp-frame-body::after { pointer-events: none; }
+.gp-body-ornate::after { content: '◆'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(232,200,114,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(232,200,114,0.3); line-height: 0; }
+.gp-body-artDeco::after { content: '◇'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(212,184,150,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(212,184,150,0.3); line-height: 0; }
+.gp-body-fantasy::after { content: '✦'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(216,180,254,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(216,180,254,0.3); line-height: 0; }
+.gp-body-victorian::after { content: '◆'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(222,192,124,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(222,192,124,0.3); line-height: 0; }
+.gp-body-gothic::after { content: '✚'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(229,115,115,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(229,115,115,0.3); line-height: 0; }
+.gp-body-sakura::after { content: '❀'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(248,187,208,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(248,187,208,0.3); line-height: 0; }
+.gp-body-celestial::after { content: '☽'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(197,202,233,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(197,202,233,0.3); line-height: 0; }
+.gp-body-cyberpunk::after { content: ''; }
+.gp-body-steampunk::after { content: '⚙'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(222,184,135,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(222,184,135,0.3); line-height: 0; }
+.gp-body-pirate::after { content: '◎'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(196,168,130,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(196,168,130,0.3); line-height: 0; }
+.gp-body-medieval::after { content: '✚'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(196,185,154,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(196,185,154,0.3); line-height: 0; }
+.gp-body-egyptian::after { content: '☥'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(255,213,79,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(255,213,79,0.3); line-height: 0; }
+.gp-body-baroque::after { content: '⚘'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(240,230,140,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(240,230,140,0.3); line-height: 0; }
+.gp-body-romantic::after { content: '♥'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(248,187,208,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(248,187,208,0.3); line-height: 0; }
+.gp-body-nordic::after { content: 'ᛉ'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(179,229,252,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(179,229,252,0.3); line-height: 0; }
+.gp-body-tropical::after { content: '☀'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(128,203,196,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(128,203,196,0.3); line-height: 0; }
+.gp-body-bloodMoon::after { content: '✸'; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); font-size: 5px; color: rgba(229,115,115,0.5); width: 50px; text-align: center; border-top: 0.5px solid rgba(229,115,115,0.3); line-height: 0; }
+
+/* ── Side decorations ── */
+.gp-body-ornate::before, .gp-body-fantasy::before, .gp-body-victorian::before,
+.gp-body-celestial::before, .gp-body-steampunk::before, .gp-body-baroque::before,
+.gp-body-bloodMoon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-size: 0.5px 30px, 0.5px 30px;
+  background-position: 7px center, calc(100% - 7px) center;
+  background-repeat: no-repeat;
+  opacity: 0.2;
+}
+.gp-body-ornate::before { background-image: linear-gradient(#E8C872, #E8C872), linear-gradient(#E8C872, #E8C872); }
+.gp-body-fantasy::before { background-image: linear-gradient(#D8B4FE, #D8B4FE), linear-gradient(#D8B4FE, #D8B4FE); }
+.gp-body-victorian::before { background-image: linear-gradient(#DEC07C, #DEC07C), linear-gradient(#DEC07C, #DEC07C); }
+.gp-body-celestial::before { background-image: linear-gradient(#C5CAE9, #C5CAE9), linear-gradient(#C5CAE9, #C5CAE9); }
+.gp-body-steampunk::before { background-image: linear-gradient(#DEB887, #DEB887), linear-gradient(#DEB887, #DEB887); }
+.gp-body-baroque::before { background-image: linear-gradient(#F0E68C, #F0E68C), linear-gradient(#F0E68C, #F0E68C); }
+.gp-body-bloodMoon::before { background-image: linear-gradient(#E57373, #E57373), linear-gradient(#E57373, #E57373); }
 
 .gp-text { font-size: 13px; line-height: 1.55; color: rgba(255,255,255,0.92); min-height: 40px; }
 .gp-text.narration { font-style: italic; color: rgba(255,255,255,0.7); }
@@ -368,11 +594,13 @@
 
 /* Choices */
 .gp-choices {
-  padding: 8px 14px 14px;
+  padding: 10px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  background: rgba(0,0,0,0.5);
+  gap: 8px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.8));
+  position: relative;
+  z-index: 2;
 }
 .gp-choice {
   background: rgba(22,33,62,0.85);
@@ -382,7 +610,7 @@
   font-size: 12px;
   color: #fff;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   transition: all 0.15s;
   font-family: inherit;
 }
@@ -390,6 +618,7 @@
 .gp-choice.premium {
   background: linear-gradient(135deg, rgba(156,39,176,0.35), rgba(233,30,99,0.35));
   border-color: #E91E63;
+  border-width: 1.5px;
 }
 
 /* ── Themed Choices ── */

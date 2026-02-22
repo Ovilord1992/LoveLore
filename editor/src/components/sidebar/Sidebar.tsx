@@ -137,6 +137,22 @@ function MetaTab() {
         <option value="bloodMoon">🩸 Кровавая луна</option>
       </select>
 
+      <label>Позиция диалогов</label>
+      <div className="dialogue-style-row">
+        <button
+          className={`dialogue-style-btn ${(meta.dialogueStyle || 'classic') === 'classic' ? 'active' : ''}`}
+          onClick={() => updateMeta({ dialogueStyle: 'classic' })}
+        >
+          ⬇ Снизу
+        </button>
+        <button
+          className={`dialogue-style-btn ${meta.dialogueStyle === 'center' ? 'active' : ''}`}
+          onClick={() => updateMeta({ dialogueStyle: 'center' })}
+        >
+          ⊡ По центру
+        </button>
+      </div>
+
       <label>Цвет рамки диалога (опционально)</label>
       <div className="color-row">
         <input

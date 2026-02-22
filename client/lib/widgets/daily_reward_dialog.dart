@@ -22,19 +22,18 @@ void showDailyRewardDialog(BuildContext context, WidgetRef ref) {
         child: Opacity(opacity: a1.value, child: child),
       );
     },
-    pageBuilder: (ctx, _, _) => _DailyRewardDialog(ref: ref),
+    pageBuilder: (ctx, _, _) => const _DailyRewardDialog(),
   );
 }
 
-class _DailyRewardDialog extends StatefulWidget {
-  final WidgetRef ref;
-  const _DailyRewardDialog({required this.ref});
+class _DailyRewardDialog extends ConsumerStatefulWidget {
+  const _DailyRewardDialog();
 
   @override
-  State<_DailyRewardDialog> createState() => _DailyRewardDialogState();
+  ConsumerState<_DailyRewardDialog> createState() => _DailyRewardDialogState();
 }
 
-class _DailyRewardDialogState extends State<_DailyRewardDialog>
+class _DailyRewardDialogState extends ConsumerState<_DailyRewardDialog>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulse;
@@ -57,8 +56,8 @@ class _DailyRewardDialogState extends State<_DailyRewardDialog>
 
   @override
   Widget build(BuildContext context) {
-    final dailyState = widget.ref.read(dailyRewardProvider);
-    final config = widget.ref.read(remoteConfigProvider);
+    final dailyState = ref.read(dailyRewardProvider);
+    final config = ref.read(remoteConfigProvider);
     final rewards = config.daily.isNotEmpty ? config.daily : _fallbackRewards;
     final currentDay = dailyState.currentStreak % rewards.length;
     final todayReward = rewards[currentDay];
@@ -186,11 +185,11 @@ class _DailyRewardDialogState extends State<_DailyRewardDialog>
                   ),
                   child: ElevatedButton(
                     onPressed: () {
-                      final rewards = widget.ref
+                      final rewards = ref
                           .read(dailyRewardProvider.notifier)
                           .claimReward();
                       final currency =
-                          widget.ref.read(currencyServiceProvider.notifier);
+                          ref.read(currencyServiceProvider.notifier);
                       if (rewards.containsKey('diamonds')) {
                         currency.addDiamonds(rewards['diamonds']!);
                       }

@@ -347,7 +347,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   Widget _buildCharacters(Scene scene, SceneEngine engine) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final spriteH = screenHeight * 0.75;
     return Stack(
+      fit: StackFit.expand,
+      clipBehavior: Clip.none,
       children: scene.charactersOnScreen.map((sc) {
         final character = engine.getCharacter(sc.characterId);
         if (character == null) return const SizedBox.shrink();
@@ -359,16 +364,17 @@ class _GameScreenState extends ConsumerState<GameScreen>
           spriteImage = sprite.image;
         } catch (_) {}
 
-        final alignment = switch (sc.position) {
-          CharacterPosition.left => Alignment.bottomLeft,
-          CharacterPosition.right => Alignment.bottomRight,
-          CharacterPosition.center => Alignment.bottomCenter,
+        // Горизонтальный сдвиг для позиционирования как в Клубе Романтики
+        final xOffset = switch (sc.position) {
+          CharacterPosition.left => -screenWidth * 0.25,
+          CharacterPosition.right => screenWidth * 0.25,
+          CharacterPosition.center => 0.0,
         };
 
         return Align(
-          alignment: alignment,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 200),
+          alignment: Alignment.bottomCenter,
+          child: Transform.translate(
+            offset: Offset(xOffset, 0),
             child: AnimatedCharacterSprite(
               key: ValueKey('${sc.characterId}_${sc.spriteId}'),
               characterId: sc.characterId,
@@ -376,6 +382,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
               novelId: widget.novelId,
               displayLetter: character.name[0],
               animation: sc.animation,
+              spriteHeight: spriteH,
             ),
           ),
         );
@@ -455,7 +462,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   Widget _buildEventPositioned(SceneEvent? event, SceneEngine engine) {
     final settings = ref.watch(settingsServiceProvider);
-    final useOverlay = settings.useOverlayDialogue;
+    // Per-novel dialogueStyle overrides user setting if specified
+    final novelStyle = engine.novelMeta?.dialogueStyle;
+    final useOverlay = novelStyle == 'center' ||
+        (novelStyle == null && settings.useOverlayDialogue);
 
     // Overlay mode: dialogue/narration fills entire screen
     if (useOverlay && event != null &&
@@ -475,6 +485,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
           frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
           customFrameColor: _parseHexColor(engine.novelMeta?.dialogueFrameColor),
           customBgColor: _parseHexColor(engine.novelMeta?.dialogueBgColor),
+          centered: novelStyle == 'center',
         ),
       );
     }

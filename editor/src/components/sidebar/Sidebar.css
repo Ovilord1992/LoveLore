@@ -105,3 +105,24 @@
 .color-hex { flex: 1 !important; width: auto !important; }
 .color-clear { background: none; border: 1px solid #2a2a3e; color: #666; width: 28px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0; }
 .color-clear:hover { color: #e91e63; border-color: #e91e63; }
+
+/* Dialogue style toggle */
+.dialogue-style-row { display: flex; gap: 6px; }
+.dialogue-style-btn {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.dialogue-style-btn:hover { border-color: #555; color: #aaa; }
+.dialogue-style-btn.active {
+  border-color: #E91E63;
+  background: rgba(233,30,99,0.1);
+  color: #E91E63;
+}

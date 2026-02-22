@@ -13,6 +13,7 @@ export interface NovelMeta {
     | 'victorian' | 'gothic' | 'noir' | 'sakura' | 'celestial'
     | 'cyberpunk' | 'steampunk' | 'pirate' | 'medieval' | 'egyptian'
     | 'baroque' | 'romantic' | 'nordic' | 'tropical' | 'bloodMoon';
+  dialogueStyle?: 'classic' | 'center'; // classic=bottom, center=Romance Club style
   dialogueFrameColor?: string; // hex e.g. "#B8860B"
   dialogueBgColor?: string;    // hex e.g. "#1A1410"
 }

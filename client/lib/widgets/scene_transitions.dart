@@ -155,6 +155,8 @@ class AnimatedCharacterSprite extends StatefulWidget {
   final String displayLetter;
   final String? animation;
   final int spriteDuration; // cross-fade мс
+  final double spriteHeight;
+  final Alignment imageAlignment;
 
   const AnimatedCharacterSprite({
     super.key,
@@ -164,6 +166,8 @@ class AnimatedCharacterSprite extends StatefulWidget {
     required this.displayLetter,
     this.animation,
     this.spriteDuration = 300,
+    this.spriteHeight = 350,
+    this.imageAlignment = Alignment.center,
   });
 
   @override
@@ -280,19 +284,21 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
 
   @override
   Widget build(BuildContext context) {
+    final h = widget.spriteHeight;
+    final align = widget.imageAlignment;
     Widget spriteWidget;
     if (_crossFading && _prevSpriteFile != null) {
       spriteWidget = AnimatedCrossFade(
-        firstChild: Image.file(_prevSpriteFile!, height: 350, fit: BoxFit.contain),
+        firstChild: Image.file(_prevSpriteFile!, height: h, fit: BoxFit.contain, alignment: align),
         secondChild: _resolved && _spriteFile != null
-            ? Image.file(_spriteFile!, height: 350, fit: BoxFit.contain)
+            ? Image.file(_spriteFile!, height: h, fit: BoxFit.contain, alignment: align)
             : _buildPlaceholder(),
         crossFadeState: _resolved ? CrossFadeState.showSecond : CrossFadeState.showFirst,
         duration: Duration(milliseconds: widget.spriteDuration),
       );
     } else {
       spriteWidget = _resolved && _spriteFile != null
-          ? Image.file(_spriteFile!, height: 350, fit: BoxFit.contain)
+          ? Image.file(_spriteFile!, height: h, fit: BoxFit.contain, alignment: align)
           : _buildPlaceholder();
     }
 

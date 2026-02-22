@@ -197,6 +197,7 @@ export function GamePreview() {
     : null;
 
   const dialogueTheme = project.meta.dialogueTheme || 'ornate';
+  const dialogueStyle = project.meta.dialogueStyle || 'classic';
 
   // Custom color CSS vars
   const customStyle: React.CSSProperties = {};
@@ -241,13 +242,11 @@ export function GamePreview() {
 
           {/* Dialogue/Narration — themed frame */}
           {currentEvent && (currentEvent.type === 'dialogue' || currentEvent.type === 'narration') && (
-            <div className={`gp-frame gp-frame-${dialogueTheme}`}>
+            <div className={`gp-frame gp-frame-${dialogueTheme} ${dialogueStyle === 'center' ? 'gp-frame-center' : ''}`}>
               {/* Name tab */}
               <div className={`gp-frame-name gp-name-${dialogueTheme}`}>
                 {currentEvent.type === 'dialogue' && speakerChar ? (
-                  <span style={dialogueTheme === 'ornate' || dialogueTheme === 'fantasy' ? { color: '#fff' } : { color: speakerChar.color }}>
-                    {speakerChar.name}
-                  </span>
+                  <span>{speakerChar.name}</span>
                 ) : (
                   <span className="gp-narration-dots">· · ·</span>
                 )}
@@ -260,7 +259,7 @@ export function GamePreview() {
                 </div>
                 {!isTyping && <div className="gp-advance-hint">▼</div>}
                 {/* Corner ornaments for ornate/artDeco/fantasy */}
-                {(dialogueTheme === 'ornate' || dialogueTheme === 'fantasy' || dialogueTheme === 'artDeco') && (
+                {dialogueTheme !== 'modern' && dialogueTheme !== 'glassmorphism' && dialogueTheme !== 'noir' && (
                   <>
                     <span className="gp-corner gp-corner-tl" />
                     <span className="gp-corner gp-corner-tr" />

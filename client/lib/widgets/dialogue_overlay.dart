@@ -17,6 +17,7 @@ class DialogueOverlay extends ConsumerStatefulWidget {
   final DialogueFrameTheme frameTheme;
   final Color? customFrameColor;
   final Color? customBgColor;
+  final bool centered;
 
   const DialogueOverlay({
     super.key,
@@ -28,6 +29,7 @@ class DialogueOverlay extends ConsumerStatefulWidget {
     this.frameTheme = DialogueFrameTheme.ornate,
     this.customFrameColor,
     this.customBgColor,
+    this.centered = false,
   });
 
   @override
@@ -149,6 +151,7 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
         child: Column(
           children: [
             const Spacer(),
+            if (widget.centered) const Spacer(),
             FadeTransition(
               opacity: _fadeAnimation,
               child: Padding(
@@ -165,7 +168,10 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
                 ),
               ),
             ),
-            SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
+            if (widget.centered)
+              const Spacer()
+            else
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
           ],
         ),
       ),
