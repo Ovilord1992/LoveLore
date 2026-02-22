@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +18,6 @@ import '../widgets/dialogue_box.dart';
 import '../widgets/dialogue_overlay.dart';
 import '../widgets/choice_buttons.dart';
 import '../widgets/scene_transitions.dart';
-import '../widgets/relationship_bar.dart';
 import '../widgets/chapter_progress.dart';
 import '../widgets/achievement_popup.dart';
 import 'wardrobe_screen.dart';
@@ -53,12 +53,20 @@ class _GameScreenState extends ConsumerState<GameScreen>
   int _cameraDuration = 1000;
   // Эмоции
   SceneEvent? _activeEmotion;
+  // Immersive mode: top UI auto-hide
+  late AnimationController _uiAnimController;
+  Timer? _uiHideTimer;
+  bool _uiVisible = false;
 
   @override
   void initState() {
     super.initState();
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _uiAnimController = AnimationController(
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
     // Откладываем загрузку, чтобы не модифицировать провайдеры во время build
@@ -188,7 +196,33 @@ class _GameScreenState extends ConsumerState<GameScreen>
   @override
   void dispose() {
     _fadeController.dispose();
+    _uiAnimController.dispose();
+    _uiHideTimer?.cancel();
     super.dispose();
+  }
+
+    // ── Immersive UI show/hide ──
+  void _showUI() {
+    _uiHideTimer?.cancel();
+    if (!_uiVisible) {
+      setState(() => _uiVisible = true);
+      _uiAnimController.forward();
+    }
+    _uiHideTimer = Timer(const Duration(seconds: 3), _hideUI);
+  }
+
+  void _hideUI() {
+    _uiHideTimer?.cancel();
+    _uiAnimController.reverse().then((_) {
+      if (mounted) setState(() => _uiVisible = false);
+    });
+  }
+
+  void _resetUITimer() {
+    if (_uiVisible) {
+      _uiHideTimer?.cancel();
+      _uiHideTimer = Timer(const Duration(seconds: 3), _hideUI);
+    }
   }
 
   @override
@@ -240,66 +274,95 @@ class _GameScreenState extends ConsumerState<GameScreen>
             // Диалог / Выбор
             _buildEventPositioned(event, engine),
 
-            // Верхняя панель
+            // Верхняя панель (immersive: hidden by default, tap top area to reveal)
+            // Invisible tap zone at top of screen to reveal UI
             Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 8,
-              right: 8,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white70),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  // Прогресс по главе
-                  Expanded(child: ChapterProgressIndicator(
-                    currentSceneIndex: engine.currentSceneIndex,
-                    totalScenes: engine.totalScenes,
-                    chapterTitle: engine.currentChapter?.title,
-                  )),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.checkroom, color: Colors.white70),
-                        tooltip: ref.tr('wardrobe'),
-                        onPressed: () {
-                          _showWardrobePicker(context, engine);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.save_outlined, color: Colors.white70),
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      await _autoSave();
-                      if (mounted) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(ref.tr('saved')),
-                            duration: const Duration(seconds: 1),
-                            backgroundColor: AppTheme.surfaceDark,
-                          ),
-                        );
-                      }
-                      },
-                    ),
-                      IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.white70),
-                        onPressed: () => _showPauseMenu(context),
-                      ),
-                    ],
-                  ),
-                ],
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.of(context).padding.top + 56,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _showUI,
               ),
             ),
-
-            // Шкала отношений (справа)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 56,
-              right: 8,
-              child: _buildRelationships(gameState, engine),
-            ),
+            // Animated top panel
+            if (_uiVisible)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: FadeTransition(
+                  opacity: _uiAnimController,
+                  child: Container(
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 8,
+                      left: 8, right: 8, bottom: 8,
+                    ),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black54, Colors.transparent],
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                          onPressed: () {
+                            _resetUITimer();
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        Expanded(child: ChapterProgressIndicator(
+                          currentSceneIndex: engine.currentSceneIndex,
+                          totalScenes: engine.totalScenes,
+                          chapterTitle: engine.currentChapter?.title,
+                        )),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.checkroom, color: Colors.white70),
+                              tooltip: ref.tr('wardrobe'),
+                              onPressed: () {
+                                _resetUITimer();
+                                _showWardrobePicker(context, engine);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.save_outlined, color: Colors.white70),
+                              onPressed: () async {
+                                _resetUITimer();
+                                final messenger = ScaffoldMessenger.of(context);
+                                await _autoSave();
+                                if (mounted) {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text(ref.tr('saved')),
+                                      duration: const Duration(seconds: 1),
+                                      backgroundColor: AppTheme.surfaceDark,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.menu, color: Colors.white70),
+                              onPressed: () {
+                                _resetUITimer();
+                                _showPauseMenu(context);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Оверлей визуального эффекта
             if (_activeEffect != null)
@@ -434,30 +497,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
       )).toList();
       AchievementPopup.showAll(context, translated, header: translatedHeader);
     }
-  }
-
-  Widget _buildRelationships(GameState gameState, SceneEngine engine) {
-    // Собираем переменные отношений (содержат _love или _trust)
-    final relationships = <String, RelationshipInfo>{};
-    for (final entry in gameState.variables.entries) {
-      if (entry.key.contains('_love') || entry.key.contains('_trust')) {
-        final charId = entry.key.split('_').first;
-        final character = engine.getCharacter(charId);
-        if (character != null && entry.value is num) {
-          relationships[entry.key] = RelationshipInfo(
-            characterName: character.name,
-            value: entry.value as num,
-            color: character.color != null
-                ? _parseColor(character.color!)
-                : AppTheme.primary,
-          );
-        }
-      }
-    }
-
-    if (relationships.isEmpty) return const SizedBox.shrink();
-
-    return RelationshipPanel(relationships: relationships);
   }
 
   Widget _buildEventPositioned(SceneEvent? event, SceneEngine engine) {
