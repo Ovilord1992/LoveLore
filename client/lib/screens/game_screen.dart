@@ -374,7 +374,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return Align(
           alignment: Alignment.bottomCenter,
           child: Transform.translate(
-            offset: Offset(xOffset, 0),
+            offset: Offset(xOffset, screenHeight * 0.08),
             child: AnimatedCharacterSprite(
               key: ValueKey('${sc.characterId}_${sc.spriteId}'),
               characterId: sc.characterId,
@@ -475,6 +475,23 @@ class _GameScreenState extends ConsumerState<GameScreen>
       final speakerName = character != null
           ? engine.trCharacter(character.id, character.name)
           : null;
+
+      // Determine speaker's on-screen position
+      String speakerSide = 'center';
+      if (event.speaker != null) {
+        final scene = engine.currentScene;
+        final sc = scene?.charactersOnScreen
+            .where((c) => c.characterId == event.speaker)
+            .firstOrNull;
+        if (sc != null) {
+          speakerSide = switch (sc.position) {
+            CharacterPosition.left => 'left',
+            CharacterPosition.right => 'right',
+            CharacterPosition.center => 'center',
+          };
+        }
+      }
+
       return Positioned.fill(
         child: DialogueOverlay(
           speakerName: speakerName,
@@ -486,6 +503,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
           customFrameColor: _parseHexColor(engine.novelMeta?.dialogueFrameColor),
           customBgColor: _parseHexColor(engine.novelMeta?.dialogueBgColor),
           centered: novelStyle == 'center',
+          speakerSide: speakerSide,
         ),
       );
     }

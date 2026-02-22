@@ -199,6 +199,11 @@ export function GamePreview() {
   const dialogueTheme = project.meta.dialogueTheme || 'ornate';
   const dialogueStyle = project.meta.dialogueStyle || 'classic';
 
+  // Determine speaker's on-screen position
+  const speakerSide = currentEvent?.speaker
+    ? gameState.charactersOnScreen.find(sc => sc.characterId === currentEvent.speaker)?.position || 'center'
+    : 'center';
+
   // Custom color CSS vars
   const customStyle: React.CSSProperties = {};
   if (project.meta.dialogueFrameColor) {
@@ -244,7 +249,7 @@ export function GamePreview() {
           {currentEvent && (currentEvent.type === 'dialogue' || currentEvent.type === 'narration') && (
             <div className={`gp-frame gp-frame-${dialogueTheme} ${dialogueStyle === 'center' ? 'gp-frame-center' : ''}`}>
               {/* Name tab */}
-              <div className={`gp-frame-name gp-name-${dialogueTheme}`}>
+              <div className={`gp-frame-name gp-name-${dialogueTheme} gp-name-${speakerSide}`}>
                 {currentEvent.type === 'dialogue' && speakerChar ? (
                   <span>{speakerChar.name}</span>
                 ) : (
@@ -258,7 +263,7 @@ export function GamePreview() {
                   {isTyping && <span className="gp-cursor">|</span>}
                 </div>
                 {!isTyping && <div className="gp-advance-hint">▼</div>}
-                {/* Corner ornaments for ornate/artDeco/fantasy */}
+                {/* Corner ornaments */}
                 {dialogueTheme !== 'modern' && dialogueTheme !== 'glassmorphism' && dialogueTheme !== 'noir' && (
                   <>
                     <span className="gp-corner gp-corner-tl" />
@@ -266,6 +271,10 @@ export function GamePreview() {
                     <span className="gp-corner gp-corner-bl" />
                     <span className="gp-corner gp-corner-br" />
                   </>
+                )}
+                {/* Decorative tail on opposite side of speaker */}
+                {currentEvent.type === 'dialogue' && speakerSide !== 'center' && (
+                  <span className={`gp-tail gp-tail-${speakerSide === 'left' ? 'right' : 'left'}`} />
                 )}
               </div>
             </div>

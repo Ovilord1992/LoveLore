@@ -18,6 +18,7 @@ class DialogueOverlay extends ConsumerStatefulWidget {
   final Color? customFrameColor;
   final Color? customBgColor;
   final bool centered;
+  final String speakerSide; // 'left', 'right', 'center'
 
   const DialogueOverlay({
     super.key,
@@ -30,6 +31,7 @@ class DialogueOverlay extends ConsumerStatefulWidget {
     this.customFrameColor,
     this.customBgColor,
     this.centered = false,
+    this.speakerSide = 'center',
   });
 
   @override
@@ -165,6 +167,7 @@ class _DialogueOverlayState extends ConsumerState<DialogueOverlay>
                   frameTheme: widget.frameTheme,
                   customFrameColor: widget.customFrameColor,
                   customBgColor: widget.customBgColor,
+                  speakerSide: widget.speakerSide,
                 ),
               ),
             ),
@@ -382,6 +385,7 @@ class _ThemedDialogueFrame extends StatelessWidget {
   final DialogueFrameTheme frameTheme;
   final Color? customFrameColor;
   final Color? customBgColor;
+  final String speakerSide;
 
   const _ThemedDialogueFrame({
     this.speakerName,
@@ -392,6 +396,7 @@ class _ThemedDialogueFrame extends StatelessWidget {
     required this.frameTheme,
     this.customFrameColor,
     this.customBgColor,
+    this.speakerSide = 'center',
   });
 
   @override
@@ -400,48 +405,79 @@ class _ThemedDialogueFrame extends StatelessWidget {
         customFrame: customFrameColor, customBg: customBgColor);
     final spec = _ThemeSpec.forTheme(frameTheme);
 
+    // Name tab alignment based on speaker position
+    final nameAlignment = isNarration
+        ? CrossAxisAlignment.center
+        : speakerSide == 'right'
+            ? CrossAxisAlignment.end
+            : speakerSide == 'left'
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: nameAlignment,
       children: [
         _buildNameTab(colors, spec),
-        CustomPaint(
-          painter: frameTheme == DialogueFrameTheme.glassmorphism
-              ? _GlassmorphismFramePainter(
-                  backgroundColor: colors.background,
-                  borderColor: colors.primary)
-              : _UniversalFramePainter(colors: colors, spec: spec),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: isNarration
-                  ? CrossAxisAlignment.center
-                  : CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayedText,
-                  textAlign: isNarration ? TextAlign.center : TextAlign.left,
-                  style: TextStyle(
-                    fontSize: 17,
-                    color: isNarration
-                        ? Colors.white70
-                        : Colors.white.withValues(alpha: 0.92),
-                    height: 1.55,
-                    fontStyle:
-                        isNarration ? FontStyle.italic : FontStyle.normal,
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CustomPaint(
+              painter: frameTheme == DialogueFrameTheme.glassmorphism
+                  ? _GlassmorphismFramePainter(
+                      backgroundColor: colors.background,
+                      borderColor: colors.primary)
+                  : _UniversalFramePainter(colors: colors, spec: spec),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: isNarration
+                      ? CrossAxisAlignment.center
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayedText,
+                      textAlign: isNarration ? TextAlign.center : TextAlign.left,
+                      style: TextStyle(
+                        fontSize: 17,
+                        color: isNarration
+                            ? Colors.white70
+                            : Colors.white.withValues(alpha: 0.92),
+                        height: 1.55,
+                        fontStyle:
+                            isNarration ? FontStyle.italic : FontStyle.normal,
+                      ),
+                    ),
+                    if (isComplete) ...[
+                      const SizedBox(height: 6),
+                      const Align(
+                        alignment: Alignment.centerRight,
+                        child: _PulsingArrow(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Decorative tail on the opposite side of speaker
+            if (!isNarration && speakerSide != 'center')
+              Positioned(
+                top: -6,
+                left: speakerSide == 'right' ? -10 : null,
+                right: speakerSide == 'left' ? -10 : null,
+                child: CustomPaint(
+                  size: const Size(18, 14),
+                  painter: _TailPainter(
+                    color: colors.primary,
+                    fillColor: colors.background,
+                    borderWidth: spec.borderWidth,
+                    flipX: speakerSide == 'right',
                   ),
                 ),
-                if (isComplete) ...[
-                  const SizedBox(height: 6),
-                  const Align(
-                    alignment: Alignment.centerRight,
-                    child: _PulsingArrow(),
-                  ),
-                ],
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
       ],
     );
@@ -973,6 +1009,51 @@ class _GlassmorphismFramePainter extends CustomPainter {
         begin: Alignment.topCenter, end: Alignment.bottomCenter,
         colors: [Colors.white.withValues(alpha: 0.08), Colors.white.withValues(alpha: 0.0)],
       ).createShader(rect));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Decorative chevron/tail on the side of the dialogue frame
+class _TailPainter extends CustomPainter {
+  final Color color;
+  final Color fillColor;
+  final double borderWidth;
+  final bool flipX;
+
+  _TailPainter({
+    required this.color,
+    required this.fillColor,
+    required this.borderWidth,
+    this.flipX = false,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (flipX) {
+      canvas.save();
+      canvas.translate(size.width, 0);
+      canvas.scale(-1, 1);
+    }
+
+    // Chevron pointing outward: >
+    final path = Path()
+      ..moveTo(size.width, 0)
+      ..lineTo(0, size.height * 0.5)
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    canvas.drawPath(path, Paint()..color = fillColor.withValues(alpha: 0.9));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = borderWidth * 0.8,
+    );
+
+    if (flipX) canvas.restore();
   }
 
   @override
