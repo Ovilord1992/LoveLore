@@ -14,12 +14,14 @@ class AchievementDef {
   final String title;
   final String description;
   final int diamondReward;
+  final String icon;
 
   const AchievementDef({
     required this.id,
     required this.title,
     required this.description,
     this.diamondReward = 5,
+    this.icon = '🏆',
   });
 }
 
@@ -32,60 +34,70 @@ const _defaultAchievements = <AchievementDef>[
     title: 'ach_first_story',
     description: 'ach_first_story_desc',
     diamondReward: 10,
+    icon: '📖',
   ),
   AchievementDef(
     id: 'first_choice',
     title: 'ach_first_choice',
     description: 'ach_first_choice_desc',
     diamondReward: 5,
+    icon: '🎯',
   ),
   AchievementDef(
     id: 'five_chapters',
     title: 'ach_five_chapters',
     description: 'ach_five_chapters_desc',
     diamondReward: 15,
+    icon: '📚',
   ),
   AchievementDef(
     id: 'first_love',
     title: 'ach_first_love',
     description: 'ach_first_love_desc',
     diamondReward: 10,
+    icon: '💕',
   ),
   AchievementDef(
     id: 'completionist',
     title: 'ach_completionist',
     description: 'ach_completionist_desc',
     diamondReward: 25,
+    icon: '⭐',
   ),
   AchievementDef(
     id: 'collector',
     title: 'ach_collector',
     description: 'ach_collector_desc',
     diamondReward: 15,
+    icon: '🖼',
   ),
   AchievementDef(
     id: 'brave_heart',
     title: 'ach_brave_heart',
     description: 'ach_brave_heart_desc',
     diamondReward: 5,
+    icon: '🦁',
   ),
   AchievementDef(
     id: 'mystery_solver',
     title: 'ach_mystery_solver',
     description: 'ach_mystery_solver_desc',
     diamondReward: 20,
+    icon: '🔍',
   ),
   AchievementDef(
     id: 'ten_choices',
     title: 'ach_ten_choices',
     description: 'ach_ten_choices_desc',
     diamondReward: 10,
+    icon: '🎲',
   ),
   AchievementDef(
     id: 'diamond_spender',
     title: 'ach_diamond_spender',
     description: 'ach_diamond_spender_desc',
     diamondReward: 20,
+    icon: '💎',
   ),
 ];
 
@@ -143,8 +155,27 @@ class AchievementService {
       'completionist' => profile.totalNovelsCompleted >= 1,
       'ten_choices' => profile.totalChoicesMade >= 10,
       'collector' => profile.unlockedCGs.length >= 3,
+      'diamond_spender' => profile.totalDiamondsSpent >= 100,
       // Достижения на основе переменных проверяются отдельно
       _ => false,
+    };
+  }
+
+  /// Get progress (current / required) for an achievement
+  ({int current, int required}) getProgress(String id) {
+    final profile = _ref.read(userProfileProvider);
+    return switch (id) {
+      'first_story' => (current: profile.totalNovelsStarted.clamp(0, 1), required: 1),
+      'first_choice' => (current: profile.totalChoicesMade.clamp(0, 1), required: 1),
+      'five_chapters' => (current: profile.totalChaptersRead.clamp(0, 5), required: 5),
+      'completionist' => (current: profile.totalNovelsCompleted.clamp(0, 1), required: 1),
+      'ten_choices' => (current: profile.totalChoicesMade.clamp(0, 10), required: 10),
+      'collector' => (current: profile.unlockedCGs.length.clamp(0, 3), required: 3),
+      'diamond_spender' => (current: profile.totalDiamondsSpent.clamp(0, 100), required: 100),
+      'first_love' => (current: 0, required: 1), // variable-based, checked separately
+      'brave_heart' => (current: 0, required: 1),
+      'mystery_solver' => (current: 0, required: 1),
+      _ => (current: 0, required: 1),
     };
   }
 

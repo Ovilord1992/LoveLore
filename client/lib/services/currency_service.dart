@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'remote_config_service.dart';
+import 'user_profile_service.dart';
 
 /// Провайдер сервиса валюты
 final currencyServiceProvider =
@@ -87,6 +88,7 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     if (state.diamonds < amount) return false;
     state = state.copyWith(diamonds: state.diamonds - amount);
     _save();
+    _ref.read(userProfileProvider.notifier).incrementDiamondsSpent(amount);
     return true;
   }
 

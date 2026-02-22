@@ -10,6 +10,7 @@ import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
 import '../services/save_service.dart';
 import '../services/novel_loader.dart';
+import '../services/achievement_service.dart';
 import '../models/novel.dart';
 import 'auth_screen.dart';
 import 'shop_screen.dart';
@@ -208,17 +209,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 SizedBox(
                   height: 100,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    children: const [
-                      _AchievementBadge(icon: '📚', label: 'Книголюб', progress: '5/5', completed: true),
-                      _AchievementBadge(icon: '💕', label: 'Романтик', progress: '3/5', completed: false),
-                      _AchievementBadge(icon: '🔍', label: 'Детектив', progress: '1/3', completed: false),
-                      _AchievementBadge(icon: '⭐', label: 'Критик', progress: '2/10', completed: false),
-                      _AchievementBadge(icon: '🏆', label: 'Коллекционер', progress: '8/24', completed: false),
-                    ],
-                  ),
+                  child: _AchievementList(),
                 ),
                 const SizedBox(height: 24),
 
@@ -545,6 +536,33 @@ class _StatGrid extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _AchievementList extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final achievementService = ref.read(achievementServiceProvider);
+    final profile = ref.watch(userProfileProvider);
+    final achievements = achievementService.allAchievements;
+
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: achievements.length,
+      itemBuilder: (context, index) {
+        final a = achievements[index];
+        final completed = profile.achievements.contains(a.id);
+        final progress = achievementService.getProgress(a.id);
+        final progressStr = '${progress.current}/${progress.required}';
+        return _AchievementBadge(
+          icon: a.icon,
+          label: ref.tr(a.title),
+          progress: progressStr,
+          completed: completed,
+        );
+      },
     );
   }
 }

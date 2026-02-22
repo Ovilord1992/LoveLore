@@ -4,6 +4,7 @@ import '../services/novel_loader.dart';
 import '../services/novel_api_service.dart';
 import '../services/save_service.dart';
 import '../services/user_profile_service.dart';
+import '../services/achievement_service.dart';
 import '../services/locale_service.dart';
 import 'variable_engine.dart';
 import 'condition_evaluator.dart';
@@ -126,6 +127,7 @@ class SceneEngine extends StateNotifier<GameState?> {
 
     // Статистика: новая новелла начата
     _ref.read(userProfileProvider.notifier).incrementNovelsStarted();
+    _ref.read(achievementServiceProvider).checkAndGrant();
   }
 
   /// Загрузить сохранённое состояние
@@ -146,6 +148,7 @@ class SceneEngine extends StateNotifier<GameState?> {
     } else {
       // Конец главы — переход к следующей
       _ref.read(userProfileProvider.notifier).incrementChaptersRead();
+      _ref.read(achievementServiceProvider).checkAndGrant();
       _goToNextChapter();
     }
   }
@@ -184,6 +187,7 @@ class SceneEngine extends StateNotifier<GameState?> {
       // Главы нет вообще — конец новеллы
       _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.completed;
       _ref.read(userProfileProvider.notifier).incrementNovelsCompleted();
+      _ref.read(achievementServiceProvider).checkAndGrant();
       return;
     }
 

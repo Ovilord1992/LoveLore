@@ -18,6 +18,7 @@ class UserProfile {
   final int totalChaptersRead;
   final Set<String> unlockedCGs; // разблокированные CG-арты
   final Set<String> achievements; // полученные достижения
+  final int totalDiamondsSpent;
   final DateTime createdAt;
 
   const UserProfile({
@@ -29,6 +30,7 @@ class UserProfile {
     this.totalChaptersRead = 0,
     this.unlockedCGs = const {},
     this.achievements = const {},
+    this.totalDiamondsSpent = 0,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? const _DefaultDateTime();
 
@@ -41,6 +43,7 @@ class UserProfile {
     int? totalChaptersRead,
     Set<String>? unlockedCGs,
     Set<String>? achievements,
+    int? totalDiamondsSpent,
   }) =>
       UserProfile(
         displayName: displayName ?? this.displayName,
@@ -52,6 +55,7 @@ class UserProfile {
         totalChaptersRead: totalChaptersRead ?? this.totalChaptersRead,
         unlockedCGs: unlockedCGs ?? this.unlockedCGs,
         achievements: achievements ?? this.achievements,
+        totalDiamondsSpent: totalDiamondsSpent ?? this.totalDiamondsSpent,
         createdAt: createdAt,
       );
 
@@ -64,6 +68,7 @@ class UserProfile {
         'totalChaptersRead': totalChaptersRead,
         'unlockedCGs': unlockedCGs.toList(),
         'achievements': achievements.toList(),
+        'totalDiamondsSpent': totalDiamondsSpent,
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -76,6 +81,7 @@ class UserProfile {
         totalChaptersRead: json['totalChaptersRead'] as int? ?? 0,
         unlockedCGs: Set<String>.from(json['unlockedCGs'] as List? ?? []),
         achievements: Set<String>.from(json['achievements'] as List? ?? []),
+        totalDiamondsSpent: json['totalDiamondsSpent'] as int? ?? 0,
         createdAt: json['createdAt'] != null
             ? DateTime.parse(json['createdAt'] as String)
             : DateTime.now(),
@@ -150,6 +156,11 @@ class UserProfileService extends StateNotifier<UserProfile> {
     _save();
   }
 
+  void incrementDiamondsSpent(int amount) {
+    state = state.copyWith(totalDiamondsSpent: state.totalDiamondsSpent + amount);
+    _save();
+  }
+
   /// Выдать достижение
   bool grantAchievement(String achievementId) {
     if (state.achievements.contains(achievementId)) return false;
@@ -198,6 +209,9 @@ class UserProfileService extends StateNotifier<UserProfile> {
           : serverProfile.totalChaptersRead,
       unlockedCGs: state.unlockedCGs.union(serverProfile.unlockedCGs),
       achievements: state.achievements.union(serverProfile.achievements),
+      totalDiamondsSpent: state.totalDiamondsSpent > serverProfile.totalDiamondsSpent
+          ? state.totalDiamondsSpent
+          : serverProfile.totalDiamondsSpent,
     );
     _save();
   }
