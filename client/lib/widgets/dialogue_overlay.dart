@@ -424,11 +424,13 @@ class _ThemedDialogueFrame extends StatelessWidget {
               ? _GlassmorphismFramePainter(
                   backgroundColor: colors.background,
                   borderColor: colors.primary,
-                  isNarration: isNarration)
+                  isNarration: isNarration,
+                  speakerSide: speakerSide)
               : _UniversalFramePainter(
                   colors: colors,
                   spec: spec,
-                  isNarration: isNarration),
+                  isNarration: isNarration,
+                  speakerSide: speakerSide),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
@@ -526,14 +528,16 @@ class _UniversalFramePainter extends CustomPainter {
   final _FrameColors colors;
   final _ThemeSpec spec;
   final bool isNarration;
+  final String speakerSide;
 
   _UniversalFramePainter({
     required this.colors,
     required this.spec,
     this.isNarration = false,
+    this.speakerSide = 'center',
   });
 
-  /// Banner/scroll frame shape with pointed tips on both sides (Romance Club style)
+  /// Frame path with smooth speech-bubble tail on the bottom edge
   Path _buildFramePath(Size size) {
     final r = spec.radius;
 
@@ -545,9 +549,21 @@ class _UniversalFramePainter extends CustomPainter {
       ));
     }
 
-    const tipW = 8.0; // how far the tip protrudes beyond the frame edge
-    final tipCY = size.height * 0.5; // vertical center of the tip
-    const tipHalfH = 14.0; // half the vertical extent of the tip triangle
+    // Tail dimensions
+    const tailW = 22.0; // base width
+    const tailH = 12.0; // how far it extends below
+
+    // Position tail along bottom edge based on speaker side
+    double tailCX;
+    if (speakerSide == 'left') {
+      tailCX = size.width * 0.22;
+    } else if (speakerSide == 'right') {
+      tailCX = size.width * 0.78;
+    } else {
+      tailCX = size.width * 0.5;
+    }
+    // Keep tail within the flat portion of the bottom edge (between arcs)
+    tailCX = tailCX.clamp(r + tailW / 2 + 2, size.width - r - tailW / 2 - 2);
 
     final path = Path();
 
@@ -555,22 +571,26 @@ class _UniversalFramePainter extends CustomPainter {
     path.moveTo(0, 0);
     path.lineTo(size.width, 0);
 
-    // Right side with pointed tip at center
-    path.lineTo(size.width, tipCY - tipHalfH);
-    path.lineTo(size.width + tipW, tipCY);
-    path.lineTo(size.width, tipCY + tipHalfH);
+    // Right side
     path.lineTo(size.width, size.height - r);
 
-    // Bottom-right corner
+    // Bottom-right corner arc
     path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
-    path.lineTo(r, size.height);
-    // Bottom-left corner
-    path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
 
-    // Left side with pointed tip at center (going upward)
-    path.lineTo(0, tipCY + tipHalfH);
-    path.lineTo(-tipW, tipCY);
-    path.lineTo(0, tipCY - tipHalfH);
+    // Bottom edge with speech bubble tail (right to left)
+    path.lineTo(tailCX + tailW / 2, size.height);
+    path.quadraticBezierTo(
+      tailCX + tailW * 0.1, size.height + tailH * 0.45,
+      tailCX, size.height + tailH,
+    );
+    path.quadraticBezierTo(
+      tailCX - tailW * 0.1, size.height + tailH * 0.45,
+      tailCX - tailW / 2, size.height,
+    );
+    path.lineTo(r, size.height);
+
+    // Bottom-left corner arc
+    path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
 
     path.close();
     return path;
@@ -1019,11 +1039,13 @@ class _GlassmorphismFramePainter extends CustomPainter {
   final Color backgroundColor;
   final Color borderColor;
   final bool isNarration;
+  final String speakerSide;
 
   _GlassmorphismFramePainter({
     required this.backgroundColor,
     required this.borderColor,
     this.isNarration = false,
+    this.speakerSide = 'center',
   });
 
   Path _buildFramePath(Size size) {
@@ -1033,30 +1055,38 @@ class _GlassmorphismFramePainter extends CustomPainter {
       return Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(r)));
     }
 
-    const tipW = 8.0;
-    final tipCY = size.height * 0.5;
-    const tipHalfH = 14.0;
+    const tailW = 22.0;
+    const tailH = 12.0;
+    double tailCX;
+    if (speakerSide == 'left') {
+      tailCX = size.width * 0.22;
+    } else if (speakerSide == 'right') {
+      tailCX = size.width * 0.78;
+    } else {
+      tailCX = size.width * 0.5;
+    }
+    tailCX = tailCX.clamp(r + tailW / 2 + 2, size.width - r - tailW / 2 - 2);
 
     final path = Path();
     path.moveTo(r, 0);
     path.lineTo(size.width - r, 0);
     path.arcToPoint(Offset(size.width, r), radius: Radius.circular(r));
-
-    // Right side with tip
-    path.lineTo(size.width, tipCY - tipHalfH);
-    path.lineTo(size.width + tipW, tipCY);
-    path.lineTo(size.width, tipCY + tipHalfH);
-
     path.lineTo(size.width, size.height - r);
     path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
+
+    // Bottom edge with tail (right to left)
+    path.lineTo(tailCX + tailW / 2, size.height);
+    path.quadraticBezierTo(
+      tailCX + tailW * 0.1, size.height + tailH * 0.45,
+      tailCX, size.height + tailH,
+    );
+    path.quadraticBezierTo(
+      tailCX - tailW * 0.1, size.height + tailH * 0.45,
+      tailCX - tailW / 2, size.height,
+    );
+
     path.lineTo(r, size.height);
     path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
-
-    // Left side with tip (going up)
-    path.lineTo(0, tipCY + tipHalfH);
-    path.lineTo(-tipW, tipCY);
-    path.lineTo(0, tipCY - tipHalfH);
-
     path.lineTo(0, r);
     path.arcToPoint(Offset(r, 0), radius: Radius.circular(r));
     path.close();

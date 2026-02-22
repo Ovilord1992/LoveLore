@@ -139,34 +139,23 @@
   position: relative;
   min-height: 72px;
 }
-/* Banner/scroll pointed tips on both sides (Romance Club style) */
-.gp-frame-body::before,
+/* Speech bubble tail on the bottom edge */
 .gp-frame-body::after {
   content: '';
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0;
-  height: 0;
-  border-style: solid;
+  bottom: -7px;
+  width: 16px;
+  height: 8px;
+  background: inherit;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  z-index: 1;
 }
-.gp-frame-body::before {
-  left: -6px;
-  border-width: 8px 6px 8px 0;
-  border-color: transparent;
-  border-right-color: inherit;
-}
-.gp-frame-body::after {
-  right: -6px;
-  border-width: 8px 0 8px 6px;
-  border-color: transparent;
-  border-left-color: inherit;
-}
-/* Hide tips for narration */
-.gp-frame-body.gp-narration::before,
-.gp-frame-body.gp-narration::after {
-  display: none;
-}
+/* Position tail based on speaker side */
+.gp-frame-body.gp-tail-left::after { left: 20%; }
+.gp-frame-body.gp-tail-right::after { right: 20%; }
+.gp-frame-body.gp-tail-center::after { left: 50%; transform: translateX(-50%); }
+/* Hide tail for narration */
+.gp-frame-body.gp-narration::after { display: none; }
 
 /* ── Ornate (gold classic) ── */
 .gp-name-ornate {
