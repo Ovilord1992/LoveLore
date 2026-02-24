@@ -464,20 +464,30 @@ class _GameScreenState extends ConsumerState<GameScreen>
           CharacterPosition.center => 0.0,
         };
 
+        final sprite = AnimatedCharacterSprite(
+          key: ValueKey('${sc.characterId}_${sc.spriteId}'),
+          characterId: sc.characterId,
+          spriteImage: spriteImage,
+          novelId: widget.novelId,
+          displayLetter: character.name[0],
+          animation: sc.animation,
+          spriteHeight: spriteH,
+          imageAlignment: Alignment.bottomCenter,
+        );
+
+        final positionedSprite = sc.position == CharacterPosition.left
+            ? Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.diagonal3Values(-1, 1, 1),
+                child: sprite,
+              )
+            : sprite;
+
         return Align(
           alignment: Alignment.bottomCenter,
           child: Transform.translate(
             offset: Offset(xOffset, 0.0),
-            child: AnimatedCharacterSprite(
-              key: ValueKey('${sc.characterId}_${sc.spriteId}'),
-              characterId: sc.characterId,
-              spriteImage: spriteImage,
-              novelId: widget.novelId,
-              displayLetter: character.name[0],
-              animation: sc.animation,
-              spriteHeight: spriteH,
-              imageAlignment: Alignment.bottomCenter,
-            ),
+            child: positionedSprite,
           ),
         );
       }).toList(),
