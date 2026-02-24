@@ -1,7 +1,11 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+
 import '../models/scene.dart';
 
 /// Анимации переходов между сценами
@@ -107,7 +111,11 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
     ]) {
       final file = File(candidate);
       if (await file.exists()) {
-        if (mounted) setState(() { _imageFile = file; _resolved = true; });
+        if (mounted)
+          setState(() {
+            _imageFile = file;
+            _resolved = true;
+          });
         return;
       }
     }
@@ -143,6 +151,56 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
       end: Alignment.bottomCenter,
       colors: [Color(0xFF0F3460), Color(0xFF1A1A2E)],
     );
+  }
+}
+
+class _TrimmedSprite {
+  final ui.Image image;
+  final ui.Rect srcRect;
+
+  const _TrimmedSprite({required this.image, required this.srcRect});
+}
+
+class _TrimmedSpriteView extends StatelessWidget {
+  final ui.Image image;
+  final ui.Rect srcRect;
+  final double height;
+
+  const _TrimmedSpriteView({
+    required this.image,
+    required this.srcRect,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final w = srcRect.width * (height / srcRect.height);
+    return SizedBox(
+      width: w,
+      height: height,
+      child: CustomPaint(
+        painter: _TrimmedSpritePainter(image: image, srcRect: srcRect),
+      ),
+    );
+  }
+}
+
+class _TrimmedSpritePainter extends CustomPainter {
+  final ui.Image image;
+  final ui.Rect srcRect;
+
+  _TrimmedSpritePainter({required this.image, required this.srcRect});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final dst = ui.Rect.fromLTWH(0, 0, size.width, size.height);
+    final paint = Paint()..filterQuality = FilterQuality.high;
+    canvas.drawImageRect(image, srcRect, dst, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrimmedSpritePainter oldDelegate) {
+    return oldDelegate.image != image || oldDelegate.srcRect != srcRect;
   }
 }
 
@@ -184,6 +242,12 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
   late Animation<double> _shakeAnimation;
   File? _spriteFile;
   File? _prevSpriteFile;
+
+  ui.Image? _spriteUiImage;
+  ui.Rect? _spriteSrcRect;
+  ui.Image? _prevSpriteUiImage;
+  ui.Rect? _prevSpriteSrcRect;
+
   bool _resolved = false;
   bool _crossFading = false;
 
@@ -205,11 +269,15 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
 
     // Fade
     if (anim == 'fade_out') {
-      _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-      );
+      _fadeAnimation = Tween<double>(
+        begin: 1.0,
+        end: 0.0,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     } else {
-      _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+      _fadeAnimation = CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeIn,
+      );
     }
 
     // Slide
@@ -221,9 +289,10 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
     } else {
       slideBegin = const Offset(0, 0.1);
     }
-    _slideAnimation = Tween<Offset>(begin: slideBegin, end: Offset.zero).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _slideAnimation = Tween<Offset>(
+      begin: slideBegin,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     // Bounce
     _bounceAnimation = anim == 'bounce'
@@ -232,7 +301,9 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
             TweenSequenceItem(tween: Tween(begin: -20.0, end: 0.0), weight: 20),
             TweenSequenceItem(tween: Tween(begin: 0.0, end: -10.0), weight: 25),
             TweenSequenceItem(tween: Tween(begin: -10.0, end: 0.0), weight: 25),
-          ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
+          ]).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+          )
         : const AlwaysStoppedAnimation(0.0);
 
     // Shake
@@ -243,7 +314,9 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
             TweenSequenceItem(tween: Tween(begin: -8.0, end: 6.0), weight: 20),
             TweenSequenceItem(tween: Tween(begin: 6.0, end: -4.0), weight: 20),
             TweenSequenceItem(tween: Tween(begin: -4.0, end: 0.0), weight: 30),
-          ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
+          ]).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+          )
         : const AlwaysStoppedAnimation(0.0);
   }
 
@@ -251,9 +324,18 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
   void didUpdateWidget(AnimatedCharacterSprite oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.spriteImage != widget.spriteImage) {
+      // Dispose sprite from two changes ago (we keep at most 2 images in memory: prev + current).
+      _prevSpriteUiImage?.dispose();
+
       _prevSpriteFile = _spriteFile;
+      _prevSpriteUiImage = _spriteUiImage;
+      _prevSpriteSrcRect = _spriteSrcRect;
+
       _resolved = false;
       _spriteFile = null;
+      _spriteUiImage = null;
+      _spriteSrcRect = null;
+
       _crossFading = widget.spriteDuration > 0 && _prevSpriteFile != null;
       _resolveSprite();
     }
@@ -266,18 +348,115 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
     }
 
     final appDir = await getApplicationDocumentsDirectory();
-    final path = '${appDir.path}/novels/${widget.novelId}/${widget.spriteImage}';
+    final path =
+        '${appDir.path}/novels/${widget.novelId}/${widget.spriteImage}';
     final file = File(path);
     if (await file.exists()) {
-      if (mounted) setState(() { _spriteFile = file; _resolved = true; });
+      final trimmed = await _decodeAndTrimSprite(file);
+      if (!mounted) {
+        trimmed?.image.dispose();
+        return;
+      }
+      setState(() {
+        _spriteFile = file;
+        _spriteUiImage = trimmed?.image;
+        _spriteSrcRect = trimmed?.srcRect;
+        _resolved = true;
+      });
       return;
     }
 
     if (mounted) setState(() => _resolved = true);
   }
 
+  Future<_TrimmedSprite?> _decodeAndTrimSprite(File file) async {
+    ui.Codec? codec;
+    ui.Image? image;
+
+    try {
+      final bytes = await file.readAsBytes();
+      codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      image = frame.image;
+
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (data == null) {
+        return _TrimmedSprite(
+          image: image,
+          srcRect: ui.Rect.fromLTWH(
+            0,
+            0,
+            image.width.toDouble(),
+            image.height.toDouble(),
+          ),
+        );
+      }
+
+      final rect = _computeOpaqueBounds(
+        rgba: data,
+        width: image.width,
+        height: image.height,
+        alphaThreshold: 8,
+        paddingPx: 2,
+      );
+
+      return _TrimmedSprite(image: image, srcRect: rect);
+    } catch (_) {
+      image?.dispose();
+      return null;
+    } finally {
+      codec?.dispose();
+    }
+  }
+
+  ui.Rect _computeOpaqueBounds({
+    required ByteData rgba,
+    required int width,
+    required int height,
+    required int alphaThreshold,
+    required int paddingPx,
+  }) {
+    final bytes = rgba.buffer.asUint8List();
+
+    var minX = width;
+    var minY = height;
+    var maxX = -1;
+    var maxY = -1;
+
+    for (var y = 0; y < height; y++) {
+      final row = y * width * 4;
+      for (var x = 0; x < width; x++) {
+        final a = bytes[row + x * 4 + 3];
+        if (a > alphaThreshold) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (maxX < 0 || maxY < 0) {
+      return ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble());
+    }
+
+    minX = max(0, minX - paddingPx);
+    minY = max(0, minY - paddingPx);
+    maxX = min(width - 1, maxX + paddingPx);
+    maxY = min(height - 1, maxY + paddingPx);
+
+    return ui.Rect.fromLTRB(
+      minX.toDouble(),
+      minY.toDouble(),
+      (maxX + 1).toDouble(),
+      (maxY + 1).toDouble(),
+    );
+  }
+
   @override
   void dispose() {
+    _spriteUiImage?.dispose();
+    _prevSpriteUiImage?.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -286,20 +465,49 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
   Widget build(BuildContext context) {
     final h = widget.spriteHeight;
     final align = widget.imageAlignment;
+
+    Widget current = _resolved
+        ? (_spriteUiImage != null && _spriteSrcRect != null
+              ? _TrimmedSpriteView(
+                  image: _spriteUiImage!,
+                  srcRect: _spriteSrcRect!,
+                  height: h,
+                )
+              : (_spriteFile != null
+                    ? Image.file(
+                        _spriteFile!,
+                        height: h,
+                        fit: BoxFit.contain,
+                        alignment: align,
+                      )
+                    : _buildPlaceholder()))
+        : _buildPlaceholder();
+
     Widget spriteWidget;
     if (_crossFading && _prevSpriteFile != null) {
+      final prev = (_prevSpriteUiImage != null && _prevSpriteSrcRect != null)
+          ? _TrimmedSpriteView(
+              image: _prevSpriteUiImage!,
+              srcRect: _prevSpriteSrcRect!,
+              height: h,
+            )
+          : Image.file(
+              _prevSpriteFile!,
+              height: h,
+              fit: BoxFit.contain,
+              alignment: align,
+            );
+
       spriteWidget = AnimatedCrossFade(
-        firstChild: Image.file(_prevSpriteFile!, height: h, fit: BoxFit.contain, alignment: align),
-        secondChild: _resolved && _spriteFile != null
-            ? Image.file(_spriteFile!, height: h, fit: BoxFit.contain, alignment: align)
-            : _buildPlaceholder(),
-        crossFadeState: _resolved ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+        firstChild: prev,
+        secondChild: current,
+        crossFadeState: _resolved
+            ? CrossFadeState.showSecond
+            : CrossFadeState.showFirst,
         duration: Duration(milliseconds: widget.spriteDuration),
       );
     } else {
-      spriteWidget = _resolved && _spriteFile != null
-          ? Image.file(_spriteFile!, height: h, fit: BoxFit.contain, alignment: align)
-          : _buildPlaceholder();
+      spriteWidget = current;
     }
 
     return AnimatedBuilder(
@@ -329,7 +537,11 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
       child: Center(
         child: Text(
           widget.displayLetter,
-          style: const TextStyle(fontSize: 48, color: Colors.white24, fontWeight: FontWeight.w300),
+          style: const TextStyle(
+            fontSize: 48,
+            color: Colors.white24,
+            fontWeight: FontWeight.w300,
+          ),
         ),
       ),
     );
@@ -395,11 +607,26 @@ class _SceneEffectOverlayState extends State<SceneEffectOverlay>
 
   Widget _buildShake() {
     final shake = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: 10 * widget.intensity), weight: 10),
-      TweenSequenceItem(tween: Tween(begin: 10 * widget.intensity, end: -10 * widget.intensity), weight: 20),
-      TweenSequenceItem(tween: Tween(begin: -10 * widget.intensity, end: 8 * widget.intensity), weight: 20),
-      TweenSequenceItem(tween: Tween(begin: 8 * widget.intensity, end: -4 * widget.intensity), weight: 20),
-      TweenSequenceItem(tween: Tween(begin: -4 * widget.intensity, end: 0), weight: 30),
+      TweenSequenceItem(
+        tween: Tween(begin: 0, end: 10 * widget.intensity),
+        weight: 10,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 10 * widget.intensity, end: -10 * widget.intensity),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: -10 * widget.intensity, end: 8 * widget.intensity),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 8 * widget.intensity, end: -4 * widget.intensity),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: -4 * widget.intensity, end: 0),
+        weight: 30,
+      ),
     ]).animate(_controller);
 
     return AnimatedBuilder(
@@ -413,8 +640,14 @@ class _SceneEffectOverlayState extends State<SceneEffectOverlay>
 
   Widget _buildFlash() {
     final opacity = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: widget.intensity), weight: 30),
-      TweenSequenceItem(tween: Tween(begin: widget.intensity, end: 0), weight: 70),
+      TweenSequenceItem(
+        tween: Tween(begin: 0, end: widget.intensity),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: widget.intensity, end: 0),
+        weight: 70,
+      ),
     ]).animate(_controller);
 
     return AnimatedBuilder(
@@ -426,9 +659,10 @@ class _SceneEffectOverlayState extends State<SceneEffectOverlay>
   }
 
   Widget _buildFadeToBlack() {
-    final opacity = Tween<double>(begin: 0, end: widget.intensity).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    final opacity = Tween<double>(
+      begin: 0,
+      end: widget.intensity,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     return AnimatedBuilder(
       animation: opacity,
@@ -480,22 +714,34 @@ class _WeatherPainter extends CustomPainter {
   final bool isSnow;
   final Random _random = Random(42);
 
-  _WeatherPainter({required this.progress, required this.intensity, required this.isSnow});
+  _WeatherPainter({
+    required this.progress,
+    required this.intensity,
+    required this.isSnow,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final count = (intensity * (isSnow ? 80 : 120)).toInt();
-    final paint = Paint()..color = Colors.white.withValues(alpha: isSnow ? 0.8 : 0.3);
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: isSnow ? 0.8 : 0.3);
     paint.strokeWidth = isSnow ? 2 : 1;
 
     for (int i = 0; i < count; i++) {
       final x = _random.nextDouble() * size.width;
       final speed = 0.5 + _random.nextDouble() * 0.5;
-      final y = ((progress * speed * size.height * 3) + _random.nextDouble() * size.height) % size.height;
+      final y =
+          ((progress * speed * size.height * 3) +
+              _random.nextDouble() * size.height) %
+          size.height;
 
       if (isSnow) {
         final radius = 1.5 + _random.nextDouble() * 2;
-        canvas.drawCircle(Offset(x + sin(progress * 6 + i) * 10, y), radius, paint);
+        canvas.drawCircle(
+          Offset(x + sin(progress * 6 + i) * 10, y),
+          radius,
+          paint,
+        );
       } else {
         final length = 8.0 + _random.nextDouble() * 12;
         canvas.drawLine(Offset(x, y), Offset(x - 2, y + length), paint);
@@ -517,22 +763,35 @@ class _ParticlePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final count = (intensity * 40).toInt();
-    final colors = [Colors.amber, Colors.pinkAccent, Colors.orangeAccent, Colors.white70];
+    final colors = [
+      Colors.amber,
+      Colors.pinkAccent,
+      Colors.orangeAccent,
+      Colors.white70,
+    ];
 
     for (int i = 0; i < count; i++) {
       final x = _random.nextDouble() * size.width;
       final baseY = _random.nextDouble() * size.height;
-      final y = baseY - progress * size.height * 0.5 * (0.5 + _random.nextDouble());
+      final y =
+          baseY - progress * size.height * 0.5 * (0.5 + _random.nextDouble());
       final radius = 1.5 + _random.nextDouble() * 2.5;
       final paint = Paint()
-        ..color = colors[i % colors.length].withValues(alpha: (1 - progress).clamp(0, 1))
+        ..color = colors[i % colors.length].withValues(
+          alpha: (1 - progress).clamp(0, 1),
+        )
         ..style = PaintingStyle.fill;
-      canvas.drawCircle(Offset(x + sin(progress * 4 + i) * 15, y % size.height), radius, paint);
+      canvas.drawCircle(
+        Offset(x + sin(progress * 4 + i) * 15, y % size.height),
+        radius,
+        paint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ParticlePainter old) => old.progress != progress;
+  bool shouldRepaint(covariant _ParticlePainter old) =>
+      old.progress != progress;
 }
 
 /// Полноэкранный CG-арт оверлей
@@ -577,18 +836,35 @@ class _CgOverlayState extends State<CgOverlay>
   @override
   Widget build(BuildContext context) {
     final child = widget.imageFile != null
-        ? Image.file(widget.imageFile!, fit: BoxFit.contain, width: double.infinity, height: double.infinity)
-        : Container(color: Colors.black, child: const Center(child: Text('CG', style: TextStyle(color: Colors.white54, fontSize: 48))));
+        ? Image.file(
+            widget.imageFile!,
+            fit: BoxFit.contain,
+            width: double.infinity,
+            height: double.infinity,
+          )
+        : Container(
+            color: Colors.black,
+            child: const Center(
+              child: Text(
+                'CG',
+                style: TextStyle(color: Colors.white54, fontSize: 48),
+              ),
+            ),
+          );
 
     final animated = widget.transition == CgTransition.zoomIn
         ? AnimatedBuilder(
             animation: _controller,
             builder: (context, child) {
-              final scale = 0.8 + 0.2 * Curves.easeOut.transform(_controller.value);
+              final scale =
+                  0.8 + 0.2 * Curves.easeOut.transform(_controller.value);
               return Transform.scale(
                 scale: scale,
                 child: FadeTransition(
-                  opacity: CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+                  opacity: CurvedAnimation(
+                    parent: _controller,
+                    curve: Curves.easeIn,
+                  ),
                   child: child,
                 ),
               );
@@ -605,10 +881,7 @@ class _CgOverlayState extends State<CgOverlay>
         await _controller.reverse();
         widget.onDismiss();
       },
-      child: Container(
-        color: Colors.black87,
-        child: animated,
-      ),
+      child: Container(color: Colors.black87, child: animated),
     );
   }
 }
@@ -657,11 +930,7 @@ class EmotionBubble extends StatefulWidget {
   final EmotionType emotionType;
   final VoidCallback? onComplete;
 
-  const EmotionBubble({
-    super.key,
-    required this.emotionType,
-    this.onComplete,
-  });
+  const EmotionBubble({super.key, required this.emotionType, this.onComplete});
 
   @override
   State<EmotionBubble> createState() => _EmotionBubbleState();
@@ -760,7 +1029,12 @@ class ParallaxBackground extends StatelessWidget {
             return Transform.translate(
               offset: Offset(offset, 0),
               child: file.existsSync()
-                  ? Image.file(file, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+                  ? Image.file(
+                      file,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    )
                   : Container(color: Colors.black),
             );
           }).toList(),

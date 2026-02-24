@@ -86,10 +86,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
       }
     }
 
-    await ref.read(sceneEngineProvider.notifier).startNovel(
-      widget.novelId,
-      forceNew: widget.forceNew,
-    );
+    await ref
+        .read(sceneEngineProvider.notifier)
+        .startNovel(widget.novelId, forceNew: widget.forceNew);
     _saveService = ref.read(saveServiceProvider.notifier);
     setState(() => _isLoading = false);
     _fadeController.forward();
@@ -109,7 +108,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.surfaceDark,
-        title: const Text('Нет билетов ⚡', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Нет билетов ⚡',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Билеты закончились.\nСледующий через $min м $sec с.',
           style: const TextStyle(color: Colors.white70, height: 1.5),
@@ -120,7 +122,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
               Navigator.pop(ctx);
               Navigator.of(context).pop();
             },
-            child: Text(ref.tr('back'), style: const TextStyle(color: Colors.white54)),
+            child: Text(
+              ref.tr('back'),
+              style: const TextStyle(color: Colors.white54),
+            ),
           ),
           if (adService.canShowAd)
             TextButton(
@@ -128,7 +133,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 final success = await adService.showRewardedAd(
                   rewardType: 'tickets',
                   onReward: (_, amount) {
-                    ref.read(currencyServiceProvider.notifier).addTickets(amount);
+                    ref
+                        .read(currencyServiceProvider.notifier)
+                        .addTickets(amount);
                   },
                 );
                 if (success && ctx.mounted) {
@@ -159,7 +166,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 );
               }
             },
-            child: const Text('💎 10 алмазов', style: TextStyle(color: AppTheme.primary)),
+            child: const Text(
+              '💎 10 алмазов',
+              style: TextStyle(color: AppTheme.primary),
+            ),
           ),
         ],
       ),
@@ -167,10 +177,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
   }
 
   Future<void> _loadNovelAfterTicket() async {
-    await ref.read(sceneEngineProvider.notifier).startNovel(
-      widget.novelId,
-      forceNew: widget.forceNew,
-    );
+    await ref
+        .read(sceneEngineProvider.notifier)
+        .startNovel(widget.novelId, forceNew: widget.forceNew);
     _saveService = ref.read(saveServiceProvider.notifier);
     setState(() => _isLoading = false);
     _fadeController.forward();
@@ -201,7 +210,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     super.dispose();
   }
 
-    // ── Immersive UI show/hide ──
+  // ── Immersive UI show/hide ──
   void _showUI() {
     _uiHideTimer?.cancel();
     if (!_uiVisible) {
@@ -232,9 +241,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final chapterTransition = ref.watch(chapterTransitionProvider);
 
     if (_isLoading || gameState == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // Показываем UI перехода между главами
@@ -264,7 +271,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
               child: AnimatedBackground(
                 backgroundKey: scene?.background,
                 novelId: widget.novelId,
-                duration: Duration(milliseconds: scene?.transition?.duration ?? 800),
+                duration: Duration(
+                  milliseconds: scene?.transition?.duration ?? 800,
+                ),
               ),
             ),
 
@@ -297,7 +306,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   child: Container(
                     padding: EdgeInsets.only(
                       top: MediaQuery.of(context).padding.top + 8,
-                      left: 8, right: 8, bottom: 8,
+                      left: 8,
+                      right: 8,
+                      bottom: 8,
                     ),
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -310,22 +321,30 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white70,
+                          ),
                           onPressed: () {
                             _resetUITimer();
                             Navigator.of(context).pop();
                           },
                         ),
-                        Expanded(child: ChapterProgressIndicator(
-                          currentSceneIndex: engine.currentSceneIndex,
-                          totalScenes: engine.totalScenes,
-                          chapterTitle: engine.currentChapter?.title,
-                        )),
+                        Expanded(
+                          child: ChapterProgressIndicator(
+                            currentSceneIndex: engine.currentSceneIndex,
+                            totalScenes: engine.totalScenes,
+                            chapterTitle: engine.currentChapter?.title,
+                          ),
+                        ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.checkroom, color: Colors.white70),
+                              icon: const Icon(
+                                Icons.checkroom,
+                                color: Colors.white70,
+                              ),
                               tooltip: ref.tr('wardrobe'),
                               onPressed: () {
                                 _resetUITimer();
@@ -333,7 +352,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.save_outlined, color: Colors.white70),
+                              icon: const Icon(
+                                Icons.save_outlined,
+                                color: Colors.white70,
+                              ),
                               onPressed: () async {
                                 _resetUITimer();
                                 final messenger = ScaffoldMessenger.of(context);
@@ -350,7 +372,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.menu, color: Colors.white70),
+                              icon: const Icon(
+                                Icons.menu,
+                                color: Colors.white70,
+                              ),
                               onPressed: () {
                                 _resetUITimer();
                                 _showPauseMenu(context);
@@ -395,7 +420,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       }
                     }
                   }
-                  setState(() { _activeCg = null; _cgFile = null; });
+                  setState(() {
+                    _activeCg = null;
+                    _cgFile = null;
+                  });
                   engine.nextEvent();
                 },
               ),
@@ -412,7 +440,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Widget _buildCharacters(Scene scene, SceneEngine engine) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final spriteH = screenHeight * 0.75;
+    final spriteH = screenHeight * 0.87;
     return Stack(
       fit: StackFit.expand,
       clipBehavior: Clip.none,
@@ -423,7 +451,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
         // Найти путь к спрайту
         String? spriteImage;
         try {
-          final sprite = character.sprites.firstWhere((s) => s.id == sc.spriteId);
+          final sprite = character.sprites.firstWhere(
+            (s) => s.id == sc.spriteId,
+          );
           spriteImage = sprite.image;
         } catch (_) {}
 
@@ -437,7 +467,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return Align(
           alignment: Alignment.bottomCenter,
           child: Transform.translate(
-            offset: Offset(xOffset, screenHeight * 0.08),
+            offset: Offset(xOffset, 0.0),
             child: AnimatedCharacterSprite(
               key: ValueKey('${sc.characterId}_${sc.spriteId}'),
               characterId: sc.characterId,
@@ -446,6 +476,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
               displayLetter: character.name[0],
               animation: sc.animation,
               spriteHeight: spriteH,
+              imageAlignment: Alignment.bottomCenter,
             ),
           ),
         );
@@ -459,7 +490,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
       if (!currency.canAfford(choice.cost)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${ref.tr('not_enough_diamonds')} (${choice.cost} 💎)'),
+            content: Text(
+              '${ref.tr('not_enough_diamonds')} (${choice.cost} 💎)',
+            ),
             duration: const Duration(seconds: 2),
             backgroundColor: AppTheme.surfaceDark,
           ),
@@ -482,14 +515,20 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // Проверяем достижения на основе переменных
     final gameState = ref.read(sceneEngineProvider);
     if (gameState != null) {
-      final varUnlocked =
-          achievementService.checkVariableAchievements(gameState.variables);
+      final varUnlocked = achievementService.checkVariableAchievements(
+        gameState.variables,
+      );
       unlocked.addAll(varUnlocked);
     }
 
     if (unlocked.isNotEmpty && mounted) {
       final translatedHeader = ref.tr('achievement_unlocked');
-      AchievementPopup.showAll(context, unlocked, ref: ref, header: translatedHeader);
+      AchievementPopup.showAll(
+        context,
+        unlocked,
+        ref: ref,
+        header: translatedHeader,
+      );
     }
   }
 
@@ -497,14 +536,18 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final settings = ref.watch(settingsServiceProvider);
     // Per-novel dialogueStyle overrides user setting if specified
     final novelStyle = engine.novelMeta?.dialogueStyle;
-    final useOverlay = novelStyle == 'center' ||
+    final useOverlay =
+        novelStyle == 'center' ||
         (novelStyle == null && settings.useOverlayDialogue);
 
     // Overlay mode: dialogue/narration fills entire screen
-    if (useOverlay && event != null &&
-        (event.type == EventType.dialogue || event.type == EventType.narration)) {
-      final character =
-          event.speaker != null ? engine.getCharacter(event.speaker!) : null;
+    if (useOverlay &&
+        event != null &&
+        (event.type == EventType.dialogue ||
+            event.type == EventType.narration)) {
+      final character = event.speaker != null
+          ? engine.getCharacter(event.speaker!)
+          : null;
       final speakerName = character != null
           ? engine.trCharacter(character.id, character.name)
           : null;
@@ -528,12 +571,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
       return Positioned.fill(
         child: DialogueOverlay(
           speakerName: speakerName,
-          speakerColor:
-              character?.color != null ? _parseColor(character!.color!) : null,
+          speakerColor: character?.color != null
+              ? _parseColor(character!.color!)
+              : null,
           text: engine.tr(event.text),
           onTap: () => engine.nextEvent(),
           frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
-          customFrameColor: _parseHexColor(engine.novelMeta?.dialogueFrameColor),
+          customFrameColor: _parseHexColor(
+            engine.novelMeta?.dialogueFrameColor,
+          ),
           customBgColor: _parseHexColor(engine.novelMeta?.dialogueBgColor),
           centered: novelStyle == 'center',
           speakerSide: speakerSide,
@@ -574,20 +620,24 @@ class _GameScreenState extends ConsumerState<GameScreen>
           defaultChoiceIndex: event.defaultChoiceIndex,
           translateText: engine.tr,
           frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
-          customFrameColor: _parseHexColor(engine.novelMeta?.dialogueFrameColor),
+          customFrameColor: _parseHexColor(
+            engine.novelMeta?.dialogueFrameColor,
+          ),
           customBgColor: _parseHexColor(engine.novelMeta?.dialogueBgColor),
         );
 
       case EventType.dialogue:
-        final character =
-            event.speaker != null ? engine.getCharacter(event.speaker!) : null;
+        final character = event.speaker != null
+            ? engine.getCharacter(event.speaker!)
+            : null;
         final speakerName = character != null
             ? engine.trCharacter(character.id, character.name)
             : null;
         return DialogueBox(
           speakerName: speakerName,
-          speakerColor:
-              character?.color != null ? _parseColor(character!.color!) : null,
+          speakerColor: character?.color != null
+              ? _parseColor(character!.color!)
+              : null,
           text: engine.tr(event.text),
           onTap: () => engine.nextEvent(),
         );
@@ -613,7 +663,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (mounted && _activeCg == null) {
               final appDir = await getApplicationDocumentsDirectory();
-              final file = File('${appDir.path}/novels/${widget.novelId}/${event.cgImage}');
+              final file = File(
+                '${appDir.path}/novels/${widget.novelId}/${event.cgImage}',
+              );
               setState(() {
                 _activeCg = event;
                 _cgFile = file.existsSync() ? file : null;
@@ -632,9 +684,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 _cameraPanY = event.panY ?? 0.0;
                 _cameraDuration = event.cameraDuration ?? 1000;
               });
-              Future.delayed(Duration(milliseconds: event.cameraDuration ?? 1000), () {
-                if (mounted) engine.nextEvent();
-              });
+              Future.delayed(
+                Duration(milliseconds: event.cameraDuration ?? 1000),
+                () {
+                  if (mounted) engine.nextEvent();
+                },
+              );
             }
           });
           return const SizedBox.shrink();
@@ -658,13 +713,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
   List<Widget> _buildEmotionOverlays(Scene scene, SceneEngine engine) {
     if (_activeEmotion == null) return [];
     final charId = _activeEmotion!.characterId;
-    final sc = scene.charactersOnScreen.where((c) => c.characterId == charId).firstOrNull;
+    final sc = scene.charactersOnScreen
+        .where((c) => c.characterId == charId)
+        .firstOrNull;
     if (sc == null) {
       // Персонаж не на экране — показываем по центру
       return [
         Positioned(
           top: MediaQuery.of(context).size.height * 0.25,
-          left: 0, right: 0,
+          left: 0,
+          right: 0,
           child: Center(
             child: EmotionBubble(
               key: ValueKey('emotion_${_activeEmotion.hashCode}'),
@@ -738,10 +796,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   transition == ChapterTransition.completed
                       ? Icons.auto_stories
                       : transition == ChapterTransition.notReleased
-                          ? Icons.lock_clock
-                          : transition == ChapterTransition.loading
-                              ? Icons.downloading
-                              : Icons.download,
+                      ? Icons.lock_clock
+                      : transition == ChapterTransition.loading
+                      ? Icons.downloading
+                      : Icons.download,
                   size: 64,
                   color: AppTheme.primary,
                 ),
@@ -752,10 +810,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   transition == ChapterTransition.completed
                       ? 'Конец истории'
                       : transition == ChapterTransition.notReleased
-                          ? 'Продолжение следует...'
-                          : transition == ChapterTransition.loading
-                              ? ref.tr('loading')
-                              : 'Глава $nextNum',
+                      ? 'Продолжение следует...'
+                      : transition == ChapterTransition.loading
+                      ? ref.tr('loading')
+                      : 'Глава $nextNum',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -769,10 +827,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   transition == ChapterTransition.completed
                       ? 'Спасибо за прохождение! 💖'
                       : transition == ChapterTransition.notReleased
-                          ? 'Глава $nextNum ещё не вышла.\nСледите за обновлениями!'
-                          : transition == ChapterTransition.loading
-                              ? 'Загружаем следующую главу...'
-                              : 'Следующая глава доступна!',
+                      ? 'Глава $nextNum ещё не вышла.\nСледите за обновлениями!'
+                      : transition == ChapterTransition.loading
+                      ? 'Загружаем следующую главу...'
+                      : 'Следующая глава доступна!',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
@@ -839,10 +897,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
       barrierColor: Colors.black54,
       builder: (ctx) => _PauseMenuDialog(
         onResume: () => Navigator.of(ctx).pop(),
-        onSave: () { _autoSave(); Navigator.of(ctx).pop(); },
+        onSave: () {
+          _autoSave();
+          Navigator.of(ctx).pop();
+        },
         onSettings: () {
           Navigator.of(ctx).pop();
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
         },
         onExit: () {
           Navigator.of(ctx).pop();
@@ -859,13 +922,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
     // Если один персонаж — сразу открыть гардероб
     if (characters.length == 1) {
       final c = characters.first;
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => WardrobeScreen(
-          characterId: c.id,
-          characterName: c.name,
-          allOutfits: [],
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => WardrobeScreen(
+            characterId: c.id,
+            characterName: c.name,
+            allOutfits: [],
+          ),
         ),
-      ));
+      );
       return;
     }
 
@@ -882,25 +947,44 @@ class _GameScreenState extends ConsumerState<GameScreen>
           children: [
             const Padding(
               padding: EdgeInsets.all(16),
-              child: Text('Выбери персонажа', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-            ),
-            ...characters.map((c) => ListTile(
-              leading: CircleAvatar(
-                backgroundColor: c.color != null ? _parseColor(c.color!) : AppTheme.primary,
-                child: Text(c.name[0], style: const TextStyle(color: Colors.white)),
+              child: Text(
+                'Выбери персонажа',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              title: Text(c.name, style: const TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => WardrobeScreen(
-                    characterId: c.id,
-                    characterName: c.name,
-                    allOutfits: [],
+            ),
+            ...characters.map(
+              (c) => ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: c.color != null
+                      ? _parseColor(c.color!)
+                      : AppTheme.primary,
+                  child: Text(
+                    c.name[0],
+                    style: const TextStyle(color: Colors.white),
                   ),
-                ));
-              },
-            )),
+                ),
+                title: Text(
+                  c.name,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => WardrobeScreen(
+                        characterId: c.id,
+                        characterName: c.name,
+                        allOutfits: [],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -915,7 +999,12 @@ class _PauseMenuDialog extends ConsumerWidget {
   final VoidCallback onSettings;
   final VoidCallback onExit;
 
-  const _PauseMenuDialog({required this.onResume, required this.onSave, required this.onSettings, required this.onExit});
+  const _PauseMenuDialog({
+    required this.onResume,
+    required this.onSave,
+    required this.onSettings,
+    required this.onExit,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -928,21 +1017,37 @@ class _PauseMenuDialog extends ConsumerWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF16213E),
             borderRadius: BorderRadius.circular(24),
-            border: const Border(top: BorderSide(width: 2, color: Color(0xFFE91E63))),
+            border: const Border(
+              top: BorderSide(width: 2, color: Color(0xFFE91E63)),
+            ),
             boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 20)],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('⏸ Pause', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(
+                '⏸ Pause',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 20),
               _menuItem(Icons.save, '💾 ${ref.tr("save")}', onSave),
               const Divider(color: Colors.white10),
-              _menuItem(Icons.checkroom, '👗 ${ref.tr("wardrobe")}', () { Navigator.of(context).pop(); }),
+              _menuItem(Icons.checkroom, '👗 ${ref.tr("wardrobe")}', () {
+                Navigator.of(context).pop();
+              }),
               const Divider(color: Colors.white10),
               _menuItem(Icons.settings, '⚙️ ${ref.tr("settings")}', onSettings),
               const Divider(color: Colors.white10),
-              _menuItem(Icons.exit_to_app, '🚪 Exit', onExit, isDestructive: true),
+              _menuItem(
+                Icons.exit_to_app,
+                '🚪 Exit',
+                onExit,
+                isDestructive: true,
+              ),
               const SizedBox(height: 20),
               GestureDetector(
                 onTap: onResume,
@@ -950,11 +1055,20 @@ class _PauseMenuDialog extends ConsumerWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFFE91E63), Color(0xFF9C27B0)]),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
+                    ),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('Resume', textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                  child: Text(
+                    'Resume',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -964,16 +1078,31 @@ class _PauseMenuDialog extends ConsumerWidget {
     );
   }
 
-  Widget _menuItem(IconData icon, String label, VoidCallback onTap, {bool isDestructive = false}) {
+  Widget _menuItem(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    bool isDestructive = false,
+  }) {
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, color: isDestructive ? Colors.redAccent : Colors.white70, size: 22),
+            Icon(
+              icon,
+              color: isDestructive ? Colors.redAccent : Colors.white70,
+              size: 22,
+            ),
             const SizedBox(width: 12),
-            Text(label, style: TextStyle(fontSize: 16, color: isDestructive ? Colors.redAccent : Colors.white)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                color: isDestructive ? Colors.redAccent : Colors.white,
+              ),
+            ),
           ],
         ),
       ),
