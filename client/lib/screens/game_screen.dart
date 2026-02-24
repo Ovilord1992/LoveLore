@@ -440,7 +440,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Widget _buildCharacters(Scene scene, SceneEngine engine) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final spriteH = screenHeight * 0.87;
+    final spriteH = screenHeight * 0.83;
     return Stack(
       fit: StackFit.expand,
       clipBehavior: Clip.none,
