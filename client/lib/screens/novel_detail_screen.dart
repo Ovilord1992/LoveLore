@@ -202,7 +202,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                       runSpacing: 8,
                       alignment: WrapAlignment.center,
                       children: [
-                        _infoChip(Icons.menu_book, '${novel.totalChapters} ${ref.tr('chapters_count')}'),
+                        _infoChip(Icons.menu_book, '${novel.chaptersCount} ${ref.tr('chapters_count')}'),
                         _infoChip(Icons.access_time, '~15 мин/глава'),
                         _infoChip(Icons.calendar_today, 'Обновлено'),
                       ],

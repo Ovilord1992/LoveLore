@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:io';
 import 'remote_config_service.dart';
 
@@ -10,9 +12,12 @@ final adServiceProvider = Provider<AdService>((ref) => AdService(ref));
 class AdService {
   RewardedAd? _rewardedAd;
   bool _isLoading = false;
-  int _adsWatchedToday = 0;
-  DateTime? _lastResetDate;
   final Ref _ref;
+
+  /// Hive box, открытый в main.dart до runApp.
+  static const _settingsBox = 'app_settings';
+  static const _adsCountKey = 'ads_watched_today';
+  static const _adsResetDateKey = 'ads_last_reset_date';
 
   AdsConfig get _cfg => _ref.read(remoteConfigProvider).ads;
   int get maxAdsPerDay => _cfg.maxAdsPerDay;
@@ -100,7 +105,7 @@ class AdService {
     );
 
     await ad.show(onUserEarnedReward: (_, reward) {
-      _adsWatchedToday++;
+      _setAdsWatchedToday(_adsWatchedToday + 1);
       rewarded = true;
       final amount = rewardType == 'tickets' ? ticketReward : diamondReward;
       onReward(rewardType, amount);
@@ -109,15 +114,62 @@ class AdService {
     return rewarded;
   }
 
+  /// Геттер: текущее число просмотров за сегодня (из Hive).
+  int get _adsWatchedToday {
+    try {
+      final box = Hive.box<String>(_settingsBox);
+      final raw = box.get(_adsCountKey);
+      if (raw == null || raw.isEmpty) return 0;
+      return int.tryParse(raw) ?? 0;
+    } catch (e) {
+      debugPrint('[Ads] Failed to read ads_watched_today: $e');
+      return 0;
+    }
+  }
+
+  /// Сеттер: сохранить число просмотров в Hive.
+  void _setAdsWatchedToday(int value) {
+    try {
+      final box = Hive.box<String>(_settingsBox);
+      box.put(_adsCountKey, value.toString());
+    } catch (e) {
+      debugPrint('[Ads] Failed to write ads_watched_today: $e');
+    }
+  }
+
+  /// Геттер: дата последнего сброса (или null).
+  DateTime? get _lastResetDate {
+    try {
+      final box = Hive.box<String>(_settingsBox);
+      final raw = box.get(_adsResetDateKey);
+      if (raw == null || raw.isEmpty) return null;
+      return DateTime.tryParse(raw);
+    } catch (e) {
+      debugPrint('[Ads] Failed to read ads_last_reset_date: $e');
+      return null;
+    }
+  }
+
+  /// Сеттер: записать дату последнего сброса (ISO 8601).
+  void _setLastResetDate(DateTime date) {
+    try {
+      final box = Hive.box<String>(_settingsBox);
+      box.put(_adsResetDateKey, date.toIso8601String());
+    } catch (e) {
+      debugPrint('[Ads] Failed to write ads_last_reset_date: $e');
+    }
+  }
+
   /// Сброс счётчика при новом дне
   void _checkDailyReset() {
     final today = DateTime.now();
-    if (_lastResetDate == null ||
-        today.day != _lastResetDate!.day ||
-        today.month != _lastResetDate!.month ||
-        today.year != _lastResetDate!.year) {
-      _adsWatchedToday = 0;
-      _lastResetDate = today;
+    final last = _lastResetDate;
+    if (last == null ||
+        today.day != last.day ||
+        today.month != last.month ||
+        today.year != last.year) {
+      _setAdsWatchedToday(0);
+      _setLastResetDate(today);
     }
   }
 

@@ -7,6 +7,97 @@ export const syncRouter = Router();
 // Все роуты требуют авторизации
 syncRouter.use(authMiddleware);
 
+// ─── Валидаторы ─────────────────────────────────────────────────────────────
+const MAX_CURRENCY = 999_999;
+const MAX_COUNTER = 1_000_000;
+const MAX_COLLECTION_LEN = 10_000;
+const MAX_COLLECTION_ITEM_LEN = 100;
+const MAX_DISPLAY_NAME_LEN = 50;
+
+type ValidationError = { field: string };
+
+function isIntInRange(v: unknown, min: number, max: number): boolean {
+  return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+}
+
+function isStringArray(v: unknown, maxLen: number, maxItemLen: number): boolean {
+  if (!Array.isArray(v)) return false;
+  if (v.length > maxLen) return false;
+  for (const item of v) {
+    if (typeof item !== 'string') return false;
+    if (item.length === 0 || item.length > maxItemLen) return false;
+  }
+  return true;
+}
+
+function validateProfileFields(body: any): ValidationError | null {
+  if (body == null || typeof body !== 'object') {
+    return { field: 'body' };
+  }
+
+  if (body.displayName !== undefined) {
+    if (
+      typeof body.displayName !== 'string' ||
+      body.displayName.length < 1 ||
+      body.displayName.length > MAX_DISPLAY_NAME_LEN
+    ) {
+      return { field: 'displayName' };
+    }
+  }
+
+  const counterFields: ReadonlyArray<string> = [
+    'totalNovelsStarted',
+    'totalNovelsCompleted',
+    'totalChoicesMade',
+    'totalChaptersRead',
+    'avatarIndex',
+  ];
+  for (const f of counterFields) {
+    if (body[f] !== undefined && !isIntInRange(body[f], 0, MAX_COUNTER)) {
+      return { field: f };
+    }
+  }
+
+  if (
+    body.unlockedCGs !== undefined &&
+    !isStringArray(body.unlockedCGs, MAX_COLLECTION_LEN, MAX_COLLECTION_ITEM_LEN)
+  ) {
+    return { field: 'unlockedCGs' };
+  }
+  if (
+    body.achievements !== undefined &&
+    !isStringArray(body.achievements, MAX_COLLECTION_LEN, MAX_COLLECTION_ITEM_LEN)
+  ) {
+    return { field: 'achievements' };
+  }
+
+  return null;
+}
+
+function validateCurrencyFields(body: any): ValidationError | null {
+  if (body == null || typeof body !== 'object') {
+    return { field: 'body' };
+  }
+
+  if (body.diamonds !== undefined && !isIntInRange(body.diamonds, 0, MAX_CURRENCY)) {
+    return { field: 'diamonds' };
+  }
+  if (body.tickets !== undefined && !isIntInRange(body.tickets, 0, MAX_CURRENCY)) {
+    return { field: 'tickets' };
+  }
+  if (body.lastTicketRefill !== undefined && body.lastTicketRefill !== null) {
+    if (typeof body.lastTicketRefill !== 'string') {
+      return { field: 'lastTicketRefill' };
+    }
+    const t = Date.parse(body.lastTicketRefill);
+    if (Number.isNaN(t)) {
+      return { field: 'lastTicketRefill' };
+    }
+  }
+
+  return null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SAVES — сохранения игры
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -140,30 +231,69 @@ syncRouter.put('/profile', async (req: AuthRequest, res: Response) => {
   try {
     const data = req.body;
 
-    const profile = await prisma.userProfileData.upsert({
+    const validationError = validateProfileFields(data);
+    if (validationError) {
+      res.status(400).json({ error: `invalid value for ${validationError.field}` });
+      return;
+    }
+
+    const existing = await prisma.userProfileData.findUnique({
       where: { userId: req.userId },
-      update: {
-        displayName: data.displayName,
-        avatarIndex: data.avatarIndex,
-        totalNovelsStarted: data.totalNovelsStarted,
-        totalNovelsCompleted: data.totalNovelsCompleted,
-        totalChoicesMade: data.totalChoicesMade,
-        totalChaptersRead: data.totalChaptersRead,
-        unlockedCGs: data.unlockedCGs ?? [],
-        achievements: data.achievements ?? [],
-      },
-      create: {
-        userId: req.userId!,
-        displayName: data.displayName ?? 'Читатель',
-        avatarIndex: data.avatarIndex ?? 0,
-        totalNovelsStarted: data.totalNovelsStarted ?? 0,
-        totalNovelsCompleted: data.totalNovelsCompleted ?? 0,
-        totalChoicesMade: data.totalChoicesMade ?? 0,
-        totalChaptersRead: data.totalChaptersRead ?? 0,
-        unlockedCGs: data.unlockedCGs ?? [],
-        achievements: data.achievements ?? [],
-      },
     });
+
+    // Merge: undefined → не трогать; счётчики → max; коллекции → union
+    const merged = {
+      displayName:
+        data.displayName !== undefined
+          ? data.displayName
+          : existing?.displayName ?? 'Читатель',
+      avatarIndex:
+        data.avatarIndex !== undefined ? data.avatarIndex : existing?.avatarIndex ?? 0,
+      totalNovelsStarted:
+        data.totalNovelsStarted !== undefined
+          ? Math.max(existing?.totalNovelsStarted ?? 0, data.totalNovelsStarted)
+          : existing?.totalNovelsStarted ?? 0,
+      totalNovelsCompleted:
+        data.totalNovelsCompleted !== undefined
+          ? Math.max(existing?.totalNovelsCompleted ?? 0, data.totalNovelsCompleted)
+          : existing?.totalNovelsCompleted ?? 0,
+      totalChoicesMade:
+        data.totalChoicesMade !== undefined
+          ? Math.max(existing?.totalChoicesMade ?? 0, data.totalChoicesMade)
+          : existing?.totalChoicesMade ?? 0,
+      totalChaptersRead:
+        data.totalChaptersRead !== undefined
+          ? Math.max(existing?.totalChaptersRead ?? 0, data.totalChaptersRead)
+          : existing?.totalChaptersRead ?? 0,
+      unlockedCGs:
+        data.unlockedCGs !== undefined
+          ? Array.from(new Set([...(existing?.unlockedCGs ?? []), ...data.unlockedCGs]))
+          : existing?.unlockedCGs ?? [],
+      achievements:
+        data.achievements !== undefined
+          ? Array.from(new Set([...(existing?.achievements ?? []), ...data.achievements]))
+          : existing?.achievements ?? [],
+    };
+
+    // Если displayName был обновлён клиентом — синхронизируем его и в User.displayName,
+    // чтобы поле не расходилось между моделями. Делаем единой транзакцией.
+    const shouldSyncUserDisplayName = data.displayName !== undefined;
+
+    const [profile] = await prisma.$transaction([
+      prisma.userProfileData.upsert({
+        where: { userId: req.userId },
+        update: merged,
+        create: { userId: req.userId!, ...merged },
+      }),
+      ...(shouldSyncUserDisplayName
+        ? [
+            prisma.user.update({
+              where: { id: req.userId! },
+              data: { displayName: merged.displayName },
+            }),
+          ]
+        : []),
+    ]);
 
     res.json({ profile });
   } catch (err) {
@@ -206,22 +336,44 @@ syncRouter.put('/currency', async (req: AuthRequest, res: Response) => {
   try {
     const data = req.body;
 
+    const validationError = validateCurrencyFields(data);
+    if (validationError) {
+      res.status(400).json({ error: `invalid value for ${validationError.field}` });
+      return;
+    }
+
+    const existing = await prisma.currencyData.findUnique({
+      where: { userId: req.userId },
+    });
+
+    // Нельзя обнулять с клиента — берём max
+    const mergedDiamonds =
+      data.diamonds !== undefined
+        ? Math.max(existing?.diamonds ?? 50, data.diamonds)
+        : existing?.diamonds ?? 50;
+    const mergedTickets =
+      data.tickets !== undefined
+        ? Math.max(existing?.tickets ?? 5, data.tickets)
+        : existing?.tickets ?? 5;
+    const mergedLastRefill =
+      data.lastTicketRefill !== undefined
+        ? data.lastTicketRefill
+          ? new Date(data.lastTicketRefill)
+          : null
+        : existing?.lastTicketRefill ?? null;
+
     const currency = await prisma.currencyData.upsert({
       where: { userId: req.userId },
       update: {
-        diamonds: data.diamonds,
-        tickets: data.tickets,
-        lastTicketRefill: data.lastTicketRefill
-          ? new Date(data.lastTicketRefill)
-          : null,
+        diamonds: mergedDiamonds,
+        tickets: mergedTickets,
+        lastTicketRefill: mergedLastRefill,
       },
       create: {
         userId: req.userId!,
-        diamonds: data.diamonds ?? 50,
-        tickets: data.tickets ?? 5,
-        lastTicketRefill: data.lastTicketRefill
-          ? new Date(data.lastTicketRefill)
-          : null,
+        diamonds: mergedDiamonds,
+        tickets: mergedTickets,
+        lastTicketRefill: mergedLastRefill,
       },
     });
 
@@ -254,6 +406,15 @@ syncRouter.get('/favorites', async (req: AuthRequest, res: Response) => {
 // ─── POST /v1/sync/favorites/:novelId ── Переключить избранное ──────────────
 syncRouter.post('/favorites/:novelId', async (req: AuthRequest, res: Response) => {
   try {
+    const novel = await prisma.novel.findUnique({
+      where: { id: req.params.novelId },
+      select: { id: true },
+    });
+    if (!novel) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
     const existing = await prisma.favorite.findUnique({
       where: { userId_novelId: { userId: req.userId!, novelId: req.params.novelId } },
     });

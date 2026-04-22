@@ -1,10 +1,25 @@
 import AdmZip from 'adm-zip';
 import path from 'path';
 
+const MAX_UNCOMPRESSED_SIZE = 1024 * 1024 * 1024; // 1 GB
+
+/** Защита от zip-bomb: проверяем суммарный распакованный размер архива */
+function checkZipSize(zip: AdmZip): void {
+  const entries = zip.getEntries();
+  let total = 0;
+  for (const entry of entries) {
+    total += entry.header.size;
+    if (total > MAX_UNCOMPRESSED_SIZE) {
+      throw new Error(`ZIP exceeds max uncompressed size (${MAX_UNCOMPRESSED_SIZE} bytes)`);
+    }
+  }
+}
+
 /** Извлечь meta.json из ZIP-файла новеллы */
 export function extractMetaFromZip(zipPath: string): Record<string, unknown> | null {
+  const zip = new AdmZip(zipPath);
+  checkZipSize(zip);
   try {
-    const zip = new AdmZip(zipPath);
     const entries = zip.getEntries();
 
     // Ищем meta.json (может быть в корне или в подпапке)
@@ -27,8 +42,9 @@ export function extractCoverFromZip(
   coverFilename: string,
   outputDir: string
 ): string | null {
+  const zip = new AdmZip(zipPath);
+  checkZipSize(zip);
   try {
-    const zip = new AdmZip(zipPath);
     const entries = zip.getEntries();
 
     // Ищем файл обложки (cover.png, cover.jpg, etc.)
@@ -57,8 +73,9 @@ export function extractCoverFromZip(
 export function extractChaptersFromZip(
   zipPath: string
 ): { number: number; title: string }[] {
+  const zip = new AdmZip(zipPath);
+  checkZipSize(zip);
   try {
-    const zip = new AdmZip(zipPath);
     const entries = zip.getEntries();
     const chapters: { number: number; title: string }[] = [];
 

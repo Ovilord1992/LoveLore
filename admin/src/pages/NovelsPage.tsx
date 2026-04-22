@@ -66,6 +66,8 @@ export default function NovelsPage() {
 
   const openTranslations = async (novelId: string, title: string) => {
     setTranslationModal({ novelId, title });
+    setTranslationJson('');
+    setLanguages({ sourceLanguage: 'ru', translations: [] });
     try {
       const { data } = await api.get(`/novels/${novelId}/languages`);
       setLanguages({ sourceLanguage: data.sourceLanguage, translations: data.translations });

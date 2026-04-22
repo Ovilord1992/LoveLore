@@ -154,7 +154,7 @@ export async function importProjectFromZip(file: File): Promise<{ project: Novel
   }
 
   const project: NovelProject = {
-    meta: { ...meta, totalChapters: chapters.length },
+    meta: { ...meta, chaptersCount: chapters.length },
     characters,
     variables,
     chapters,

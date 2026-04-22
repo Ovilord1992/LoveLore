@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import '../models/game_state.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
 import 'save_service.dart';
@@ -170,7 +172,8 @@ class SyncService {
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
 
-      // Восстанавливаем сохранения
+      // Восстанавливаем сохранения: только если локального ещё нет —
+      // тогда импортируем серверные данные напрямую в Hive.
       final saves = body['saves'] as List?;
       if (saves != null) {
         final saveService = _ref.read(saveServiceProvider.notifier);
@@ -178,14 +181,8 @@ class SyncService {
           final s = save as Map<String, dynamic>;
           final novelId = s['novelId'] as String;
           final data = s['data'] as Map<String, dynamic>;
-          // Импортируем если нет локального сохранения
           if (!saveService.hasSave(novelId)) {
-            final gameState =
-                _ref.read(saveServiceProvider.notifier).loadGame(novelId);
-            if (gameState == null) {
-              // Создаём GameState из серверных данных
-              await _importSave(novelId, data);
-            }
+            await _importSave(novelId, data);
           }
         }
       }
@@ -230,17 +227,22 @@ class SyncService {
       if (gameState != null) {
         await saveService.saveGame(gameState);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Sync] Failed to import save for $novelId: $e');
+    }
   }
 
-  dynamic _createGameStateFromJson(
+  /// Десериализует серверный JSON в GameState.
+  /// Если в данных отсутствует novelId (старые серверные сохранения) —
+  /// подставляем известный из URL.
+  GameState? _createGameStateFromJson(
       String novelId, Map<String, dynamic> json) {
     try {
-      // Используем GameState.fromJson напрямую
-      return _ref
-          .read(saveServiceProvider.notifier)
-          .loadGame(novelId);
-    } catch (_) {
+      final patched = Map<String, dynamic>.from(json);
+      patched.putIfAbsent('novelId', () => novelId);
+      return GameState.fromJson(patched);
+    } catch (e) {
+      debugPrint('[Sync] Failed to parse server GameState for $novelId: $e');
       return null;
     }
   }

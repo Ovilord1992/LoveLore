@@ -34,7 +34,8 @@ NovelMeta _$NovelMetaFromJson(Map<String, dynamic> json) => NovelMeta(
   tags:
       (json['tags'] as List<dynamic>?)?.map((e) => e as String).toList() ??
       const [],
-  totalChapters: (json['totalChapters'] as num?)?.toInt() ?? 0,
+  chaptersCount:
+      (_readChaptersCount(json, 'chaptersCount') as num?)?.toInt() ?? 0,
   releasedChapters: (json['releasedChapters'] as num?)?.toInt() ?? 0,
   dialogueTheme: json['dialogueTheme'] as String?,
   dialogueFrameColor: json['dialogueFrameColor'] as String?,
@@ -50,7 +51,7 @@ Map<String, dynamic> _$NovelMetaToJson(NovelMeta instance) => <String, dynamic>{
   'coverImage': instance.coverImage,
   'coverUrl': instance.coverUrl,
   'tags': instance.tags,
-  'totalChapters': instance.totalChapters,
+  'chaptersCount': instance.chaptersCount,
   'releasedChapters': instance.releasedChapters,
   'dialogueTheme': instance.dialogueTheme,
   'dialogueFrameColor': instance.dialogueFrameColor,

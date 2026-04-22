@@ -380,19 +380,26 @@ adminRouter.put('/config', async (req: AuthRequest, res: Response) => {
 // ─── GET /v1/admin/reviews ── Список отзывов ─────────────────────────────────
 adminRouter.get('/reviews', async (req: AuthRequest, res: Response) => {
   try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
     const status = req.query.status as string | undefined;
     const where = status ? { status } : {};
 
-    const reviews = await prisma.review.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: { select: { id: true, displayName: true, email: true } },
-        novel: { select: { id: true, title: true } },
-      },
-    });
+    const [items, total] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          user: { select: { id: true, displayName: true, email: true } },
+          novel: { select: { id: true, title: true } },
+        },
+      }),
+      prisma.review.count({ where }),
+    ]);
 
-    res.json({ reviews });
+    res.json({ items, total, page, limit });
   } catch (err) {
     console.error('Admin reviews error:', err);
     res.status(500).json({ error: 'Internal server error' });

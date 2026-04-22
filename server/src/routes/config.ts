@@ -4,7 +4,9 @@ import prisma from '../db';
 export const configRouter = Router();
 
 // GET /v1/config — публичный, возвращает весь конфиг
-// Поддерживает ?v=N — если клиентская версия == серверная, возвращает 304
+// Поддерживает ?v=N — если клиентская версия строго равна серверной, возвращает 304.
+// Строгое равенство нужно, чтобы при откате серверного конфига (понижение version)
+// клиент с большей кеш-версией всё равно получил актуальный (более старый) конфиг.
 configRouter.get('/', async (req: Request, res: Response) => {
   try {
     const config = await prisma.gameConfig.findUnique({
@@ -16,9 +18,12 @@ configRouter.get('/', async (req: Request, res: Response) => {
     }
 
     // Проверка версии для кеширования
-    const clientVersion = parseInt(req.query.v as string, 10);
-    if (!isNaN(clientVersion) && clientVersion >= config.version) {
-      return res.status(304).end();
+    const rawVersion = req.query.v;
+    if (typeof rawVersion === 'string' && rawVersion.length > 0) {
+      const clientVersion = parseInt(rawVersion, 10);
+      if (!isNaN(clientVersion) && clientVersion === config.version) {
+        return res.status(304).end();
+      }
     }
 
     res.json({

@@ -1,6 +1,6 @@
 import { useEditorStore } from '../../store/editorStore';
-import type { Scene, SceneEvent as SceneEventType, Choice, EffectType, CgTransition, EmotionType } from '../../types/novel';
-import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette, Sparkles, Camera, Heart, Timer, Layers, ImagePlus } from 'lucide-react';
+import type { Scene, SceneEvent as SceneEventType, SceneCharacter, Choice, EffectType, CgTransition, EmotionType, BackgroundLayer } from '../../types/novel';
+import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette, Sparkles, Camera, Heart, Layers, ImagePlus, Settings, Volume2, X } from 'lucide-react';
 import './EventEditor.css';
 
 export function EventEditor() {
@@ -24,6 +24,8 @@ export function EventEditor() {
     if (type === 'showCg') { event.cgImage = ''; event.cgTransition = 'fade'; event.cgDuration = 800; }
     if (type === 'cameraMove') { event.zoom = 1.0; event.panX = 0; event.panY = 0; event.cameraDuration = 1000; }
     if (type === 'showEmotion') { event.characterId = ''; event.emotionType = 'heart'; }
+    if (type === 'set_variable') { event.variable = ''; event.value = ''; }
+    if (type === 'play_sound') { event.sound = ''; }
     addEvent(scene.id, event);
   };
 
@@ -80,14 +82,42 @@ export function EventEditor() {
         <button onClick={() => handleAddEvent('showEmotion')} title="Эмоция">
           <Heart size={16} /> Эмоция
         </button>
+        <button onClick={() => handleAddEvent('set_variable')} title="Установить переменную">
+          <Settings size={16} /> Переменная
+        </button>
+        <button onClick={() => handleAddEvent('play_sound')} title="Проиграть звук">
+          <Volume2 size={16} /> Звук
+        </button>
       </div>
     </div>
   );
 }
 
 function SceneSettings({ scene }: { scene: Scene }) {
-  const { updateScene, addImage } = useEditorStore();
+  const { project, updateScene, addImage } = useEditorStore();
   const bgUrl = useEditorStore((s) => scene.background ? s.imageUrls.get(`backgrounds/${scene.background}`) : undefined);
+  const images = useEditorStore((s) => s.images);
+
+  // Собираем список доступных фонов: из загруженных файлов (Map) + уже использованные в сценах
+  const availableBackgrounds = (() => {
+    const set = new Set<string>();
+    images.forEach((_, path) => {
+      if (path.startsWith('backgrounds/')) set.add(path.replace(/^backgrounds\//, ''));
+    });
+    for (const ch of project.chapters) {
+      for (const sc of ch.scenes) {
+        if (sc.background) set.add(sc.background);
+        sc.backgroundLayers?.forEach((l) => { if (l.image) set.add(l.image); });
+        for (const ev of sc.events) {
+          if (ev.type === 'changeBackground' && ev.background) set.add(ev.background);
+        }
+      }
+    }
+    return Array.from(set).sort();
+  })();
+
+  const layers = scene.backgroundLayers || [];
+  const hasLayers = layers.length > 0;
 
   const handleBgUpload = () => {
     const input = document.createElement('input');
@@ -103,17 +133,53 @@ function SceneSettings({ scene }: { scene: Scene }) {
     input.click();
   };
 
+  const addLayer = () => {
+    const newLayer: BackgroundLayer = {
+      image: availableBackgrounds[0] || '',
+      depth: layers.length === 0 ? 0 : Math.min(1, layers.length / 3),
+      offsetX: 0,
+      offsetY: 0,
+    };
+    updateScene(scene.id, { backgroundLayers: [...layers, newLayer] });
+  };
+
+  const updateLayer = (index: number, patch: Partial<BackgroundLayer>) => {
+    const next = layers.map((l, i) => i === index ? { ...l, ...patch } : l);
+    updateScene(scene.id, { backgroundLayers: next });
+  };
+
+  const removeLayer = (index: number) => {
+    const next = layers.filter((_, i) => i !== index);
+    updateScene(scene.id, { backgroundLayers: next.length ? next : undefined });
+  };
+
+  const uploadLayerImage = (index: number) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const name = file.name.replace(/\s+/g, '_').toLowerCase();
+      addImage(`backgrounds/${name}`, file);
+      updateLayer(index, { image: name });
+    };
+    input.click();
+  };
+
   return (
     <div className="scene-settings">
       <div className="scene-settings-row">
         <input
-          placeholder="Фон (background.png)"
+          placeholder={hasLayers ? 'Фон (опционально, fallback к слоям)' : 'Фон (background.png)'}
           value={scene.background || ''}
           onChange={(e) => updateScene(scene.id, { background: e.target.value || undefined })}
+          disabled={hasLayers && !scene.background}
+          title={hasLayers ? 'Используются слои параллакса. Это поле — необязательный fallback.' : undefined}
         />
         <button className="upload-btn" onClick={handleBgUpload} title="Загрузить фон"><Image size={14} /></button>
       </div>
-      {bgUrl && <img src={bgUrl} alt="bg" className="scene-bg-preview" />}
+      {bgUrl && !hasLayers && <img src={bgUrl} alt="bg" className="scene-bg-preview" />}
       <input
         placeholder="Музыка (track.mp3)"
         value={scene.music || ''}
@@ -149,6 +215,93 @@ function SceneSettings({ scene }: { scene: Scene }) {
           />
         </div>
       </div>
+
+      <div className="bg-layers-settings">
+        <div className="bg-layers-header">
+          <label
+            className="bg-layers-label"
+            title="depth: 0 = неподвижный задний план, 1 = ближний быстрый план"
+          >
+            <Layers size={12} /> Многослойные фоны (параллакс) ({layers.length})
+          </label>
+          <button
+            type="button"
+            className="add-layer-btn"
+            onClick={addLayer}
+            title="Добавить слой"
+          >
+            <Plus size={12} /> слой
+          </button>
+        </div>
+        {hasLayers && (
+          <div className="bg-layers-hint" title="depth: 0 = неподвижный задний план, 1 = ближний быстрый план">
+            depth: 0 — задний план (неподвижный), 1 — передний (быстрый)
+          </div>
+        )}
+        {layers.map((layer, i) => (
+          <div key={i} className="bg-layer-row">
+            <select
+              className="bg-layer-image"
+              value={layer.image}
+              onChange={(e) => updateLayer(i, { image: e.target.value })}
+              title="Изображение слоя"
+            >
+              <option value="">— фон —</option>
+              {availableBackgrounds.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+              {layer.image && !availableBackgrounds.includes(layer.image) && (
+                <option value={layer.image}>{layer.image}</option>
+              )}
+            </select>
+            <button
+              type="button"
+              className="upload-btn"
+              onClick={() => uploadLayerImage(i)}
+              title="Загрузить изображение слоя"
+            >
+              <Image size={12} />
+            </button>
+            <input
+              type="number"
+              className="bg-layer-depth"
+              value={layer.depth}
+              onChange={(e) => updateLayer(i, { depth: Math.max(0, Math.min(1, parseFloat(e.target.value) || 0)) })}
+              min={0}
+              max={1}
+              step={0.1}
+              title="depth: 0 = неподвижный задний план, 1 = ближний быстрый план"
+              placeholder="depth"
+            />
+            <input
+              type="number"
+              className="bg-layer-offset"
+              value={layer.offsetX ?? 0}
+              onChange={(e) => updateLayer(i, { offsetX: parseFloat(e.target.value) || 0 })}
+              step={1}
+              title="Смещение по X (px)"
+              placeholder="X"
+            />
+            <input
+              type="number"
+              className="bg-layer-offset"
+              value={layer.offsetY ?? 0}
+              onChange={(e) => updateLayer(i, { offsetY: parseFloat(e.target.value) || 0 })}
+              step={1}
+              title="Смещение по Y (px)"
+              placeholder="Y"
+            />
+            <button
+              type="button"
+              className="delete bg-layer-remove"
+              onClick={() => removeLayer(i)}
+              title="Удалить слой"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -178,7 +331,7 @@ function CharactersOnScene({ scene }: { scene: Scene }) {
               <option value="center">Центр</option>
               <option value="right">Право</option>
             </select>
-            <select value={sc.animation || ''} onChange={(e) => updateCharacterOnScene(scene.id, sc.characterId, { animation: e.target.value || undefined })}>
+            <select value={sc.animation || ''} onChange={(e) => updateCharacterOnScene(scene.id, sc.characterId, { animation: (e.target.value || undefined) as SceneCharacter['animation'] })}>
               <option value="">Без анимации</option>
               <option value="fade_in">Fade In</option>
               <option value="fade_out">Fade Out</option>
@@ -339,6 +492,14 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
               ))}
             </select>
           )}
+          <div className="effect-params">
+            <label>Длительность cross-fade: {event.spriteDuration || 300} мс</label>
+            <input
+              type="range" min={0} max={1000} step={50}
+              value={event.spriteDuration || 300}
+              onChange={(e) => onUpdate({ ...event, spriteDuration: parseInt(e.target.value) })}
+            />
+          </div>
         </div>
       )}
 
@@ -476,16 +637,41 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
         </div>
       )}
 
-      {event.type === 'changeSprite' && (
+      {event.type === 'set_variable' && (
         <div className="event-body">
-          <div className="effect-params">
-            <label>Длительность cross-fade: {event.spriteDuration || 300} мс</label>
+          <div className="scene-settings-row">
             <input
-              type="range" min={0} max={1000} step={50}
-              value={event.spriteDuration || 300}
-              onChange={(e) => onUpdate({ ...event, spriteDuration: parseInt(e.target.value) })}
+              placeholder="Имя переменной (напр. romance_anna)"
+              value={event.variable || ''}
+              onChange={(e) => onUpdate({ ...event, variable: e.target.value })}
+            />
+            <input
+              placeholder="Значение (число / строка / +1 / -2 / toggle)"
+              value={event.value === undefined ? '' : String(event.value)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                // Сохраняем как число, если это просто число (без +/-/=)
+                const asNum = Number(raw);
+                if (raw !== '' && !isNaN(asNum) && !/^[+\-]/.test(raw)) {
+                  onUpdate({ ...event, value: asNum });
+                } else if (raw === 'true' || raw === 'false') {
+                  onUpdate({ ...event, value: raw === 'true' });
+                } else {
+                  onUpdate({ ...event, value: raw });
+                }
+              }}
             />
           </div>
+        </div>
+      )}
+
+      {event.type === 'play_sound' && (
+        <div className="event-body">
+          <input
+            placeholder="Файл звука (sfx/door_open.mp3)"
+            value={event.sound || ''}
+            onChange={(e) => onUpdate({ ...event, sound: e.target.value })}
+          />
         </div>
       )}
     </div>
@@ -544,43 +730,183 @@ function ChoiceEditor({ event, onUpdate }: { event: SceneEventType; onUpdate: (e
         )}
       </div>
       {choices.map((choice, i) => (
-        <div key={i} className={`choice-item ${choice.premium ? 'premium' : ''}`}>
-          <input
-            placeholder="Текст варианта..."
-            value={choice.text}
-            onChange={(e) => updateChoice(i, { text: e.target.value })}
-          />
-          <input
-            placeholder="→ ID сцены"
-            value={choice.nextSceneId}
-            onChange={(e) => updateChoice(i, { nextSceneId: e.target.value })}
-            className="scene-ref"
-          />
-          <label className="premium-toggle">
+        <div key={i} className={`choice-block ${choice.premium ? 'premium' : ''}`}>
+          <div className="choice-item">
             <input
-              type="checkbox"
-              checked={choice.premium || false}
-              onChange={(e) => updateChoice(i, { premium: e.target.checked, cost: e.target.checked ? 10 : undefined })}
+              placeholder="Текст варианта..."
+              value={choice.text}
+              onChange={(e) => updateChoice(i, { text: e.target.value })}
             />
-            💎
-          </label>
-          {choice.premium && (
             <input
-              type="number"
-              className="cost-input"
-              value={choice.cost || 10}
-              onChange={(e) => updateChoice(i, { cost: parseInt(e.target.value) || 0 })}
-              min={0}
+              placeholder="→ ID сцены"
+              value={choice.nextSceneId}
+              onChange={(e) => updateChoice(i, { nextSceneId: e.target.value })}
+              className="scene-ref"
             />
-          )}
-          <button onClick={() => removeChoice(i)} className="delete" title="Удалить вариант">
-            <Trash2 size={12} />
-          </button>
+            <label className="premium-toggle">
+              <input
+                type="checkbox"
+                checked={choice.premium || false}
+                onChange={(e) => updateChoice(i, { premium: e.target.checked, cost: e.target.checked ? 10 : undefined })}
+              />
+              💎
+            </label>
+            {choice.premium && (
+              <input
+                type="number"
+                className="cost-input"
+                value={choice.cost || 10}
+                onChange={(e) => updateChoice(i, { cost: parseInt(e.target.value) || 0 })}
+                min={0}
+              />
+            )}
+            <button onClick={() => removeChoice(i)} className="delete" title="Удалить вариант">
+              <Trash2 size={12} />
+            </button>
+          </div>
+
+          <ChoiceConditionEditor
+            choice={choice}
+            onChange={(updates) => updateChoice(i, updates)}
+          />
+
+          <ChoiceEffectsEditor
+            choice={choice}
+            onChange={(updates) => updateChoice(i, updates)}
+          />
         </div>
       ))}
       <button className="add-choice" onClick={addChoice}>
         <Plus size={14} /> Вариант
       </button>
+    </div>
+  );
+}
+
+type ConditionOperator = NonNullable<Choice['condition']>['operator'];
+
+function ChoiceConditionEditor({ choice, onChange }: { choice: Choice; onChange: (updates: Partial<Choice>) => void }) {
+  const enabled = !!choice.condition;
+  const cond = choice.condition;
+
+  return (
+    <div className="choice-subblock">
+      <label className="premium-toggle">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onChange(e.target.checked
+            ? { condition: { variable: '', operator: '>=', value: 0 } }
+            : { condition: undefined })}
+        />
+        <span className="subblock-label">Условие показа</span>
+      </label>
+      {enabled && cond && (
+        <div className="condition-row">
+          <input
+            placeholder="переменная"
+            value={cond.variable}
+            onChange={(e) => onChange({ condition: { ...cond, variable: e.target.value } })}
+            className="cond-var"
+          />
+          <select
+            value={cond.operator}
+            onChange={(e) => onChange({ condition: { ...cond, operator: e.target.value as ConditionOperator } })}
+            className="cond-op"
+          >
+            <option value=">=">{'>='}</option>
+            <option value="<=">{'<='}</option>
+            <option value="==">{'=='}</option>
+            <option value="!=">{'!='}</option>
+            <option value=">">{'>'}</option>
+            <option value="<">{'<'}</option>
+          </select>
+          <input
+            type="number"
+            placeholder="значение"
+            value={cond.value}
+            onChange={(e) => onChange({ condition: { ...cond, value: parseFloat(e.target.value) || 0 } })}
+            className="cond-val"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChoiceEffectsEditor({ choice, onChange }: { choice: Choice; onChange: (updates: Partial<Choice>) => void }) {
+  const effects = choice.effects || {};
+  const entries = Object.entries(effects);
+
+  const updateEntry = (oldKey: string, newKey: string, newValue: string | number | boolean) => {
+    // Сохраняем порядок ключей
+    const next: Record<string, string | number | boolean> = {};
+    for (const [k, v] of Object.entries(effects)) {
+      if (k === oldKey) {
+        if (newKey) next[newKey] = newValue;
+      } else {
+        next[k] = v;
+      }
+    }
+    onChange({ effects: next });
+  };
+
+  const removeEntry = (key: string) => {
+    const next = { ...effects };
+    delete next[key];
+    onChange({ effects: next });
+  };
+
+  const addEntry = () => {
+    let i = 1;
+    while (Object.prototype.hasOwnProperty.call(effects, `var${i}`)) i++;
+    onChange({ effects: { ...effects, [`var${i}`]: '+1' } });
+  };
+
+  const parseValue = (raw: string): string | number | boolean => {
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+    // Оставляем строкой для синтаксиса +N/-N/toggle (см. variable_engine.dart)
+    if (/^[+\-]/.test(raw) || raw === 'toggle') return raw;
+    const n = Number(raw);
+    if (raw !== '' && !isNaN(n)) return n;
+    return raw;
+  };
+
+  return (
+    <div className="choice-subblock">
+      <div className="subblock-header">
+        <span className="subblock-label">Эффекты выбора</span>
+        <button className="add-effect" onClick={addEntry} title="Добавить эффект">
+          <Plus size={12} />
+        </button>
+      </div>
+      {entries.length > 0 && (
+        <div className="effects-list">
+          {entries.map(([key, value]) => (
+            <div key={key} className="effect-row">
+              <input
+                placeholder="переменная"
+                defaultValue={key}
+                onBlur={(e) => {
+                  const newKey = e.target.value;
+                  if (newKey !== key) updateEntry(key, newKey, value);
+                }}
+                className="effect-key"
+              />
+              <input
+                placeholder="+1 / -2 / 10 / toggle"
+                value={String(value)}
+                onChange={(e) => updateEntry(key, key, parseValue(e.target.value))}
+                className="effect-val"
+              />
+              <button onClick={() => removeEntry(key)} className="delete" title="Удалить">
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

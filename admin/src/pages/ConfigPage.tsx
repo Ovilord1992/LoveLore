@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Card, Tabs, Form, InputNumber, Switch, Button, message, Spin, Input, Space, Typography } from 'antd';
-import { SaveOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Card, Tabs, Form, InputNumber, Switch, Button, message, Spin, Input, Space, Typography, Modal, Popconfirm } from 'antd';
+import { SaveOutlined, ReloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
 const { Title, Text } = Typography;
@@ -25,8 +25,9 @@ export default function ConfigPage() {
   const [adsForm] = Form.useForm();
   const [vipForm] = Form.useForm();
   const [jsonSections, setJsonSections] = useState<Record<string, string>>({});
+  const [dirtyTabs, setDirtyTabs] = useState<Record<string, boolean>>({});
 
-  const fetchConfig = async () => {
+  const loadConfigData = async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/admin/config');
@@ -40,6 +41,7 @@ export default function ConfigPage() {
         achievements: JSON.stringify(data.achievements, null, 2),
         localization: JSON.stringify(data.localization, null, 2),
       });
+      setDirtyTabs({});
     } catch {
       message.error('Ошибка загрузки конфигурации');
     } finally {
@@ -47,14 +49,33 @@ export default function ConfigPage() {
     }
   };
 
-  useEffect(() => { fetchConfig(); }, []);
+  const fetchConfig = (skipDirtyCheck = false) => {
+    const dirtyList = Object.entries(dirtyTabs)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    if (!skipDirtyCheck && dirtyList.length > 0) {
+      Modal.confirm({
+        title: 'Несохранённые изменения',
+        icon: <ExclamationCircleOutlined />,
+        content: `Несохранённые изменения в [${dirtyList.join(', ')}] будут потеряны. Продолжить?`,
+        okText: 'Продолжить',
+        cancelText: 'Отмена',
+        onOk: () => loadConfigData(),
+      });
+      return;
+    }
+    loadConfigData();
+  };
+
+  useEffect(() => { loadConfigData(); }, []);
 
   const saveSection = async (section: string, values: unknown) => {
     setSaving(true);
     try {
       await api.put('/admin/config', { [section]: values });
       message.success(`Секция "${section}" сохранена`);
-      await fetchConfig();
+      setDirtyTabs((prev) => ({ ...prev, [section]: false }));
+      await loadConfigData();
     } catch {
       message.error('Ошибка сохранения');
     } finally {
@@ -71,6 +92,10 @@ export default function ConfigPage() {
     }
   };
 
+  const markDirty = (section: string) => {
+    setDirtyTabs((prev) => (prev[section] ? prev : { ...prev, [section]: true }));
+  };
+
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
   const tabs = [
@@ -78,7 +103,12 @@ export default function ConfigPage() {
       key: 'economy',
       label: '💰 Экономика',
       children: (
-        <Form form={economyForm} layout="vertical" onFinish={(v) => saveSection('economy', v)}>
+        <Form
+          form={economyForm}
+          layout="vertical"
+          onFinish={(v) => saveSection('economy', v)}
+          onValuesChange={() => markDirty('economy')}
+        >
           <Form.Item name="maxTickets" label="Макс. билетов (энергия)">
             <InputNumber min={1} max={99} />
           </Form.Item>
@@ -95,9 +125,16 @@ export default function ConfigPage() {
             <InputNumber min={1} max={999} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving}>
-              Сохранить
-            </Button>
+            <Popconfirm
+              title="Изменения экономики применятся ко всем игрокам. Сохранить?"
+              okText="Сохранить"
+              cancelText="Отмена"
+              onConfirm={() => economyForm.submit()}
+            >
+              <Button type="primary" icon={<SaveOutlined />} loading={saving}>
+                Сохранить
+              </Button>
+            </Popconfirm>
           </Form.Item>
         </Form>
       ),
@@ -106,7 +143,12 @@ export default function ConfigPage() {
       key: 'ads',
       label: '📺 Реклама',
       children: (
-        <Form form={adsForm} layout="vertical" onFinish={(v) => saveSection('ads', v)}>
+        <Form
+          form={adsForm}
+          layout="vertical"
+          onFinish={(v) => saveSection('ads', v)}
+          onValuesChange={() => markDirty('ads')}
+        >
           <Form.Item name="maxAdsPerDay" label="Макс. просмотров в день">
             <InputNumber min={0} max={99} />
           </Form.Item>
@@ -128,7 +170,12 @@ export default function ConfigPage() {
       key: 'vip',
       label: '👑 VIP',
       children: (
-        <Form form={vipForm} layout="vertical" onFinish={(v) => saveSection('vip', v)}>
+        <Form
+          form={vipForm}
+          layout="vertical"
+          onFinish={(v) => saveSection('vip', v)}
+          onValuesChange={() => markDirty('vip')}
+        >
           <Form.Item name="dailyDiamonds" label="Ежедневные алмазы VIP">
             <InputNumber min={0} max={999} />
           </Form.Item>
@@ -145,9 +192,16 @@ export default function ConfigPage() {
             <Switch />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving}>
-              Сохранить
-            </Button>
+            <Popconfirm
+              title="Изменения VIP применятся ко всем игрокам. Сохранить?"
+              okText="Сохранить"
+              cancelText="Отмена"
+              onConfirm={() => vipForm.submit()}
+            >
+              <Button type="primary" icon={<SaveOutlined />} loading={saving}>
+                Сохранить
+              </Button>
+            </Popconfirm>
           </Form.Item>
         </Form>
       ),
@@ -160,7 +214,10 @@ export default function ConfigPage() {
           <TextArea
             rows={16}
             value={jsonSections[section] || '{}'}
-            onChange={(e) => setJsonSections({ ...jsonSections, [section]: e.target.value })}
+            onChange={(e) => {
+              setJsonSections({ ...jsonSections, [section]: e.target.value });
+              markDirty(section);
+            }}
             style={{ fontFamily: 'monospace', fontSize: 13 }}
           />
           <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => saveJsonSection(section)}>
@@ -178,7 +235,7 @@ export default function ConfigPage() {
           <Title level={4} style={{ margin: 0 }}>⚙️ Конфигурация игры</Title>
           <Text type="secondary">Версия: {config?.version ?? 0}</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={fetchConfig}>Обновить</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => fetchConfig()}>Обновить</Button>
       </Space>
       <Card>
         <Tabs items={tabs} />

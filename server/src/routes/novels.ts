@@ -4,6 +4,7 @@ import fs from 'fs';
 import prisma from '../db';
 import { upload } from '../middleware/upload';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { adminMiddleware } from '../middleware/admin';
 import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip } from '../utils/zip';
 
 export const novelsRouter = Router();
@@ -165,6 +166,8 @@ novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
 // ─── POST /v1/novels/upload ── Загрузить новеллу (ZIP) ──────────────────────
 novelsRouter.post(
   '/upload',
+  authMiddleware,
+  adminMiddleware,
   upload.single('file'),
   async (req: Request, res: Response) => {
     try {
@@ -202,8 +205,9 @@ novelsRouter.post(
         const extracted = extractChaptersFromZip(zipPath);
         chaptersCount = extracted.length;
         chapterInfos.push(...extracted);
-      } catch {
-        // ignore
+      } catch (err) {
+        // ZIP bomb / corrupt archive / I/O error — лог, не падаем (главы создадутся как 0).
+        console.error(`[upload] Failed to extract chapters from ZIP for novel ${novelId}:`, err);
       }
 
       // Если новелла уже существует — обновляем, иначе создаём
@@ -214,7 +218,12 @@ novelsRouter.post(
       // Удаляем старый ZIP если обновляем
       if (existing?.zipFilename) {
         const oldPath = path.resolve(uploadDir, 'packs', existing.zipFilename);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        const uploadDirResolved = path.resolve(uploadDir);
+        if (!oldPath.startsWith(uploadDirResolved)) {
+          console.warn(`Skipping old zip deletion: path traversal detected (${oldPath})`);
+        } else if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
       }
 
       const novel = await prisma.novel.upsert({
@@ -282,7 +291,7 @@ novelsRouter.post(
 );
 
 // ─── DELETE /v1/novels/:id ── Удалить новеллу ───────────────────────────────
-novelsRouter.delete('/:id', async (req: Request, res: Response) => {
+novelsRouter.delete('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
     const novel = await prisma.novel.findUnique({
       where: { id: req.params.id },
@@ -293,14 +302,24 @@ novelsRouter.delete('/:id', async (req: Request, res: Response) => {
       return;
     }
 
+    const uploadDirResolved = path.resolve(uploadDir);
+
     // Удаляем файлы
     if (novel.zipFilename) {
       const zipPath = path.resolve(uploadDir, 'packs', novel.zipFilename);
-      if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+      if (!zipPath.startsWith(uploadDirResolved)) {
+        console.warn(`Skipping zip deletion: path traversal detected (${zipPath})`);
+      } else if (fs.existsSync(zipPath)) {
+        fs.unlinkSync(zipPath);
+      }
     }
     if (novel.coverUrl) {
       const coverPath = path.resolve(uploadDir, novel.coverUrl.replace(/^\//, ''));
-      if (fs.existsSync(coverPath)) fs.unlinkSync(coverPath);
+      if (!coverPath.startsWith(uploadDirResolved)) {
+        console.warn(`Skipping cover deletion: path traversal detected (${coverPath})`);
+      } else if (fs.existsSync(coverPath)) {
+        fs.unlinkSync(coverPath);
+      }
     }
 
     await prisma.novel.delete({ where: { id: req.params.id } });
@@ -337,7 +356,7 @@ novelsRouter.get('/:id/chapters', async (req: Request, res: Response) => {
 
     res.json({
       novelId: req.params.id,
-      totalChapters: novel.chaptersCount,
+      chaptersCount: novel.chaptersCount,
       releasedChapters: novel.releasedChapters,
       chapters,
     });
@@ -468,7 +487,7 @@ novelsRouter.get('/:id/translations/:lang', async (req: Request, res: Response) 
 });
 
 // ─── POST /v1/novels/:id/translations/:lang ── Загрузить перевод ─────────────
-novelsRouter.post('/:id/translations/:lang', async (req: Request, res: Response) => {
+novelsRouter.post('/:id/translations/:lang', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
     const novel = await prisma.novel.findUnique({
       where: { id: req.params.id },

@@ -110,6 +110,24 @@ function MetaTab() {
         placeholder="романтика, мистика"
       />
 
+      <label>Язык оригинала</label>
+      <select
+        value={meta.sourceLanguage || 'ru'}
+        onChange={(e) => updateMeta({ sourceLanguage: e.target.value })}
+      >
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="it">🇮🇹 Italiano</option>
+        <option value="pt">🇧🇷 Português</option>
+        <option value="tr">🇹🇷 Türkçe</option>
+        <option value="ja">🇯🇵 日本語</option>
+        <option value="ko">🇰🇷 한국어</option>
+        <option value="zh">🇨🇳 中文</option>
+      </select>
+
       <label>Тема диалогов</label>
       <select
         value={meta.dialogueTheme || 'ornate'}
@@ -424,12 +442,12 @@ function VariablesTab() {
 }
 
 function ValidateTab() {
-  const { project } = useEditorStore();
+  const { project, images } = useEditorStore();
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [validated, setValidated] = useState(false);
 
   const handleValidate = () => {
-    setErrors(validateProject(project));
+    setErrors(validateProject(project, images));
     setValidated(true);
   };
 
@@ -494,7 +512,6 @@ function TranslationsTab() {
     updateTranslationMeta,
     updateTranslationCharacter,
     updateTranslationChapter,
-    updateMeta,
     selectTranslationLang,
   } = useEditorStore();
 
@@ -543,12 +560,10 @@ function TranslationsTab() {
     <div className="tab-content">
       <h3>Переводы</h3>
 
-      <label>Язык оригинала</label>
-      <select value={sourceLang} onChange={(e) => updateMeta({ sourceLanguage: e.target.value })}>
-        {AVAILABLE_LANGUAGES.map((l) => (
-          <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
-        ))}
-      </select>
+      <div className="hint" style={{ marginBottom: 12, opacity: 0.7, fontSize: 12 }}>
+        Язык оригинала: <b>{AVAILABLE_LANGUAGES.find((l) => l.code === sourceLang)?.name || sourceLang}</b>{' '}
+        (изменить можно во вкладке «Мета»)
+      </div>
 
       {/* Список добавленных языков */}
       <label>Языки перевода</label>

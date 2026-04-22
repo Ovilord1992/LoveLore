@@ -8,8 +8,17 @@ export interface ValidationError {
   eventIndex?: number;
 }
 
-/** Валидация проекта новеллы */
-export function validateProject(project: NovelProject): ValidationError[] {
+/** Валидация проекта новеллы.
+ *  @param project - проект новеллы
+ *  @param images  - (опционально) Map путей ассетов "backgrounds/x.png" → File.
+ *                   Если передана, валидатор дополнительно проверит, что все
+ *                   ссылки на фоны/спрайты/CG разрешаются. Если опущена —
+ *                   проверка ассетов пропускается.
+ */
+export function validateProject(
+  project: NovelProject,
+  images?: Map<string, File>,
+): ValidationError[] {
   const errors: ValidationError[] = [];
 
   // Метаданные
@@ -25,6 +34,18 @@ export function validateProject(project: NovelProject): ValidationError[] {
 
   // Персонажи
   const charIds = new Set(project.characters.map((c) => c.id));
+
+  // Карта персонаж→спрайты для проверки ссылок charactersOnScreen / changeSprite
+  const charSpriteMap = new Map<string, Map<string, string>>();
+  for (const ch of project.characters) {
+    const spriteMap = new Map<string, string>();
+    for (const sprite of ch.sprites) {
+      spriteMap.set(sprite.id, sprite.image);
+    }
+    charSpriteMap.set(ch.id, spriteMap);
+  }
+
+  const checkAssets = images !== undefined;
 
   // Главы и сцены
   for (const chapter of project.chapters) {
@@ -59,6 +80,35 @@ export function validateProject(project: NovelProject): ValidationError[] {
         });
       }
 
+      // --- Проверка ассетов: фон ---
+      if (checkAssets && scene.background && scene.background.trim()) {
+        const path = `backgrounds/${scene.background}`;
+        if (!images!.has(path)) {
+          errors.push({
+            type: 'error',
+            message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий фон: ${scene.background}`,
+            chapterId: chapter.id,
+            sceneId: scene.id,
+          });
+        }
+      }
+
+      // --- Проверка ассетов: слои фона ---
+      if (checkAssets && scene.backgroundLayers) {
+        for (const layer of scene.backgroundLayers) {
+          if (!layer.image || !layer.image.trim()) continue;
+          const path = `backgrounds/${layer.image}`;
+          if (!images!.has(path)) {
+            errors.push({
+              type: 'error',
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий слой фона: ${layer.image}`,
+              chapterId: chapter.id,
+              sceneId: scene.id,
+            });
+          }
+        }
+      }
+
       // Персонажи на сцене
       for (const sc of scene.charactersOnScreen) {
         if (!charIds.has(sc.characterId)) {
@@ -68,6 +118,28 @@ export function validateProject(project: NovelProject): ValidationError[] {
             chapterId: chapter.id,
             sceneId: scene.id,
           });
+          continue;
+        }
+
+        // --- Проверка ассетов: спрайт ---
+        if (checkAssets) {
+          const spriteMap = charSpriteMap.get(sc.characterId);
+          const spritePath = spriteMap?.get(sc.spriteId);
+          if (!spritePath) {
+            errors.push({
+              type: 'error',
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий спрайт: ${sc.characterId}/${sc.spriteId}`,
+              chapterId: chapter.id,
+              sceneId: scene.id,
+            });
+          } else if (!images!.has(spritePath)) {
+            errors.push({
+              type: 'error',
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий спрайт: ${spritePath}`,
+              chapterId: chapter.id,
+              sceneId: scene.id,
+            });
+          }
         }
       }
 
@@ -96,6 +168,62 @@ export function validateProject(project: NovelProject): ValidationError[] {
             eventIndex: i,
           });
         }
+
+        // --- Проверка ассетов: changeBackground ---
+        if (checkAssets && event.type === 'changeBackground' && event.background?.trim()) {
+          const path = `backgrounds/${event.background}`;
+          if (!images!.has(path)) {
+            errors.push({
+              type: 'error',
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий фон: ${event.background}`,
+              chapterId: chapter.id,
+              sceneId: scene.id,
+              eventIndex: i,
+            });
+          }
+        }
+
+        // --- Проверка ассетов: changeSprite ---
+        if (checkAssets && event.type === 'changeSprite' && event.characterId && event.spriteId) {
+          const spriteMap = charSpriteMap.get(event.characterId);
+          const spritePath = spriteMap?.get(event.spriteId);
+          if (!spritePath) {
+            errors.push({
+              type: 'error',
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий спрайт: ${event.characterId}/${event.spriteId}`,
+              chapterId: chapter.id,
+              sceneId: scene.id,
+              eventIndex: i,
+            });
+          } else if (!images!.has(spritePath)) {
+            errors.push({
+              type: 'error',
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий спрайт: ${spritePath}`,
+              chapterId: chapter.id,
+              sceneId: scene.id,
+              eventIndex: i,
+            });
+          }
+        }
+
+        // --- Проверка ассетов: showCg ---
+        if (checkAssets && event.type === 'showCg' && event.cgImage?.trim()) {
+          const path = `cg/${event.cgImage}`;
+          if (!images!.has(path)) {
+            errors.push({
+              type: 'error',
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий CG: ${event.cgImage}`,
+              chapterId: chapter.id,
+              sceneId: scene.id,
+              eventIndex: i,
+            });
+          }
+        }
+
+        // --- Проверка ассетов: play_sound ---
+        // В editorStore сейчас нет Map для звуков (только images),
+        // поэтому проверку звука пропускаем — не блокируем валидацию.
+        // TODO: когда появится sounds Map — добавить аналогичную проверку.
 
         // Выборы
         if (event.type === 'choice' && event.choices) {

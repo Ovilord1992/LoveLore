@@ -213,7 +213,7 @@ my_novel/
   "description": "Описание сюжета",
   "author": "Имя автора",
   "tags": ["романтика", "мистика"],
-  "totalChapters": 2,
+  "chaptersCount": 2,
   "coverImage": "assets/novels/my_novel/cover.png"
 }
 ```

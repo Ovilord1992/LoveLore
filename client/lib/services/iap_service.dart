@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'remote_config_service.dart';
 
@@ -87,6 +90,12 @@ class IapService extends StateNotifier<IapState> {
   final InAppPurchase _iap = InAppPurchase.instance;
   final Ref _ref;
 
+  /// Ключ Hive для дедупликации обработанных purchaseId
+  static const _processedKey = 'processed_purchase_ids';
+
+  /// Максимальная глубина FIFO-окна обработанных id
+  static const _processedHistoryLimit = 200;
+
   /// Коллбэк для начисления наград (устанавливается из UI)
   void Function(String productId, Map<String, int> rewards)? onReward;
 
@@ -163,6 +172,19 @@ class IapService extends StateNotifier<IapState> {
   }
 
   void _deliverProduct(PurchaseDetails purchase) {
+    // Дедупликация: если purchaseID уже обрабатывали — пропускаем начисление,
+    // но completePurchase в _onPurchaseUpdate всё равно отработает.
+    final purchaseId = purchase.purchaseID;
+    final processed = _readProcessedIds();
+    if (purchaseId != null &&
+        purchaseId.isNotEmpty &&
+        processed.contains(purchaseId)) {
+      debugPrint(
+          '[IAP] Skipping duplicate delivery for purchaseId=$purchaseId '
+          '(productId=${purchase.productID})');
+      return;
+    }
+
     // Берём награды из Remote Config, fallback на хардкод
     final configIap = _ref.read(remoteConfigProvider).iap;
     final rewards = configIap.getReward(purchase.productID).isNotEmpty
@@ -174,6 +196,44 @@ class IapService extends StateNotifier<IapState> {
 
     if (purchase.productID == ProductIds.starterBundle) {
       state = state.copyWith(starterBundlePurchased: true);
+    }
+
+    // Запоминаем обработанный purchaseId (FIFO, не больше 200).
+    if (purchaseId != null && purchaseId.isNotEmpty) {
+      _appendProcessedId(purchaseId, processed);
+    }
+  }
+
+  /// Прочитать множество обработанных purchaseId из Hive.
+  /// Возвращает пустой список, если бокса/ключа нет или JSON битый.
+  List<String> _readProcessedIds() {
+    try {
+      final box = Hive.box<String>('app_settings');
+      final raw = box.get(_processedKey);
+      if (raw == null || raw.isEmpty) return <String>[];
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded.whereType<String>().toList();
+      }
+      return <String>[];
+    } catch (e) {
+      debugPrint('[IAP] Failed to read processed purchase ids: $e');
+      return <String>[];
+    }
+  }
+
+  /// Добавить purchaseId в FIFO-окно и сохранить в Hive.
+  void _appendProcessedId(String purchaseId, List<String> existing) {
+    try {
+      final updated = List<String>.from(existing)..add(purchaseId);
+      // Обрезаем самые старые id, оставляя последние _processedHistoryLimit
+      final trimmed = updated.length > _processedHistoryLimit
+          ? updated.sublist(updated.length - _processedHistoryLimit)
+          : updated;
+      final box = Hive.box<String>('app_settings');
+      box.put(_processedKey, jsonEncode(trimmed));
+    } catch (e) {
+      debugPrint('[IAP] Failed to persist processed purchase id: $e');
     }
   }
 

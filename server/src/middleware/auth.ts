@@ -1,7 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'amoria-dev-secret-change-in-production';
+function resolveJwtSecret(): string {
+  const fromEnv = process.env.JWT_SECRET;
+  if (fromEnv && fromEnv.length > 0) {
+    return fromEnv;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production');
+  }
+  console.warn('[auth] Using default JWT_SECRET — set JWT_SECRET in .env for production');
+  return 'amoria-dev-secret-change-in-production';
+}
+
+export const JWT_SECRET = resolveJwtSecret();
 
 export interface AuthRequest extends Request {
   userId?: string;

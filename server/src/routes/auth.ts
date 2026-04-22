@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
+import appleSignin from 'apple-signin-auth';
 import prisma from '../db';
 import { AuthRequest, generateToken, authMiddleware } from '../middleware/auth';
 
@@ -8,6 +9,8 @@ export const authRouter = Router();
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || '';
 
 // ─── POST /v1/auth/register ── Регистрация ──────────────────────────────────
 authRouter.post('/register', async (req: AuthRequest, res: Response) => {
@@ -111,10 +114,10 @@ authRouter.get('/me', authMiddleware, async (req: AuthRequest, res: Response) =>
 // ─── POST /v1/auth/social ── Вход через Google / Apple ───────────────────────
 authRouter.post('/social', async (req: AuthRequest, res: Response) => {
   try {
-    const { provider, idToken, email, displayName } = req.body;
+    const { provider, idToken, identityToken, email, displayName } = req.body;
 
-    if (!provider || !idToken) {
-      res.status(400).json({ error: 'provider and idToken are required' });
+    if (!provider) {
+      res.status(400).json({ error: 'provider is required' });
       return;
     }
 
@@ -122,6 +125,10 @@ authRouter.post('/social', async (req: AuthRequest, res: Response) => {
     let verifiedName: string | null = null;
 
     if (provider === 'google') {
+      if (!idToken) {
+        res.status(400).json({ error: 'idToken is required' });
+        return;
+      }
       // Верификация Google ID Token
       try {
         const ticket = await googleClient.verifyIdToken({
@@ -140,10 +147,33 @@ authRouter.post('/social', async (req: AuthRequest, res: Response) => {
         return;
       }
     } else if (provider === 'apple') {
-      // Apple ID Token — email приходит от клиента (Apple шлёт email только при первом входе)
-      // В продакшне нужно верифицировать JWT от Apple через их public keys
-      verifiedEmail = email;
-      verifiedName = displayName || null;
+      if (!APPLE_CLIENT_ID) {
+        res.status(503).json({ error: 'Apple Sign-In not configured' });
+        return;
+      }
+      // Apple отправляет displayName только при первом входе — клиент шлёт его опционально.
+      // identityToken (новое имя) предпочтительнее, idToken оставлен для обратной совместимости.
+      const appleToken = identityToken || idToken;
+      if (!appleToken) {
+        res.status(400).json({ error: 'identityToken is required' });
+        return;
+      }
+      try {
+        const appleData = await appleSignin.verifyIdToken(appleToken, {
+          audience: APPLE_CLIENT_ID,
+          ignoreExpiration: false,
+        });
+        if (!appleData.email) {
+          res.status(400).json({ error: 'Apple token missing email' });
+          return;
+        }
+        verifiedEmail = appleData.email;
+        // Apple не возвращает имя в токене — оно может прийти только из тела запроса при первом логине
+        verifiedName = null;
+      } catch {
+        res.status(401).json({ error: 'Apple token verification failed' });
+        return;
+      }
     } else {
       res.status(400).json({ error: 'Unsupported provider. Use "google" or "apple"' });
       return;
@@ -158,7 +188,8 @@ authRouter.post('/social', async (req: AuthRequest, res: Response) => {
     let user = await prisma.user.findUnique({ where: { email: verifiedEmail } });
 
     if (!user) {
-      // Создаём нового пользователя (без пароля — через соцсеть)
+      // Создаём нового пользователя (без пароля — через соцсеть).
+      // displayName из тела запроса используем только для первого входа (Apple шлёт его один раз).
       const name = verifiedName || displayName || 'Читатель';
       user = await prisma.user.create({
         data: {

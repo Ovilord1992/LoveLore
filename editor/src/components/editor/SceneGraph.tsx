@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge, type OnConnect, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
+import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge, type OnConnect, type NodeChange, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEditorStore } from '../../store/editorStore';
 import './SceneGraph.css';
 
 export function SceneGraph() {
-  const { project, selectedChapterIndex, selectedSceneId, selectScene } = useEditorStore();
+  const { project, selectedChapterIndex, selectedSceneId, selectScene, updateScenePosition } = useEditorStore();
   const chapter = project.chapters[selectedChapterIndex];
   if (!chapter) return <div className="scene-graph empty">Нет глав</div>;
 
   const { initialNodes, initialEdges } = useMemo(() => {
     const nodes: Node[] = chapter.scenes.map((scene, i) => ({
       id: scene.id,
-      position: { x: (i % 4) * 250, y: Math.floor(i / 4) * 180 },
+      // Если у сцены сохранена позиция — используем её; иначе авто-раскладка.
+      position: scene.editorPosition
+        ? { x: scene.editorPosition.x, y: scene.editorPosition.y }
+        : { x: (i % 4) * 250, y: Math.floor(i / 4) * 180 },
       data: {
         label: (
           <div className="scene-node-content">
@@ -79,6 +82,21 @@ export function SceneGraph() {
     [setEdges]
   );
 
+  // Обёртка над onNodesChange из useNodesState: после завершения drag
+  // (change.dragging === false) сохраняем позицию в стор, чтобы она
+  // переживала переключение глав и перезагрузку.
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    onNodesChange(changes);
+    for (const change of changes) {
+      if (change.type === 'position' && change.dragging === false && change.position) {
+        updateScenePosition(chapter.id, change.id, {
+          x: change.position.x,
+          y: change.position.y,
+        });
+      }
+    }
+  }, [onNodesChange, updateScenePosition, chapter.id]);
+
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     selectScene(node.id);
   }, [selectScene]);
@@ -88,7 +106,7 @@ export function SceneGraph() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}

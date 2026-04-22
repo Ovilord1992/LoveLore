@@ -20,6 +20,8 @@
 .event-card.showCg { border-left: 3px solid #e040fb; }
 .event-card.cameraMove { border-left: 3px solid #00e5ff; }
 .event-card.showEmotion { border-left: 3px solid #ff5252; }
+.event-card.set_variable { border-left: 3px solid #7c4dff; }
+.event-card.play_sound { border-left: 3px solid #1de9b6; }
 
 .event-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; }
 .drag-handle { color: #444; cursor: grab; }
@@ -43,6 +45,26 @@
 .choice-item.premium { background: rgba(156, 39, 176, 0.1); padding: 6px; border-radius: 6px; }
 .choice-item .delete { flex-shrink: 0; background: none; border: none; color: #666; cursor: pointer; padding: 4px; }
 .choice-item .delete:hover { color: #e91e63; }
+
+/* Choice block (item + condition + effects) */
+.choice-block { display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 1px solid #2a2a3e; border-radius: 6px; background: rgba(255, 152, 0, 0.03); }
+.choice-block.premium { background: rgba(156, 39, 176, 0.08); border-color: #6a1b9a; }
+.choice-subblock { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; border-top: 1px dashed #2a2a3e; }
+.choice-subblock .premium-toggle { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+.subblock-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+.subblock-header { display: flex; align-items: center; justify-content: space-between; }
+.add-effect { background: none; border: 1px dashed #2a2a3e; color: #888; padding: 2px 6px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; }
+.add-effect:hover { border-color: #e91e63; color: #e91e63; }
+.condition-row { display: flex; gap: 4px; align-items: center; }
+.condition-row .cond-var { flex: 1; font-size: 12px; padding: 4px 6px; }
+.condition-row .cond-op { max-width: 56px; font-size: 12px; padding: 4px 4px; text-align: center; }
+.condition-row .cond-val { max-width: 80px; font-size: 12px; padding: 4px 6px; text-align: right; }
+.effects-list { display: flex; flex-direction: column; gap: 3px; }
+.effect-row { display: flex; gap: 4px; align-items: center; }
+.effect-row .effect-key { flex: 1; font-size: 12px; padding: 4px 6px; }
+.effect-row .effect-val { max-width: 130px; font-size: 12px; padding: 4px 6px; }
+.effect-row .delete { flex-shrink: 0; background: none; border: none; color: #666; cursor: pointer; padding: 2px; display: inline-flex; align-items: center; }
+.effect-row .delete:hover { color: #e91e63; }
 .premium-toggle { display: flex; align-items: center; gap: 4px; font-size: 14px; cursor: pointer; flex-shrink: 0; }
 .premium-toggle input { width: auto; }
 
@@ -87,3 +109,17 @@
 .scene-transition-settings select:focus { border-color: #e91e63; outline: none; }
 .transition-duration { max-width: 80px; padding: 6px 10px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 6px; color: #fff; font-size: 12px; text-align: center; }
 .transition-duration:focus { border-color: #e91e63; outline: none; }
+
+/* Background layers (parallax) */
+.bg-layers-settings { margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2a3e; width: 100%; }
+.bg-layers-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 6px; }
+.bg-layers-label { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.5px; cursor: help; }
+.add-layer-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px dashed #2a2a3e; color: #888; padding: 3px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; flex-shrink: 0; }
+.add-layer-btn:hover { border-color: #e91e63; color: #e91e63; }
+.bg-layers-hint { font-size: 10px; color: #555; margin-bottom: 6px; }
+.bg-layer-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; flex-wrap: nowrap; }
+.bg-layer-image { flex: 1; min-width: 80px; padding: 4px 6px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 4px; color: #fff; font-size: 11px; }
+.bg-layer-depth { width: 56px; flex-shrink: 0; padding: 4px 6px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 4px; color: #fff; font-size: 11px; text-align: center; }
+.bg-layer-offset { width: 50px; flex-shrink: 0; padding: 4px 6px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 4px; color: #fff; font-size: 11px; text-align: center; }
+.bg-layer-remove { background: none; border: none; color: #666; cursor: pointer; padding: 4px; flex-shrink: 0; display: flex; align-items: center; }
+.bg-layer-remove:hover { color: #e91e63; }

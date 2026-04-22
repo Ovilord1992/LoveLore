@@ -817,9 +817,9 @@ class _ReadingHistorySectionState extends ConsumerState<_ReadingHistorySection> 
           children: startedNovels.map((novel) {
             final gameState = saveService.loadGame(novel.id);
             double progress = 0.0;
-            if (novel.totalChapters > 0) {
+            if (novel.chaptersCount > 0) {
               progress =
-                  (gameState?.history.length ?? 0) / (novel.totalChapters * 5);
+                  (gameState?.history.length ?? 0) / (novel.chaptersCount * 5);
               if (progress > 1.0) progress = 1.0;
             }
 

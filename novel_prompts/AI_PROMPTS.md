@@ -59,7 +59,7 @@
 }
 
 ### Также создай:
-1. meta.json — { id, title, description (2-3 предложения, интригующие), author, coverImage: null, tags: [...], totalChapters: N }
+1. meta.json — { id, title, description (2-3 предложения, интригующие), author, coverImage: null, tags: [...], chaptersCount: N }
 2. characters.json — { characters: [{ id, name, color (HEX), sprites: [{ id: "эмоция", image: "файл.png" }] }] }
 3. variables.json — начальные переменные отношений и флаги (все = 0 или false)
 

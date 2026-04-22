@@ -7,7 +7,7 @@ import { getReviews, approveReview, rejectReview, deleteReview } from '../servic
 const { Title } = Typography;
 
 interface ReviewRow {
-  id: number;
+  id: string;
   text: string;
   status: string;
   createdAt: string;
@@ -35,7 +35,7 @@ export default function ReviewsPage() {
       const params: { page: number; limit: number; status?: string } = { page, limit: 10 };
       if (statusFilter !== 'all') params.status = statusFilter;
       const { data } = await getReviews(params);
-      setReviews(data.reviews);
+      setReviews(data.items);
       setTotal(data.total);
     } finally {
       setLoading(false);
@@ -44,7 +44,7 @@ export default function ReviewsPage() {
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async (id: string) => {
     try {
       await approveReview(id);
       message.success('Отзыв одобрен');
@@ -54,7 +54,7 @@ export default function ReviewsPage() {
     }
   };
 
-  const handleReject = async (id: number) => {
+  const handleReject = async (id: string) => {
     try {
       await rejectReview(id);
       message.success('Отзыв отклонён');
@@ -64,7 +64,7 @@ export default function ReviewsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     try {
       await deleteReview(id);
       message.success('Отзыв удалён');

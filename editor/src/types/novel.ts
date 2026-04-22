@@ -7,7 +7,7 @@ export interface NovelMeta {
   author: string;
   coverImage?: string;
   tags: string[];
-  totalChapters: number;
+  chaptersCount: number;
   sourceLanguage?: string; // язык оригинала (ru, en, etc.)
   dialogueTheme?: 'ornate' | 'artDeco' | 'modern' | 'glassmorphism' | 'fantasy'
     | 'victorian' | 'gothic' | 'noir' | 'sakura' | 'celestial'
@@ -57,6 +57,9 @@ export interface Scene {
   charactersOnScreen: SceneCharacter[];
   events: SceneEvent[];
   nextSceneId?: string;
+  /** Позиция ноды в редакторе графа сцен. Сохраняется между переключениями глав
+   *  и сессиями. Не экспортируется в рантайм-бандл новеллы (игнорируется клиентом). */
+  editorPosition?: { x: number; y: number };
 }
 
 export interface SceneTransition {

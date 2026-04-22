@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
@@ -6,6 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../models/novel.dart';
 import 'api_config.dart';
+
+/// Таймаут для обычных GET-запросов (каталог, главы, переводы).
+const Duration _kRequestTimeout = Duration(seconds: 10);
+
+/// Таймаут для скачивания крупных ZIP-архивов.
+const Duration _kDownloadTimeout = Duration(seconds: 60);
 
 /// Статус загрузки
 enum DownloadStatus { idle, downloading, completed, error }
@@ -56,22 +63,18 @@ class NovelApiService {
   /// Получить каталог доступных новелл
   Future<List<NovelMeta>> fetchCatalog() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/novels'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/novels'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(_kRequestTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final list = data['novels'] as List;
         final novels = list
-            .map((j) {
-              final map = Map<String, dynamic>.from(j as Map<String, dynamic>);
-              if (map.containsKey('chaptersCount') && !map.containsKey('totalChapters')) {
-                map['totalChapters'] = map['chaptersCount'];
-              }
-              return NovelMeta.fromJson(map);
-            })
+            .map((j) => NovelMeta.fromJson(j as Map<String, dynamic>))
             .toList();
         print('[NovelAPI] Catalog loaded: ${novels.length} novels');
         return novels;
@@ -87,10 +90,12 @@ class NovelApiService {
   /// Получить список глав новеллы
   Future<List<ChapterInfo>> fetchChaptersList(String novelId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/novels/$novelId/chapters'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/novels/$novelId/chapters'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(_kRequestTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -108,10 +113,12 @@ class NovelApiService {
   /// Скачать JSON одной главы с сервера
   Future<bool> downloadChapter(String novelId, int chapterNumber) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/novels/$novelId/chapters/$chapterNumber/download'),
-        headers: {'Content-Type': 'application/json'},
-      );
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/novels/$novelId/chapters/$chapterNumber/download'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(_kRequestTimeout);
 
       if (response.statusCode != 200) return false;
 
@@ -128,38 +135,57 @@ class NovelApiService {
     }
   }
 
-  /// Скачать контент-пак новеллы (ZIP)
+  /// Скачать контент-пак новеллы (ZIP).
+  ///
+  /// На плохой сети делаем до 3 попыток (исходная + 2 retry) при
+  /// `TimeoutException` или `SocketException`. На таймаут всей операции
+  /// (включая стриминг тела) — `_kDownloadTimeout`.
   Future<String?> downloadNovelPack(
     String novelId, {
     void Function(double progress)? onProgress,
   }) async {
-    try {
-      final request = http.Request(
-        'GET',
-        Uri.parse('$_baseUrl/novels/$novelId/download'),
-      );
-      final streamedResponse = await request.send();
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        final request = http.Request(
+          'GET',
+          Uri.parse('$_baseUrl/novels/$novelId/download'),
+        );
+        final streamedResponse = await request.send().timeout(_kDownloadTimeout);
 
-      if (streamedResponse.statusCode != 200) return null;
+        if (streamedResponse.statusCode != 200) return null;
 
-      final contentLength = streamedResponse.contentLength ?? 0;
-      final appDir = await getApplicationDocumentsDirectory();
-      final tempFile = File('${appDir.path}/temp_$novelId.zip');
-      final sink = tempFile.openWrite();
+        final contentLength = streamedResponse.contentLength ?? 0;
+        final appDir = await getApplicationDocumentsDirectory();
+        final tempFile = File('${appDir.path}/temp_$novelId.zip');
+        final sink = tempFile.openWrite();
 
-      int received = 0;
-      await for (final chunk in streamedResponse.stream) {
-        sink.add(chunk);
-        received += chunk.length;
-        if (contentLength > 0) {
-          onProgress?.call(received / contentLength);
+        int received = 0;
+        try {
+          await streamedResponse.stream
+              .forEach((chunk) {
+                sink.add(chunk);
+                received += chunk.length;
+                if (contentLength > 0) {
+                  onProgress?.call(received / contentLength);
+                }
+              })
+              .timeout(_kDownloadTimeout);
+        } finally {
+          await sink.close();
         }
+        return tempFile.path;
+      } on TimeoutException catch (e) {
+        print('[NovelAPI] Download timeout (attempt ${attempt + 1}/3): $e');
+        if (attempt == 2) rethrow;
+      } on SocketException catch (e) {
+        print('[NovelAPI] Download socket error (attempt ${attempt + 1}/3): $e');
+        if (attempt == 2) rethrow;
+      } catch (e) {
+        print('[NovelAPI] Download error: $e');
+        return null;
       }
-      await sink.close();
-      return tempFile.path;
-    } catch (_) {
-      return null;
     }
+    return null;
   }
 
   /// Распаковать контент-пак в папку новелл

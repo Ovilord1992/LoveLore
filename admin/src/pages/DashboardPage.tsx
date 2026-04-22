@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Typography } from 'antd';
+import { Card, Col, Row, Statistic, Typography, message, Spin, Empty } from 'antd';
 import { UserOutlined, BookOutlined, DownloadOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
@@ -14,12 +14,32 @@ interface Stats {
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/admin/stats').then((r) => setStats(r.data));
+    setLoading(true);
+    api
+      .get('/admin/stats')
+      .then((r) => setStats(r.data))
+      .catch((err) => {
+        message.error('Не удалось загрузить статистику');
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!stats) return null;
+  if (loading) {
+    return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+  }
+
+  if (!stats) {
+    return (
+      <div>
+        <Title level={3}>Дашборд</Title>
+        <Empty description="Нет данных" />
+      </div>
+    );
+  }
 
   return (
     <div>

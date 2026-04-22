@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/novel_loader.dart';
@@ -104,7 +105,27 @@ class SceneEngine extends StateNotifier<GameState?> {
       _currentChapter = await loader.loadChapter(novelId, savedState.currentChapterId);
       if (_currentChapter != null) {
         _currentScene = _currentChapter!.getScene(savedState.currentSceneId);
-        state = savedState;
+        if (_currentScene == null) {
+          debugPrint(
+              '[SceneEngine] Saved scene "${savedState.currentSceneId}" not found '
+              'in chapter ${_currentChapter!.id}, falling back to firstSceneId');
+          _currentScene = _currentChapter!.getScene(_currentChapter!.firstSceneId);
+          if (_currentScene == null) {
+            debugPrint(
+                '[SceneEngine] firstSceneId "${_currentChapter!.firstSceneId}" '
+                'also missing in chapter ${_currentChapter!.id}; staying at null');
+          }
+        }
+        // Если использовался fallback — синхронизируем currentSceneId/currentEventIndex
+        // в state, иначе автосейв перепишет save со старой невалидной sceneId.
+        if (_currentScene != null && _currentScene!.id != savedState.currentSceneId) {
+          state = savedState.copyWith(
+            currentSceneId: _currentScene!.id,
+            currentEventIndex: 0,
+          );
+        } else {
+          state = savedState;
+        }
         return;
       }
     }

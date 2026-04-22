@@ -47,7 +47,10 @@ class NovelMeta extends Equatable {
   final String? coverImage;
   final String? coverUrl;
   final List<String> tags;
-  final int totalChapters;
+  // Back-compat: старые meta.json (и editor exporter <= v1) использовали "totalChapters".
+  // Сервер и новый клиент пишут "chaptersCount". Принимаем оба ключа при чтении.
+  @JsonKey(readValue: _readChaptersCount)
+  final int chaptersCount;
   final int releasedChapters;
   final String? dialogueTheme;
 
@@ -76,7 +79,7 @@ class NovelMeta extends Equatable {
     this.coverImage,
     this.coverUrl,
     this.tags = const [],
-    this.totalChapters = 0,
+    this.chaptersCount = 0,
     this.releasedChapters = 0,
     this.dialogueTheme,
     this.dialogueFrameColor,
@@ -132,7 +135,7 @@ class NovelMeta extends Equatable {
       coverImage: coverImage,
       coverUrl: coverUrl,
       tags: tags,
-      totalChapters: totalChapters,
+      chaptersCount: chaptersCount,
       releasedChapters: releasedChapters,
       dialogueTheme: dialogueTheme,
       dialogueFrameColor: dialogueFrameColor,
@@ -144,7 +147,12 @@ class NovelMeta extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, totalChapters, releasedChapters, dialogueTheme, dialogueFrameColor, dialogueBgColor, dialogueStyle, localizedTitle, localizedDescription];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, chaptersCount, releasedChapters, dialogueTheme, dialogueFrameColor, dialogueBgColor, dialogueStyle, localizedTitle, localizedDescription];
+}
+
+/// Читает количество глав из JSON, поддерживая legacy-ключ "totalChapters".
+Object? _readChaptersCount(Map map, String key) {
+  return map[key] ?? map['totalChapters'];
 }
 
 /// Информация о главе с сервера

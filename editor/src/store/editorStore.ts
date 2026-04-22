@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { NovelProject, NovelTranslation, Character, Chapter, Scene, SceneEvent, SceneCharacter, NovelMeta } from '../types/novel';
 
 const defaultMeta: NovelMeta = {
@@ -7,7 +8,7 @@ const defaultMeta: NovelMeta = {
   description: '',
   author: '',
   tags: [],
-  totalChapters: 1,
+  chaptersCount: 1,
 };
 
 const defaultScene: Scene = {
@@ -88,9 +89,14 @@ interface EditorState {
   updateTranslationCharacter: (lang: string, characterId: string, name: string) => void;
   updateTranslationChapter: (lang: string, chapterId: string, title: string) => void;
   selectTranslationLang: (lang: string | null) => void;
+
+  // Позиция ноды в SceneGraph — сохраняется между переключениями глав
+  updateScenePosition: (chapterId: string, sceneId: string, position: { x: number; y: number }) => void;
 }
 
-export const useEditorStore = create<EditorState>((set, get) => ({
+export const useEditorStore = create<EditorState>()(
+  persist(
+    (set, get) => ({
   project: {
     meta: defaultMeta,
     characters: [],
@@ -204,7 +210,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       project: {
         ...state.project,
         chapters: [...state.project.chapters, chapter],
-        meta: { ...state.project.meta, totalChapters: num },
+        meta: { ...state.project.meta, chaptersCount: num },
       },
       isDirty: true,
     };
@@ -214,7 +220,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (state.project.chapters.length <= 1) return state;
     const chapters = state.project.chapters.filter((_, i) => i !== index);
     return {
-      project: { ...state.project, chapters, meta: { ...state.project.meta, totalChapters: chapters.length } },
+      project: { ...state.project, chapters, meta: { ...state.project.meta, chaptersCount: chapters.length } },
       selectedChapterIndex: Math.min(state.selectedChapterIndex, chapters.length - 1),
       isDirty: true,
     };
@@ -396,4 +402,40 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   }),
 
   selectTranslationLang: (lang) => set({ selectedTranslationLang: lang }),
-}));
+
+  // --- Позиция ноды в графе сцен ---
+  // Не выставляем isDirty, чтобы перетаскивание ноды не помечало проект как
+  // несохранённый — это чисто UI-состояние редактора.
+  updateScenePosition: (chapterId, sceneId, position) => set((state) => {
+    const chapters = state.project.chapters.map((ch) => {
+      if (ch.id !== chapterId) return ch;
+      return {
+        ...ch,
+        scenes: ch.scenes.map((s) =>
+          s.id === sceneId ? { ...s, editorPosition: position } : s
+        ),
+      };
+    });
+    return { project: { ...state.project, chapters } };
+  }),
+    }),
+    {
+      name: 'amoria-editor-store',
+      storage: createJSONStorage(() => localStorage),
+      // Персистим только структуру новеллы и индексы выбора.
+      // НЕ персистим:
+      //   - images   (Map<string, File>)   — File не сериализуется в JSON
+      //   - imageUrls (Map<string, string>) — blob: URL живёт только в текущей сессии
+      // После refresh пользователь увидит структуру новеллы, но картинки
+      // придётся перезагрузить — известное ограничение.
+      partialize: (state) => ({
+        project: state.project,
+        selectedChapterIndex: state.selectedChapterIndex,
+        selectedSceneId: state.selectedSceneId,
+        selectedEventIndex: state.selectedEventIndex,
+        selectedTranslationLang: state.selectedTranslationLang,
+      }),
+      version: 1,
+    }
+  )
+);

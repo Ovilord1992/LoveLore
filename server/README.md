@@ -268,6 +268,7 @@ curl http://localhost:3000/v1/sync/all \
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID | — |
 | `ADMIN_EMAIL` | Email админа (seed) | `admin@amoria.app` |
 | `ADMIN_PASSWORD` | Пароль админа (seed) | `admin123` |
+| `ALLOWED_ORIGINS` | CORS whitelist (comma-separated). Например: `http://localhost:5173,http://localhost:5174,https://admin.example.com`. Запросы без origin (Flutter mobile, curl) проходят всегда. | `http://localhost:5173,http://localhost:5174` |
 
 ---
 

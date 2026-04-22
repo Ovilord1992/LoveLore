@@ -205,12 +205,12 @@ export function GamePreview() {
     : 'center';
 
   // Custom color CSS vars
-  const customStyle: React.CSSProperties = {};
+  const customStyle = {} as React.CSSProperties & Record<string, string>;
   if (project.meta.dialogueFrameColor) {
-    customStyle['--frame-color' as string] = project.meta.dialogueFrameColor;
+    customStyle['--frame-color'] = project.meta.dialogueFrameColor;
   }
   if (project.meta.dialogueBgColor) {
-    customStyle['--frame-bg' as string] = project.meta.dialogueBgColor;
+    customStyle['--frame-bg'] = project.meta.dialogueBgColor;
   }
 
   return (
