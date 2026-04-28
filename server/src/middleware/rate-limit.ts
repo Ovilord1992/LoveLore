@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { Request } from 'express';
 
 const skipInTest = () => process.env.NODE_ENV === 'test';
@@ -61,6 +61,8 @@ export const iapVerifyLimiter = rateLimit({
   skip: skipInTest,
   keyGenerator: (req: Request) => {
     const uid = (req as Request & { userId?: string }).userId;
-    return uid ? `iap:${uid}` : `iap-ip:${req.ip}`;
+    if (uid) return `iap:${uid}`;
+    // ipKeyGenerator корректно обрабатывает IPv6 (нормализует /64 префикс).
+    return `iap-ip:${ipKeyGenerator(req.ip ?? '')}`;
   },
 });
