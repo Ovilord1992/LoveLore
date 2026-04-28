@@ -13,13 +13,14 @@ enum Role {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  displayName  String   @default("Читатель") @map("display_name")
-  role         Role     @default(user)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  displayName   String    @default("Читатель") @map("display_name")
+  role          Role      @default(user)
+  vipExpiresAt  DateTime? @map("vip_expires_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   saves    GameSave[]
   profile  UserProfileData?
@@ -27,6 +28,7 @@ model User {
   ratings   Rating[]
   reviews   Review[]
   favorites Favorite[]
+  iapTransactions IapTransaction[]
 
   @@map("users")
 }
@@ -173,4 +175,23 @@ model Favorite {
 
   @@unique([userId, novelId])
   @@map("favorites")
+}
+
+model IapTransaction {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  platform        String   // "apple" | "google"
+  productId       String   @map("product_id")
+  transactionId   String   @map("transaction_id")  // originalTransactionId у Apple, orderId у Google
+  receiptHash     String   @map("receipt_hash")    // SHA-256 от полного receipt — чтобы не хранить весь чек
+  verified        Boolean  @default(false)
+  rewardClaimed   Boolean  @default(false) @map("reward_claimed")
+  rawResponseLog  Json?    @map("raw_response_log") // для дебага, опционально
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([platform, transactionId])
+  @@index([userId])
+  @@map("iap_transactions")
 }

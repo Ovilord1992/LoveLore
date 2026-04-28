@@ -98,6 +98,17 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     _save();
   }
 
+  /// Абсолютная установка баланса от сервера (источник истины — backend).
+  /// Используется после успешной серверной верификации IAP, чтобы
+  /// клиент не мог разойтись с реальным балансом.
+  void setBalance({int? diamonds, int? tickets}) {
+    state = state.copyWith(
+      diamonds: diamonds ?? state.diamonds,
+      tickets: tickets != null ? tickets.clamp(0, maxTickets) : state.tickets,
+    );
+    _save();
+  }
+
   /// Потратить билет (энергию) для чтения главы
   bool spendTicket() {
     _refillTickets();

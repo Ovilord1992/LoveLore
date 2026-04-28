@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:navell/services/locale_service.dart';
 
 void main() {
   group('Localization', () {

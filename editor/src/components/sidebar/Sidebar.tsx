@@ -8,8 +8,21 @@ import './Sidebar.css';
 
 type Tab = 'meta' | 'characters' | 'chapters' | 'variables' | 'validate' | 'translations';
 
+/**
+ * Условие "ассеты потеряны после refresh": persist уже отработал, у проекта
+ * есть главы, но Map изображений пустая. Возвращает true только в этом
+ * сочетании — нужно для warning-баннера и блокировки экспорта.
+ */
+export function useAssetsLost(): boolean {
+  const hasHydrated = useEditorStore((s) => s.hasHydrated);
+  const chaptersLen = useEditorStore((s) => s.project.chapters.length);
+  const imagesSize = useEditorStore((s) => s.images.size);
+  return hasHydrated && chaptersLen > 0 && imagesSize === 0;
+}
+
 export function Sidebar() {
   const [tab, setTab] = useState<Tab>('meta');
+  const assetsLost = useAssetsLost();
 
   return (
     <div className="sidebar">
@@ -22,6 +35,14 @@ export function Sidebar() {
         <button className={tab === 'validate' ? 'active' : ''} onClick={() => setTab('validate')} title="Валидация"><AlertTriangle size={16} /></button>
       </div>
       <div className="sidebar-content">
+        {assetsLost && (
+          <div className="assets-lost-banner" role="alert">
+            <AlertTriangle size={14} />
+            <span>
+              Картинки не сохраняются между сессиями. Перезагрузите ZIP проекта или загрузите ассеты заново перед экспортом.
+            </span>
+          </div>
+        )}
         {tab === 'meta' && <MetaTab />}
         {tab === 'characters' && <CharactersTab />}
         {tab === 'chapters' && <ChaptersTab />}
@@ -36,6 +57,7 @@ export function Sidebar() {
 function MetaTab() {
   const { project, images, updateMeta, setProject, addImage, clearImages, setImages } = useEditorStore();
   const { meta } = project;
+  const assetsLost = useAssetsLost();
 
   const coverPath = meta.coverImage || 'cg/cover.png';
   const coverUrl = useEditorStore((s) => s.imageUrls.get(coverPath));
@@ -208,7 +230,14 @@ function MetaTab() {
       </div>
 
       <div className="actions-group">
-        <button onClick={() => exportAsZip(project, images)} className="primary"><Download size={14} /> ZIP для Amoria</button>
+        <button
+          onClick={() => exportAsZip(project, images)}
+          className="primary"
+          disabled={assetsLost}
+          title={assetsLost ? 'Загрузите ассеты перед экспортом' : undefined}
+        >
+          <Download size={14} /> ZIP для Amoria
+        </button>
         <button onClick={() => exportAsJson(project)}><Download size={14} /> JSON</button>
         <button onClick={handleImport}><Upload size={14} /> Импорт (JSON/ZIP)</button>
       </div>

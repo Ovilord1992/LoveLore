@@ -6,6 +6,7 @@ import { upload } from '../middleware/upload';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { adminMiddleware } from '../middleware/admin';
 import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip } from '../utils/zip';
+import { logger } from '../utils/logger';
 
 export const novelsRouter = Router();
 
@@ -206,8 +207,20 @@ novelsRouter.post(
         chaptersCount = extracted.length;
         chapterInfos.push(...extracted);
       } catch (err) {
-        // ZIP bomb / corrupt archive / I/O error — лог, не падаем (главы создадутся как 0).
-        console.error(`[upload] Failed to extract chapters from ZIP for novel ${novelId}:`, err);
+        // ZIP bomb — отказ с 413, чтобы пользователь понял что архив отвергнут.
+        // Чистим уже сохранённые артефакты (zip + обложку), т.к. БД ещё не трогали.
+        if (err instanceof Error && err.message.includes('exceeds max uncompressed size')) {
+          logger.error({ err: err.message, novelId }, '[upload] ZIP bomb rejected');
+          try { if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath); } catch (e) { logger.warn({ err: e }, '[upload] Failed to cleanup zip'); }
+          if (coverFile) {
+            const coverPath = path.join(coversDir, coverFile);
+            try { if (fs.existsSync(coverPath)) fs.unlinkSync(coverPath); } catch (e) { logger.warn({ err: e }, '[upload] Failed to cleanup cover'); }
+          }
+          res.status(413).json({ error: 'ZIP exceeds maximum allowed size' });
+          return;
+        }
+        // Прочие ошибки (corrupt archive / I/O) — лог, не падаем (главы создадутся как 0).
+        logger.error({ err, novelId }, '[upload] Failed to extract chapters from ZIP');
       }
 
       // Если новелла уже существует — обновляем, иначе создаём
@@ -220,7 +233,7 @@ novelsRouter.post(
         const oldPath = path.resolve(uploadDir, 'packs', existing.zipFilename);
         const uploadDirResolved = path.resolve(uploadDir);
         if (!oldPath.startsWith(uploadDirResolved)) {
-          console.warn(`Skipping old zip deletion: path traversal detected (${oldPath})`);
+          logger.warn({ oldPath }, 'Skipping old zip deletion: path traversal detected');
         } else if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
         }
@@ -308,7 +321,7 @@ novelsRouter.delete('/:id', authMiddleware, adminMiddleware, async (req: Request
     if (novel.zipFilename) {
       const zipPath = path.resolve(uploadDir, 'packs', novel.zipFilename);
       if (!zipPath.startsWith(uploadDirResolved)) {
-        console.warn(`Skipping zip deletion: path traversal detected (${zipPath})`);
+        logger.warn({ zipPath }, 'Skipping zip deletion: path traversal detected');
       } else if (fs.existsSync(zipPath)) {
         fs.unlinkSync(zipPath);
       }
@@ -316,7 +329,7 @@ novelsRouter.delete('/:id', authMiddleware, adminMiddleware, async (req: Request
     if (novel.coverUrl) {
       const coverPath = path.resolve(uploadDir, novel.coverUrl.replace(/^\//, ''));
       if (!coverPath.startsWith(uploadDirResolved)) {
-        console.warn(`Skipping cover deletion: path traversal detected (${coverPath})`);
+        logger.warn({ coverPath }, 'Skipping cover deletion: path traversal detected');
       } else if (fs.existsSync(coverPath)) {
         fs.unlinkSync(coverPath);
       }

@@ -1,15 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { logger } from '../utils/logger';
 
 function resolveJwtSecret(): string {
   const fromEnv = process.env.JWT_SECRET;
   if (fromEnv && fromEnv.length > 0) {
     return fromEnv;
   }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET is required in production');
+  // Default к production-режиму: только явный development/test разрешает дефолтный секрет.
+  // undefined / любое другое значение NODE_ENV (например, незаданное под PM2/Docker) — production.
+  const env = process.env.NODE_ENV;
+  if (env !== 'development' && env !== 'test') {
+    throw new Error('JWT_SECRET is required (NODE_ENV is not development/test)');
   }
-  console.warn('[auth] Using default JWT_SECRET — set JWT_SECRET in .env for production');
+  logger.warn('[auth] Using default JWT_SECRET — set JWT_SECRET in .env for production');
   return 'amoria-dev-secret-change-in-production';
 }
 

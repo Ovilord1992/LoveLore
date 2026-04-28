@@ -23,21 +23,38 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    // Подключаем начисление наград
+    // Подключаем уведомления о наградах. Сами цифры баланса теперь
+    // выставляет сервер через CurrencyService.setBalance внутри IapService —
+    // здесь только UI-фидбек, чтобы не дублировать начисление.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(iapServiceProvider.notifier).onReward = (productId, rewards) {
-        final currency = ref.read(currencyServiceProvider.notifier);
-        if (rewards.containsKey('diamonds')) {
-          currency.addDiamonds(rewards['diamonds']!);
-        }
-        if (rewards.containsKey('tickets')) {
-          currency.addTickets(rewards['tickets']!);
-        }
+      final iap = ref.read(iapServiceProvider.notifier);
+      iap.onReward = (productId, rewards) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(_rewardText(rewards)),
               backgroundColor: const Color(0xFF4CAF50),
+            ),
+          );
+        }
+      };
+      iap.onPurchaseError = (message) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      };
+      iap.onPending = (productId) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Покупка обрабатывается, валюта появится при подключении'),
+              backgroundColor: Color(0xFF607D8B),
             ),
           );
         }

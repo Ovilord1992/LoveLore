@@ -37,6 +37,10 @@ interface EditorState {
   selectedEventIndex: number | null;
   selectedTranslationLang: string | null;
   isDirty: boolean;
+  // True после первого запуска onRehydrateStorage — значит persist уже подгрузил
+  // данные с диска, и компоненты могут различать "первый запуск" vs "после refresh".
+  hasHydrated: boolean;
+  setHasHydrated: (v: boolean) => void;
 
   // Проект
   setProject: (project: NovelProject) => void;
@@ -110,6 +114,8 @@ export const useEditorStore = create<EditorState>()(
   selectedEventIndex: null,
   selectedTranslationLang: null,
   isDirty: false,
+  hasHydrated: false,
+  setHasHydrated: (v) => set({ hasHydrated: v }),
 
   setProject: (project) => set({ project, isDirty: false, selectedChapterIndex: 0, selectedSceneId: null, selectedEventIndex: null }),
 
@@ -436,6 +442,22 @@ export const useEditorStore = create<EditorState>()(
         selectedTranslationLang: state.selectedTranslationLang,
       }),
       version: 1,
+      // Graceful migration: если в localStorage старая версия — пропускаем (или
+      // миграция в будущем); если незнакомая (новее, или мусор) — сбрасываем
+      // на дефолт, чтобы редактор не крашил на старте.
+      migrate: (persistedState: unknown, version: number) => {
+        if (version === 0) {
+          // future: migration from v0 to v1 if нужно
+          return persistedState as never;
+        }
+        // unknown version — сбросить state на дефолт
+        return undefined as never;
+      },
+      // Помечаем стор гидратированным, чтобы UI мог отличить "только что
+      // открыли редактор" от "перезагрузили страницу с восстановленным проектом".
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

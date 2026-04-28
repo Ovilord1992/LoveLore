@@ -126,3 +126,31 @@
   background: rgba(233,30,99,0.1);
   color: #E91E63;
 }
+
+/* Banner: ассеты потеряны после refresh */
+.assets-lost-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 12px 0;
+  padding: 10px 12px;
+  background: rgba(255,152,0,0.12);
+  border: 1px solid rgba(255,152,0,0.4);
+  border-radius: 8px;
+  color: #ffb74d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.assets-lost-banner svg { flex-shrink: 0; margin-top: 2px; }
+
+.actions-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.actions-group button.primary:disabled {
+  background: #5a3242;
+  border-color: #5a3242;
+}
+.actions-group button.primary:disabled:hover {
+  background: #5a3242;
+}

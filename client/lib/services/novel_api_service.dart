@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -76,13 +77,13 @@ class NovelApiService {
         final novels = list
             .map((j) => NovelMeta.fromJson(j as Map<String, dynamic>))
             .toList();
-        print('[NovelAPI] Catalog loaded: ${novels.length} novels');
+        debugPrint('[NovelAPI] Catalog loaded: ${novels.length} novels');
         return novels;
       }
-      print('[NovelAPI] Catalog fetch failed: status ${response.statusCode}');
+      debugPrint('[NovelAPI] Catalog fetch failed: status ${response.statusCode}');
       return [];
     } catch (e) {
-      print('[NovelAPI] Catalog fetch error: $e');
+      debugPrint('[NovelAPI] Catalog fetch error: $e');
       return [];
     }
   }
@@ -175,13 +176,13 @@ class NovelApiService {
         }
         return tempFile.path;
       } on TimeoutException catch (e) {
-        print('[NovelAPI] Download timeout (attempt ${attempt + 1}/3): $e');
+        debugPrint('[NovelAPI] Download timeout (attempt ${attempt + 1}/3): $e');
         if (attempt == 2) rethrow;
       } on SocketException catch (e) {
-        print('[NovelAPI] Download socket error (attempt ${attempt + 1}/3): $e');
+        debugPrint('[NovelAPI] Download socket error (attempt ${attempt + 1}/3): $e');
         if (attempt == 2) rethrow;
       } catch (e) {
-        print('[NovelAPI] Download error: $e');
+        debugPrint('[NovelAPI] Download error: $e');
         return null;
       }
     }

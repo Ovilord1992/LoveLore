@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -64,11 +65,11 @@ class NovelLoader {
         try {
           novels.add(await loadNovelMeta(id));
         } catch (e) {
-          print('[NovelLoader] Failed to load built-in novel "$id": $e');
+          debugPrint('[NovelLoader] Failed to load built-in novel "$id": $e');
         }
       }
     } catch (e) {
-      print('[NovelLoader] Failed to load manifest: $e');
+      debugPrint('[NovelLoader] Failed to load manifest: $e');
     }
 
     // 2. Скачанные новеллы из файловой системы
@@ -89,12 +90,12 @@ class NovelLoader {
               }
             }
           } catch (e) {
-            print('[NovelLoader] Failed to load downloaded novel from ${dir.path}: $e');
+            debugPrint('[NovelLoader] Failed to load downloaded novel from ${dir.path}: $e');
           }
         }
       }
     } catch (e) {
-      print('[NovelLoader] Failed to scan downloaded novels: $e');
+      debugPrint('[NovelLoader] Failed to scan downloaded novels: $e');
     }
 
     // 3. Каталог с сервера (новеллы, которых нет локально)
@@ -115,10 +116,10 @@ class NovelLoader {
         }
       }
     } catch (e) {
-      print('[NovelLoader] Failed to fetch server catalog: $e');
+      debugPrint('[NovelLoader] Failed to fetch server catalog: $e');
     }
 
-    print('[NovelLoader] Total novels loaded: ${novels.length} (${novels.map((n) => n.id).join(", ")})');
+    debugPrint('[NovelLoader] Total novels loaded: ${novels.length} (${novels.map((n) => n.id).join(", ")})');
 
     // 4. Применить переводы мета-данных для текущего языка
     final localized = await _localizeNovelMetas(novels);

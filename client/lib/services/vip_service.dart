@@ -88,6 +88,17 @@ class VipService extends StateNotifier<VipState> {
     _save();
   }
 
+  /// Установить дату истечения VIP по данным сервера.
+  /// Если [expiresAt] в будущем — VIP активен, иначе — деактивирован.
+  void setExpiresAt(DateTime expiresAt) {
+    final isActive = expiresAt.isAfter(DateTime.now());
+    state = state.copyWith(
+      isActive: isActive,
+      expiresAt: expiresAt,
+    );
+    _save();
+  }
+
   /// Деактивировать VIP
   void deactivate() {
     state = state.copyWith(isActive: false);

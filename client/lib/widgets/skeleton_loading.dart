@@ -149,7 +149,7 @@ class SkeletonCatalogGrid extends StatelessWidget {
                 mainAxisSpacing: 12,
               ),
               itemCount: 4,
-              itemBuilder: (_, __) => const SkeletonNovelCard(),
+              itemBuilder: (_, _) => const SkeletonNovelCard(),
             ),
           ),
         ],

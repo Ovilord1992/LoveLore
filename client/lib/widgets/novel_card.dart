@@ -401,7 +401,7 @@ class NovelListCard extends StatelessWidget {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: novel.tags.length.clamp(0, 3),
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(width: 6),
                           itemBuilder: (_, i) => Container(
                             padding: const EdgeInsets.symmetric(

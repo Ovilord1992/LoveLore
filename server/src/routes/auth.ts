@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import appleSignin from 'apple-signin-auth';
 import prisma from '../db';
 import { AuthRequest, generateToken, authMiddleware } from '../middleware/auth';
+import { loginLimiter, registerLimiter, socialAuthLimiter } from '../middleware/rate-limit';
 
 export const authRouter = Router();
 
@@ -13,7 +14,7 @@ const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || '';
 
 // ─── POST /v1/auth/register ── Регистрация ──────────────────────────────────
-authRouter.post('/register', async (req: AuthRequest, res: Response) => {
+authRouter.post('/register', registerLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { email, password, displayName } = req.body;
 
@@ -58,7 +59,7 @@ authRouter.post('/register', async (req: AuthRequest, res: Response) => {
 });
 
 // ─── POST /v1/auth/login ── Вход ────────────────────────────────────────────
-authRouter.post('/login', async (req: AuthRequest, res: Response) => {
+authRouter.post('/login', loginLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -112,7 +113,7 @@ authRouter.get('/me', authMiddleware, async (req: AuthRequest, res: Response) =>
 });
 
 // ─── POST /v1/auth/social ── Вход через Google / Apple ───────────────────────
-authRouter.post('/social', async (req: AuthRequest, res: Response) => {
+authRouter.post('/social', socialAuthLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { provider, idToken, identityToken, email, displayName } = req.body;
 

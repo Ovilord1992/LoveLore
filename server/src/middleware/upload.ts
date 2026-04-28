@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB max — типичная новелла со спрайтами/фонами умещается; сильно больше — повод пересобрать ZIP без сырого ассета
   fileFilter: (_req, file, cb) => {
     if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
       cb(null, true);

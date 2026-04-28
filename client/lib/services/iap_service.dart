@@ -1,10 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+
+import 'currency_service.dart';
+import 'iap_api_client.dart';
+import 'iap_pending_queue.dart';
 import 'remote_config_service.dart';
+import 'vip_service.dart';
 
 /// Провайдер IAP-сервиса
 final iapServiceProvider =
@@ -84,11 +91,30 @@ class IapState {
       );
 }
 
-/// Сервис покупок
+/// Тонкая обёртка над `Platform.isIOS` — чтобы тесты могли подсунуть значение.
+typedef PlatformResolver = String Function();
+
+String _defaultPlatformResolver() {
+  // На вебе/десктопе доступа к платёжному стору всё равно нет, но дефолт
+  // оставим разумным.
+  if (Platform.isIOS || Platform.isMacOS) return 'apple';
+  return 'google';
+}
+
+/// Сервис покупок.
+///
+/// Контракт: валюту/VIP начисляет ТОЛЬКО после успешного ответа от
+/// `POST /v1/iap/verify`. При сетевых сбоях покупка кладётся в
+/// [IapPendingQueue] и повторяется при следующем `_init` или ручном
+/// `processPendingNow`. `completePurchase` мы зовём всегда, чтобы стор
+/// не ретраил бесконечно — но это не значит, что валюта начислена.
 class IapService extends StateNotifier<IapState> {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
-  final InAppPurchase _iap = InAppPurchase.instance;
+  final InAppPurchase _iap;
   final Ref _ref;
+  final IapVerifier _verifier;
+  final IapPendingQueue _pendingQueue;
+  final PlatformResolver _platformResolver;
 
   /// Ключ Hive для дедупликации обработанных purchaseId
   static const _processedKey = 'processed_purchase_ids';
@@ -96,28 +122,62 @@ class IapService extends StateNotifier<IapState> {
   /// Максимальная глубина FIFO-окна обработанных id
   static const _processedHistoryLimit = 200;
 
-  /// Коллбэк для начисления наград (устанавливается из UI)
+  /// Коллбэк для начисления наград (устанавливается из UI).
+  /// Сохраняем сигнатуру для обратной совместимости — теперь дёргается
+  /// только после ответа сервера success/already_claimed.
   void Function(String productId, Map<String, int> rewards)? onReward;
 
-  IapService(this._ref) : super(const IapState()) {
-    _init();
+  /// Опциональный коллбэк для UI-ошибок (snackbar и т.п.).
+  void Function(String message)? onPurchaseError;
+
+  /// Опциональный коллбэк, когда покупка ушла в очередь до сети.
+  void Function(String productId)? onPending;
+
+  IapService(
+    this._ref, {
+    InAppPurchase? iap,
+    IapVerifier? verifier,
+    IapPendingQueue? pendingQueue,
+    PlatformResolver? platformResolver,
+    bool autoInit = true,
+  })  : _iap = iap ?? InAppPurchase.instance,
+        _verifier = verifier ?? _ref.read(iapApiClientProvider),
+        _platformResolver = platformResolver ?? _defaultPlatformResolver,
+        _pendingQueue = pendingQueue ??
+            IapPendingQueue(
+              verifier: verifier ?? _ref.read(iapApiClientProvider),
+            ),
+        super(const IapState()) {
+    if (autoInit) {
+      // ignore: discarded_futures
+      _init();
+    }
   }
 
   Future<void> _init() async {
     final available = await _iap.isAvailable();
     if (!available) {
       state = state.copyWith(isAvailable: false, isLoading: false);
+      // Даже если стор недоступен — попробуем разгрести pending.
+      // ignore: discarded_futures
+      _flushPending();
       return;
     }
 
     _subscription = _iap.purchaseStream.listen(
-      _onPurchaseUpdate,
-      onError: (error) {
+      (purchases) {
+        // ignore: discarded_futures
+        _onPurchaseUpdate(purchases);
+      },
+      onError: (Object error) {
         state = state.copyWith(error: error.toString());
       },
     );
 
     await _loadProducts();
+    // Разгребаем pending при старте.
+    // ignore: discarded_futures
+    _flushPending();
   }
 
   Future<void> _loadProducts() async {
@@ -158,24 +218,46 @@ class IapService extends StateNotifier<IapState> {
     }
   }
 
-  void _onPurchaseUpdate(List<PurchaseDetails> purchases) {
-    for (final purchase in purchases) {
-      if (purchase.status == PurchaseStatus.purchased ||
-          purchase.status == PurchaseStatus.restored) {
-        _deliverProduct(purchase);
-      }
+  /// Прогнать pending-очередь руками (например, по onResume).
+  Future<PendingProcessReport> processPendingNow() => _flushPending();
 
-      if (purchase.pendingCompletePurchase) {
-        _iap.completePurchase(purchase);
+  Future<PendingProcessReport> _flushPending() async {
+    final report = await _pendingQueue.processAll();
+    for (final result in report.successResults) {
+      _applyServerResult(result, productId: null);
+    }
+    return report;
+  }
+
+  Future<void> _onPurchaseUpdate(List<PurchaseDetails> purchases) async {
+    for (final purchase in purchases) {
+      try {
+        if (purchase.status == PurchaseStatus.purchased ||
+            purchase.status == PurchaseStatus.restored) {
+          await _deliverProduct(purchase);
+        }
+      } catch (e, st) {
+        debugPrint('[IAP] _deliverProduct crashed: $e\n$st');
+        _emitError('Не удалось обработать покупку');
+      } finally {
+        // completePurchase ВСЕГДА — иначе стор будет ретраить и пользователь
+        // застрянет. Сервер сам отдаст already_claimed на повторе.
+        if (purchase.pendingCompletePurchase) {
+          try {
+            await _iap.completePurchase(purchase);
+          } catch (e) {
+            debugPrint('[IAP] completePurchase failed: $e');
+          }
+        }
       }
     }
   }
 
-  void _deliverProduct(PurchaseDetails purchase) {
-    // Дедупликация: если purchaseID уже обрабатывали — пропускаем начисление,
-    // но completePurchase в _onPurchaseUpdate всё равно отработает.
+  Future<void> _deliverProduct(PurchaseDetails purchase) async {
     final purchaseId = purchase.purchaseID;
     final processed = _readProcessedIds();
+    // Локальная FIFO-дедупликация — defense-in-depth, чтобы не делать
+    // лишний роудтрип. Сервер всё равно вернул бы already_claimed.
     if (purchaseId != null &&
         purchaseId.isNotEmpty &&
         processed.contains(purchaseId)) {
@@ -185,23 +267,118 @@ class IapService extends StateNotifier<IapState> {
       return;
     }
 
-    // Берём награды из Remote Config, fallback на хардкод
+    final receipt = purchase.verificationData.serverVerificationData;
+    if (receipt.isEmpty) {
+      debugPrint('[IAP] Empty receipt for ${purchase.productID}');
+      _emitError('Покупка не прошла верификацию');
+      return;
+    }
+
+    final pendingItem = PendingIapPurchase(
+      platform: _platformResolver(),
+      productId: purchase.productID,
+      receipt: receipt,
+      purchaseId: purchaseId,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    IapVerifyResult result;
+    try {
+      result = await _verifier.verifyPurchase(
+        platform: pendingItem.platform,
+        productId: pendingItem.productId,
+        receipt: pendingItem.receipt,
+      );
+    } on IapVerifyTransientException catch (e) {
+      debugPrint('[IAP] transient verify failure: $e — queueing');
+      await _pendingQueue.add(pendingItem);
+      onPending?.call(purchase.productID);
+      _emitError('Покупка обрабатывается, валюта появится при подключении');
+      return;
+    } on IapVerifyUnauthorizedException catch (e) {
+      debugPrint('[IAP] unauthorized verify: $e — queueing');
+      await _pendingQueue.add(pendingItem);
+      onPending?.call(purchase.productID);
+      _emitError('Войдите в аккаунт, чтобы получить покупку');
+      return;
+    } catch (e) {
+      // Неизвестная ошибка — тоже в очередь, не теряем валюту.
+      debugPrint('[IAP] verify unknown error: $e — queueing');
+      await _pendingQueue.add(pendingItem);
+      onPending?.call(purchase.productID);
+      _emitError('Покупка обрабатывается, валюта появится при подключении');
+      return;
+    }
+
+    if (result.isSuccess) {
+      _applyServerResult(result, productId: purchase.productID);
+
+      if (purchase.productID == ProductIds.starterBundle) {
+        state = state.copyWith(starterBundlePurchased: true);
+      }
+
+      if (purchaseId != null && purchaseId.isNotEmpty) {
+        _appendProcessedId(purchaseId, processed);
+      }
+    } else {
+      // 400 / invalid — НЕ начисляем.
+      debugPrint(
+          '[IAP] verify rejected ${purchase.productID}: status=${result.status} error=${result.error}');
+      _emitError('Покупка не прошла верификацию');
+    }
+  }
+
+  /// Применить результат сервера: обновить кеш баланса / VIP / позвать onReward.
+  void _applyServerResult(IapVerifyResult result, {String? productId}) {
+    // Сервер — источник истины: ставим баланс абсолютно.
+    final newBalance = result.newBalance;
+    if (newBalance != null) {
+      _ref.read(currencyServiceProvider.notifier).setBalance(
+            diamonds: newBalance.diamonds,
+            tickets: newBalance.tickets,
+          );
+    }
+
+    final vipExp = result.vipExpiresAt;
+    if (vipExp != null) {
+      _ref.read(vipServiceProvider.notifier).setExpiresAt(vipExp);
+    }
+
+    // onReward — для UI (snackbar). Серверные rewards имеют приоритет,
+    // fallback — Remote Config / хардкод (для старого UI, который кладёт
+    // diamonds/tickets из Map<String,int>).
+    if (productId != null) {
+      final rewardsMap = _coerceRewards(result.rewards) ?? _fallbackRewards(productId);
+      if (rewardsMap != null && rewardsMap.isNotEmpty) {
+        onReward?.call(productId, rewardsMap);
+      }
+    }
+  }
+
+  Map<String, int>? _coerceRewards(Map<String, dynamic>? rewards) {
+    if (rewards == null) return null;
+    final result = <String, int>{};
+    rewards.forEach((k, v) {
+      if (v is num) {
+        result[k] = v.toInt();
+      } else if (v is String) {
+        final parsed = int.tryParse(v);
+        if (parsed != null) result[k] = parsed;
+      }
+    });
+    return result.isEmpty ? null : result;
+  }
+
+  Map<String, int>? _fallbackRewards(String productId) {
     final configIap = _ref.read(remoteConfigProvider).iap;
-    final rewards = configIap.getReward(purchase.productID).isNotEmpty
-        ? configIap.getReward(purchase.productID)
-        : ProductIds.rewards[purchase.productID];
-    if (rewards != null) {
-      onReward?.call(purchase.productID, rewards);
-    }
+    final remote = configIap.getReward(productId);
+    if (remote.isNotEmpty) return remote;
+    return ProductIds.rewards[productId];
+  }
 
-    if (purchase.productID == ProductIds.starterBundle) {
-      state = state.copyWith(starterBundlePurchased: true);
-    }
-
-    // Запоминаем обработанный purchaseId (FIFO, не больше 200).
-    if (purchaseId != null && purchaseId.isNotEmpty) {
-      _appendProcessedId(purchaseId, processed);
-    }
+  void _emitError(String message) {
+    onPurchaseError?.call(message);
+    state = state.copyWith(error: message);
   }
 
   /// Прочитать множество обработанных purchaseId из Hive.
@@ -237,7 +414,9 @@ class IapService extends StateNotifier<IapState> {
     }
   }
 
-  /// Восстановить покупки (подписки)
+  /// Восстановить покупки (подписки).
+  /// Restored-purchases приходят в `purchaseStream` и проходят тот же
+  /// серверный verify (сервер вернёт already_claimed без двойного начисления).
   Future<void> restorePurchases() async {
     await _iap.restorePurchases();
   }

@@ -111,11 +111,12 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
     ]) {
       final file = File(candidate);
       if (await file.exists()) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _imageFile = file;
             _resolved = true;
           });
+        }
         return;
       }
     }
