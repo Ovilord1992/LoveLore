@@ -96,10 +96,34 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
   /// Нужно ли показать popup ежедневной награды
   bool get shouldShowReward => !state.claimedToday;
 
-  /// Текущая награда (какой день в серии)
+  /// Публичный каталог наград (для диалога — единый источник, чтобы показ
+  /// совпадал с начислением).
+  List<DailyRewardConfig> get rewards => _rewards;
+
+  /// Номер дня серии, который будет засчитан при следующем claim (1..N).
+  int get todayDayNumber => _nextStreak();
+
+  /// Вычислить, какой день серии будет при следующем получении награды.
+  /// Одна логика и для показа, и для начисления — иначе показанная и
+  /// выданная награды расходятся.
+  int _nextStreak() {
+    final today = DateTime.now();
+    final lastClaim = state.lastClaimDate;
+    if (lastClaim == null) return 1;
+    final yesterday = DateTime(today.year, today.month, today.day - 1);
+    final isConsecutive = lastClaim.year == yesterday.year &&
+        lastClaim.month == yesterday.month &&
+        lastClaim.day == yesterday.day;
+    var s = isConsecutive ? state.currentStreak + 1 : 1;
+    if (s > _rewards.length) s = 1;
+    return s;
+  }
+
+  /// Текущая награда — по дню, который РЕАЛЬНО будет засчитан (а не по
+  /// старому стрику).
   DailyReward get todayReward {
     final rewards = _rewards;
-    final dayIndex = state.currentStreak % rewards.length;
+    final dayIndex = (_nextStreak() - 1) % rewards.length;
     final cfg = rewards[dayIndex];
     return DailyReward(
       day: cfg.day,
@@ -111,25 +135,12 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
 
   /// Забрать награду. Возвращает {diamonds, tickets}
   Map<String, int> claimReward() {
-    final reward = todayReward;
     final today = DateTime.now();
-    final lastClaim = state.lastClaimDate;
     final rewards = _rewards;
+    final newStreak = _nextStreak();
 
-    // Проверяем серию: если пропустил день — сброс к 0
-    int newStreak;
-    if (lastClaim == null) {
-      newStreak = 1;
-    } else {
-      final yesterday = DateTime(today.year, today.month, today.day - 1);
-      final isConsecutive = lastClaim.year == yesterday.year &&
-          lastClaim.month == yesterday.month &&
-          lastClaim.day == yesterday.day;
-      newStreak = isConsecutive ? state.currentStreak + 1 : 1;
-    }
-
-    // Цикл на N дней
-    if (newStreak > rewards.length) newStreak = 1;
+    // Награда за НОВЫЙ день серии (тот же расчёт, что и в todayReward).
+    final cfg = rewards[(newStreak - 1) % rewards.length];
 
     state = DailyRewardState(
       currentStreak: newStreak,
@@ -139,8 +150,8 @@ class DailyRewardService extends StateNotifier<DailyRewardState> {
     _save();
 
     return {
-      if (reward.diamonds > 0) 'diamonds': reward.diamonds,
-      if (reward.tickets > 0) 'tickets': reward.tickets,
+      if (cfg.diamonds > 0) 'diamonds': cfg.diamonds,
+      if (cfg.tickets > 0) 'tickets': cfg.tickets,
     };
   }
 

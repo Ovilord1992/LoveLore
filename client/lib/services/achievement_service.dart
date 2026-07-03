@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'user_profile_service.dart';
 import 'currency_service.dart';
+import 'daily_reward_service.dart';
 import 'remote_config_service.dart';
+import 'vip_service.dart';
+import 'wardrobe_service.dart';
 
 /// Провайдер сервиса достижений
 final achievementServiceProvider = Provider<AchievementService>((ref) {
@@ -1133,15 +1136,17 @@ class AchievementService {
       'novels_completed' => profile.totalNovelsCompleted,
       'chapters_read' => profile.totalChaptersRead,
       'choices_made' => profile.totalChoicesMade,
-      'premium_choices' => 0, // placeholder – field not yet on profile
+      'premium_choices' => profile.premiumChoicesMade,
       'cg_unlocked' => profile.unlockedCGs.length,
       'diamonds_spent' => profile.totalDiamondsSpent,
-      'login_streak' => 0, // placeholder – field not yet on profile
+      'login_streak' => _ref.read(dailyRewardProvider).currentStreak,
       'achievements_unlocked' => profile.achievements.length,
-      'routes_completed' => 0, // placeholder – field not yet on profile
-      'wardrobe_items' => 0, // placeholder – field not yet on profile
-      'ads_watched' => 0, // placeholder – field not yet on profile
-      'vip_active' => 0, // placeholder – field not yet on profile
+      // Маршрут ≈ завершённое прохождение новеллы.
+      'routes_completed' => profile.totalNovelsCompleted,
+      'wardrobe_items' =>
+        _ref.read(wardrobeServiceProvider).unlockedOutfitIds.length,
+      'ads_watched' => profile.adsWatched,
+      'vip_active' => _ref.read(vipServiceProvider).isActive ? 1 : 0,
       'variable_check' => 0, // handled in checkVariableAchievements
       _ => 0,
     };

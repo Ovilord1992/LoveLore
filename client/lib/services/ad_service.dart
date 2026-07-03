@@ -1,9 +1,11 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'dart:io';
 import 'remote_config_service.dart';
+import 'user_profile_service.dart';
 
 /// Провайдер сервиса рекламы
 final adServiceProvider = Provider<AdService>((ref) => AdService(ref));
@@ -91,27 +93,36 @@ class AdService {
     final ad = _rewardedAd!;
     _rewardedAd = null;
 
+    // `ad.show()` завершается уже при ПОКАЗЕ рекламы, а `onUserEarnedReward`
+    // приходит только после досмотра. Поэтому ждём закрытия рекламы через
+    // Completer и возвращаем реальный результат — иначе UI всегда видел бы
+    // `false` и не начислял бы честно заработанную награду.
+    final completer = Completer<bool>();
     bool rewarded = false;
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         preloadAd(); // предзагрузка следующей
+        if (!completer.isCompleted) completer.complete(rewarded);
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
         preloadAd();
+        if (!completer.isCompleted) completer.complete(false);
       },
     );
 
     await ad.show(onUserEarnedReward: (_, reward) {
       _setAdsWatchedToday(_adsWatchedToday + 1);
+      // Накопительный счётчик для достижений (ads_100 и т.п.).
+      _ref.read(userProfileProvider.notifier).incrementAdsWatched();
       rewarded = true;
       final amount = rewardType == 'tickets' ? ticketReward : diamondReward;
       onReward(rewardType, amount);
     });
 
-    return rewarded;
+    return completer.future;
   }
 
   /// Геттер: текущее число просмотров за сегодня (из Hive).

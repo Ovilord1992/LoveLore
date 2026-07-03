@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 
 import '../models/scene.dart';
@@ -77,6 +78,7 @@ class AnimatedBackground extends StatefulWidget {
 
 class _AnimatedBackgroundState extends State<AnimatedBackground> {
   File? _imageFile;
+  String? _assetPath; // встроенный asset (источник №1)
   bool _resolved = false;
 
   @override
@@ -91,6 +93,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
     if (oldWidget.backgroundKey != widget.backgroundKey) {
       _resolved = false;
       _imageFile = null;
+      _assetPath = null;
       _resolveBackground();
     }
   }
@@ -104,7 +107,7 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
     final appDir = await getApplicationDocumentsDirectory();
     final base = '${appDir.path}/novels/${widget.novelId}';
 
-    // Ищем по прямому пути и в подпапке backgrounds/
+    // Ищем по прямому пути и в подпапке backgrounds/ (скачанные новеллы)
     for (final candidate in [
       '$base/${widget.backgroundKey}',
       '$base/backgrounds/${widget.backgroundKey}',
@@ -121,7 +124,23 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
       }
     }
 
-    // Пробуем встроенный asset (не будем ломать, просто пометим resolved)
+    // Fallback на встроенный asset (источник №1 — assets/novels/<id>/...)
+    for (final candidate in [
+      'assets/novels/${widget.novelId}/${widget.backgroundKey}',
+      'assets/novels/${widget.novelId}/backgrounds/${widget.backgroundKey}',
+    ]) {
+      try {
+        await rootBundle.load(candidate);
+        if (mounted) {
+          setState(() {
+            _assetPath = candidate;
+            _resolved = true;
+          });
+        }
+        return;
+      } catch (_) {}
+    }
+
     if (mounted) setState(() => _resolved = true);
   }
 
@@ -133,6 +152,14 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> {
           ? Image.file(
               _imageFile!,
               key: ValueKey(widget.backgroundKey),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+            )
+          : _resolved && _assetPath != null
+          ? Image.asset(
+              _assetPath!,
+              key: ValueKey(_assetPath),
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
@@ -352,14 +379,30 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
     final path =
         '${appDir.path}/novels/${widget.novelId}/${widget.spriteImage}';
     final file = File(path);
+
+    // Грузим байты из скачанного файла либо из встроенного asset (источник №1).
+    Uint8List? bytes;
+    File? resolvedFile;
     if (await file.exists()) {
-      final trimmed = await _decodeAndTrimSprite(file);
+      bytes = await file.readAsBytes();
+      resolvedFile = file;
+    } else {
+      final assetPath =
+          'assets/novels/${widget.novelId}/${widget.spriteImage}';
+      try {
+        final data = await rootBundle.load(assetPath);
+        bytes = data.buffer.asUint8List();
+      } catch (_) {}
+    }
+
+    if (bytes != null) {
+      final trimmed = await _decodeAndTrimBytes(bytes);
       if (!mounted) {
         trimmed?.image.dispose();
         return;
       }
       setState(() {
-        _spriteFile = file;
+        _spriteFile = resolvedFile;
         _spriteUiImage = trimmed?.image;
         _spriteSrcRect = trimmed?.srcRect;
         _resolved = true;
@@ -370,12 +413,11 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
     if (mounted) setState(() => _resolved = true);
   }
 
-  Future<_TrimmedSprite?> _decodeAndTrimSprite(File file) async {
+  Future<_TrimmedSprite?> _decodeAndTrimBytes(Uint8List bytes) async {
     ui.Codec? codec;
     ui.Image? image;
 
     try {
-      final bytes = await file.readAsBytes();
       codec = await ui.instantiateImageCodec(bytes);
       final frame = await codec.getNextFrame();
       image = frame.image;
@@ -798,6 +840,7 @@ class _ParticlePainter extends CustomPainter {
 /// Полноэкранный CG-арт оверлей
 class CgOverlay extends StatefulWidget {
   final File? imageFile;
+  final String? assetPath; // встроенный asset (источник №1)
   final CgTransition transition;
   final int duration; // мс
   final VoidCallback onDismiss;
@@ -805,6 +848,7 @@ class CgOverlay extends StatefulWidget {
   const CgOverlay({
     super.key,
     required this.imageFile,
+    this.assetPath,
     this.transition = CgTransition.fade,
     this.duration = 800,
     required this.onDismiss,
@@ -836,6 +880,15 @@ class _CgOverlayState extends State<CgOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final placeholder = Container(
+      color: Colors.black,
+      child: const Center(
+        child: Text(
+          'CG',
+          style: TextStyle(color: Colors.white54, fontSize: 48),
+        ),
+      ),
+    );
     final child = widget.imageFile != null
         ? Image.file(
             widget.imageFile!,
@@ -843,15 +896,15 @@ class _CgOverlayState extends State<CgOverlay>
             width: double.infinity,
             height: double.infinity,
           )
-        : Container(
-            color: Colors.black,
-            child: const Center(
-              child: Text(
-                'CG',
-                style: TextStyle(color: Colors.white54, fontSize: 48),
-              ),
-            ),
-          );
+        : widget.assetPath != null
+        ? Image.asset(
+            widget.assetPath!,
+            fit: BoxFit.contain,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, _, _) => placeholder,
+          )
+        : placeholder;
 
     final animated = widget.transition == CgTransition.zoomIn
         ? AnimatedBuilder(
@@ -1026,17 +1079,46 @@ class ParallaxBackground extends StatelessWidget {
           fit: StackFit.expand,
           children: sorted.map((layer) {
             final offset = scrollOffset * (1.0 - layer.depth);
-            final file = File('$baseDir/${layer.image}');
+            // Ищем по прямому пути и в подпапке backgrounds/ (редактор кладёт
+            // слои именно в backgrounds/, а поле image — голое имя файла).
+            File? found;
+            for (final c in [
+              '$baseDir/${layer.image}',
+              '$baseDir/backgrounds/${layer.image}',
+            ]) {
+              final f = File(c);
+              if (f.existsSync()) {
+                found = f;
+                break;
+              }
+            }
+            final Widget img;
+            if (found != null) {
+              img = Image.file(
+                found,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              );
+            } else {
+              // Fallback на встроенный asset.
+              img = Image.asset(
+                'assets/novels/$novelId/backgrounds/${layer.image}',
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, _, _) => Image.asset(
+                  'assets/novels/$novelId/${layer.image}',
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  errorBuilder: (_, _, _) => const SizedBox.expand(),
+                ),
+              );
+            }
             return Transform.translate(
               offset: Offset(offset, 0),
-              child: file.existsSync()
-                  ? Image.file(
-                      file,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    )
-                  : Container(color: Colors.black),
+              child: img,
             );
           }).toList(),
         );

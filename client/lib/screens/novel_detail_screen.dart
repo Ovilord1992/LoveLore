@@ -41,7 +41,7 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
     try {
       final api = ref.read(novelApiServiceProvider);
       final chapters = await api.fetchChaptersList(widget.novel.id);
-      if (mounted) setState(() => _chapterInfos = chapters);
+      if (mounted && chapters != null) setState(() => _chapterInfos = chapters);
     } catch (_) {}
   }
 

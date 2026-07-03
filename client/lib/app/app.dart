@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'theme.dart';
+import '../engine/scene_engine.dart';
 import '../screens/library_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../services/iap_service.dart';
 import '../services/locale_service.dart';
+import '../services/save_service.dart';
 import '../services/settings_service.dart';
+import '../services/vip_service.dart';
 
 class NavellApp extends ConsumerStatefulWidget {
   const NavellApp({super.key});
@@ -19,6 +22,13 @@ class _NavellAppState extends ConsumerState<NavellApp> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // VIP-перки при входе: пересчёт истечения и начисление ежедневных алмазов.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final vip = ref.read(vipServiceProvider.notifier);
+      vip.refresh();
+      vip.collectDailyDiamonds();
+    });
   }
 
   @override
@@ -30,10 +40,23 @@ class _NavellAppState extends ConsumerState<NavellApp> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    // При возврате из фона — повторяем IAP-верификацию для покупок,
-    // которые не подтвердились из-за оффлайн / 5xx во время покупки.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // ОС может убить приложение в фоне — сохраняем текущий прогресс игры,
+      // чтобы не потерять сессию (выборы, потраченные алмазы, переменные).
+      final gameState = ref.read(sceneEngineProvider);
+      if (gameState != null) {
+        ref.read(saveServiceProvider.notifier).saveGame(gameState);
+      }
+    }
     if (state == AppLifecycleState.resumed) {
+      // Повторяем IAP-верификацию для покупок, не подтверждённых из-за
+      // оффлайн / 5xx во время покупки.
       ref.read(iapServiceProvider.notifier).processPendingNow();
+      // Пересчитываем VIP и выдаём ежедневные алмазы за новый день.
+      final vip = ref.read(vipServiceProvider.notifier);
+      vip.refresh();
+      vip.collectDailyDiamonds();
     }
   }
 

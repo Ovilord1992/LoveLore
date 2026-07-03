@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'remote_config_service.dart';
+import 'sync_service.dart';
 import 'user_profile_service.dart';
 
 /// Провайдер сервиса валюты
@@ -55,6 +57,9 @@ class CurrencyService extends StateNotifier<CurrencyState> {
 
   final Ref _ref;
 
+  // Дебаунс автопуша валюты на сервер после изменений баланса.
+  Timer? _pushDebounce;
+
   // Геттеры для конфигурируемых значений
   EconomyConfig get _economy => _ref.read(remoteConfigProvider).economy;
   int get maxTickets => _economy.maxTickets;
@@ -101,10 +106,14 @@ class CurrencyService extends StateNotifier<CurrencyState> {
   /// Абсолютная установка баланса от сервера (источник истины — backend).
   /// Используется после успешной серверной верификации IAP, чтобы
   /// клиент не мог разойтись с реальным балансом.
+  ///
+  /// Билеты НЕ клампим по maxTickets: покупка `tickets_5` может легитимно
+  /// увести баланс выше лимита рефилла, и сервер здесь авторитетен —
+  /// иначе оплаченные билеты молча срезаются.
   void setBalance({int? diamonds, int? tickets}) {
     state = state.copyWith(
       diamonds: diamonds ?? state.diamonds,
-      tickets: tickets != null ? tickets.clamp(0, maxTickets) : state.tickets,
+      tickets: tickets ?? state.tickets,
     );
     _save();
   }
@@ -161,6 +170,9 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     try {
       final box = Hive.box<String>(_boxName);
       await box.put(_key, jsonEncode(state.toJson()));
+      // Любое изменение баланса планирует отправку на сервер, чтобы серверный
+      // баланс не отставал (иначе pull откатит траты).
+      _schedulePush();
     } catch (_) {}
   }
 
@@ -180,17 +192,42 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     } catch (_) {}
   }
 
-  /// Мерж данных с сервера (берём максимум алмазов)
+  /// Мерж данных с сервера при pull (логин / ручная синхронизация).
+  ///
+  /// Сервер авторитетен: берём его значение, а НЕ максимум. Прежний max
+  /// делал траты необратимыми — любой pull воскрешал потраченные алмазы,
+  /// обесценивая экономику. Корректность обеспечивается автопушем валюты
+  /// после каждой траты (см. [_schedulePush]), поэтому сервер актуален.
   void mergeFromServer(Map<String, dynamic> serverData) {
     final serverCurrency = CurrencyState.fromJson(serverData);
     state = state.copyWith(
-      diamonds: state.diamonds > serverCurrency.diamonds
-          ? state.diamonds
-          : serverCurrency.diamonds,
-      tickets: state.tickets > serverCurrency.tickets
-          ? state.tickets
-          : serverCurrency.tickets,
+      diamonds: serverCurrency.diamonds,
+      tickets: serverCurrency.tickets,
+      lastTicketRefill: serverCurrency.lastTicketRefill,
     );
     _save();
+  }
+
+  /// Полный сброс на стартовый баланс (смена аккаунта на устройстве).
+  void reset() {
+    state = _initialState;
+    _save();
+  }
+
+  /// Запланировать (с дебаунсом) отправку баланса на сервер.
+  /// Вызывается после любых изменений валюты; при отсутствии логина
+  /// pushCurrency сам ничего не делает.
+  void _schedulePush() {
+    _pushDebounce?.cancel();
+    _pushDebounce = Timer(const Duration(seconds: 2), () {
+      // ignore: discarded_futures
+      _ref.read(syncServiceProvider).pushCurrency();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pushDebounce?.cancel();
+    super.dispose();
   }
 }

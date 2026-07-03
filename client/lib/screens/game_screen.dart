@@ -13,6 +13,7 @@ import '../services/currency_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/achievement_service.dart';
 import '../services/ad_service.dart';
+import '../services/audio_service.dart';
 import '../services/vip_service.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/dialogue_overlay.dart';
@@ -46,6 +47,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   // CG-арт оверлей
   SceneEvent? _activeCg;
   File? _cgFile;
+  String? _cgAsset; // встроенный asset, если файл не скачан
   // Камера
   double _cameraZoom = 1.0;
   double _cameraPanX = 0.0;
@@ -53,6 +55,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
   int _cameraDuration = 1000;
   // Эмоции
   SceneEvent? _activeEmotion;
+  // Оверрайды визуала внутри сцены (события changeBackground/changeSprite)
+  String? _overridesSceneId;
+  String? _bgOverride;
+  Map<String, String> _spriteOverrides = {};
+  // Ключ последнего запланированного авто-события (дедуп rebuild'ов)
+  String? _lastAutoKey;
   // Immersive mode: top UI auto-hide
   late AnimationController _uiAnimController;
   Timer? _uiHideTimer;
@@ -240,6 +248,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final engine = ref.read(sceneEngineProvider.notifier);
     final chapterTransition = ref.watch(chapterTransitionProvider);
 
+    // Смена языка «на лету»: перезагружаем перевод текущей новеллы.
+    ref.listen(localeProvider, (prev, next) {
+      if (prev != next) {
+        engine.reloadTranslation();
+      }
+    });
+
     if (_isLoading || gameState == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -252,10 +267,41 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final scene = engine.currentScene;
     final event = engine.currentEvent;
 
+    // При входе в новую сцену сбрасываем внутрисценовые оверрайды визуала
+    // и камеру, запускаем фоновую музыку сцены.
+    final sceneId = scene?.id;
+    if (sceneId != _overridesSceneId) {
+      _overridesSceneId = sceneId;
+      _bgOverride = null;
+      _spriteOverrides = {};
+      _cameraZoom = 1.0;
+      _cameraPanX = 0.0;
+      _cameraPanY = 0.0;
+      final music = scene?.music;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final audio = ref.read(audioServiceProvider);
+        if (music != null && music.isNotEmpty) {
+          audio.playBgMusicFile('${widget.novelId}/$music');
+        }
+      });
+    }
+
     return Scaffold(
       body: GestureDetector(
         onTap: () {
-          if (event != null && event.type != EventType.choice) {
+          // Пока показан оверлей (эффект/CG/эмоция) — тап игнорируем: оверлей
+          // сам продвинет сюжет через onComplete, иначе строка проскочит.
+          if (_activeEffect != null ||
+              _activeCg != null ||
+              _activeEmotion != null) {
+            return;
+          }
+          // Тапом продвигаем только реплики; авто-события (камера, звук,
+          // setVariable) продвигаются сами, choice — по кнопке.
+          if (event != null &&
+              (event.type == EventType.dialogue ||
+                  event.type == EventType.narration)) {
             engine.nextEvent();
           }
         },
@@ -269,7 +315,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
               panY: _cameraPanY,
               duration: _cameraDuration,
               child: AnimatedBackground(
-                backgroundKey: scene?.background,
+                backgroundKey: _bgOverride ?? scene?.background,
                 novelId: widget.novelId,
                 duration: Duration(
                   milliseconds: scene?.transition?.duration ?? 800,
@@ -407,22 +453,22 @@ class _GameScreenState extends ConsumerState<GameScreen>
               CgOverlay(
                 key: ValueKey('cg_${_activeCg.hashCode}'),
                 imageFile: _cgFile,
+                assetPath: _cgAsset,
                 transition: _activeCg!.cgTransition ?? CgTransition.fade,
                 duration: _activeCg!.cgDuration ?? 800,
                 onDismiss: () {
-                  // Разблокировать CG в галерее
-                  if (_activeCg?.cgImage != null) {
-                    final state = ref.read(sceneEngineProvider);
-                    if (state != null) {
-                      final cgs = List<String>.from(state.unlockedCg);
-                      if (!cgs.contains(_activeCg!.cgImage)) {
-                        cgs.add(_activeCg!.cgImage!);
-                      }
-                    }
+                  // Разблокировать CG в профиле (синхронизируется с сервером)
+                  // и проверить достижения-коллекционера. Раньше список CG
+                  // строился и выбрасывался — фича не работала.
+                  final cg = _activeCg?.cgImage;
+                  if (cg != null) {
+                    ref.read(userProfileProvider.notifier).unlockCG(cg);
+                    _checkAchievements();
                   }
                   setState(() {
                     _activeCg = null;
                     _cgFile = null;
+                    _cgAsset = null;
                   });
                   engine.nextEvent();
                 },
@@ -448,11 +494,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
         final character = engine.getCharacter(sc.characterId);
         if (character == null) return const SizedBox.shrink();
 
-        // Найти путь к спрайту
+        // Найти путь к спрайту (с учётом оверрайда от события changeSprite)
+        final effectiveSpriteId = _spriteOverrides[sc.characterId] ?? sc.spriteId;
         String? spriteImage;
         try {
           final sprite = character.sprites.firstWhere(
-            (s) => s.id == sc.spriteId,
+            (s) => s.id == effectiveSpriteId,
           );
           spriteImage = sprite.image;
         } catch (_) {}
@@ -465,7 +512,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         };
 
         final sprite = AnimatedCharacterSprite(
-          key: ValueKey('${sc.characterId}_${sc.spriteId}'),
+          key: ValueKey('${sc.characterId}_$effectiveSpriteId'),
           characterId: sc.characterId,
           spriteImage: spriteImage,
           novelId: widget.novelId,
@@ -510,6 +557,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         return;
       }
       currency.spendDiamonds(choice.cost);
+      ref.read(userProfileProvider.notifier).incrementPremiumChoices();
     }
     ref.read(userProfileProvider.notifier).incrementChoicesMade();
     engine.makeChoice(choice);
@@ -659,7 +707,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
         );
 
       default:
-        // Событие effect
+        // Оверлейные события — с guard'ом _activeX == null (idempotent).
         if (event.type == EventType.effect && event.effectType != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _activeEffect == null) {
@@ -668,7 +716,6 @@ class _GameScreenState extends ConsumerState<GameScreen>
           });
           return const SizedBox.shrink();
         }
-        // CG-арт
         if (event.type == EventType.showCg && event.cgImage != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (mounted && _activeCg == null) {
@@ -676,35 +723,19 @@ class _GameScreenState extends ConsumerState<GameScreen>
               final file = File(
                 '${appDir.path}/novels/${widget.novelId}/${event.cgImage}',
               );
+              final exists = file.existsSync();
               setState(() {
                 _activeCg = event;
-                _cgFile = file.existsSync() ? file : null;
+                _cgFile = exists ? file : null;
+                // Fallback на встроенный asset (источник №1).
+                _cgAsset = exists
+                    ? null
+                    : 'assets/novels/${widget.novelId}/${event.cgImage}';
               });
             }
           });
           return const SizedBox.shrink();
         }
-        // Камера
-        if (event.type == EventType.cameraMove) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                _cameraZoom = event.zoom ?? 1.0;
-                _cameraPanX = event.panX ?? 0.0;
-                _cameraPanY = event.panY ?? 0.0;
-                _cameraDuration = event.cameraDuration ?? 1000;
-              });
-              Future.delayed(
-                Duration(milliseconds: event.cameraDuration ?? 1000),
-                () {
-                  if (mounted) engine.nextEvent();
-                },
-              );
-            }
-          });
-          return const SizedBox.shrink();
-        }
-        // Эмоции
         if (event.type == EventType.showEmotion && event.emotionType != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _activeEmotion == null) {
@@ -713,10 +744,80 @@ class _GameScreenState extends ConsumerState<GameScreen>
           });
           return const SizedBox.shrink();
         }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) engine.nextEvent();
-        });
+        // Мгновенные/таймерные события (камера, смена фона/спрайта, звук,
+        // установка переменной, неизвестный тип) применяются РОВНО ОДИН РАЗ
+        // по ключу события. Это устраняет rebuild-шторм cameraMove: раньше
+        // каждый кадр вешал новый setState + Future.delayed(nextEvent).
+        final autoKey = _eventKey(engine);
+        if (_lastAutoKey != autoKey) {
+          _lastAutoKey = autoKey;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _applyAutoEvent(event, engine, autoKey);
+          });
+        }
         return const SizedBox.shrink();
+    }
+  }
+
+  /// Уникальный ключ текущего события — для дедупликации авто-переходов.
+  String _eventKey(SceneEngine engine) =>
+      '${engine.currentChapter?.id}/${engine.currentScene?.id}/${engine.currentEventIndex}';
+
+  /// Продвинуть сюжет, только если движок всё ещё на том же событии
+  /// (защита от двойного advance, если игрок тапнул вручную).
+  void _autoAdvance(SceneEngine engine, String key, {int delayMs = 0}) {
+    if (delayMs <= 0) {
+      if (_eventKey(engine) == key) engine.nextEvent();
+      return;
+    }
+    Future.delayed(Duration(milliseconds: delayMs), () {
+      if (mounted && _eventKey(engine) == key) engine.nextEvent();
+    });
+  }
+
+  void _applyAutoEvent(SceneEvent event, SceneEngine engine, String key) {
+    switch (event.type) {
+      case EventType.cameraMove:
+        setState(() {
+          _cameraZoom = event.zoom ?? 1.0;
+          _cameraPanX = event.panX ?? 0.0;
+          _cameraPanY = event.panY ?? 0.0;
+          _cameraDuration = event.cameraDuration ?? 1000;
+        });
+        _autoAdvance(engine, key, delayMs: event.cameraDuration ?? 1000);
+        break;
+      case EventType.changeBackground:
+        if (event.asset != null) {
+          setState(() => _bgOverride = event.asset);
+        }
+        _autoAdvance(engine, key);
+        break;
+      case EventType.changeSprite:
+        if (event.characterId != null && event.spriteId != null) {
+          setState(() {
+            _spriteOverrides = {
+              ..._spriteOverrides,
+              event.characterId!: event.spriteId!,
+            };
+          });
+        }
+        _autoAdvance(engine, key);
+        break;
+      case EventType.playSound:
+        if (event.asset != null) {
+          ref
+              .read(audioServiceProvider)
+              .playSfxFile('${widget.novelId}/${event.asset}');
+        }
+        _autoAdvance(engine, key);
+        break;
+      case EventType.setVariable:
+        engine.applySetVariable(event.variable, event.value);
+        _autoAdvance(engine, key);
+        break;
+      default:
+        // Неизвестный тип — просто пропускаем, не блокируя сюжет.
+        _autoAdvance(engine, key);
     }
   }
 
@@ -807,6 +908,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       ? Icons.auto_stories
                       : transition == ChapterTransition.notReleased
                       ? Icons.lock_clock
+                      : transition == ChapterTransition.error
+                      ? Icons.wifi_off
                       : transition == ChapterTransition.loading
                       ? Icons.downloading
                       : Icons.download,
@@ -821,6 +924,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       ? 'Конец истории'
                       : transition == ChapterTransition.notReleased
                       ? 'Продолжение следует...'
+                      : transition == ChapterTransition.error
+                      ? 'Нет соединения'
                       : transition == ChapterTransition.loading
                       ? ref.tr('loading')
                       : 'Глава $nextNum',
@@ -838,6 +943,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       ? 'Спасибо за прохождение! 💖'
                       : transition == ChapterTransition.notReleased
                       ? 'Глава $nextNum ещё не вышла.\nСледите за обновлениями!'
+                      : transition == ChapterTransition.error
+                      ? 'Не удалось загрузить следующую главу.\nПроверьте интернет и повторите.'
                       : transition == ChapterTransition.loading
                       ? 'Загружаем следующую главу...'
                       : 'Следующая глава доступна!',
@@ -876,8 +983,29 @@ class _GameScreenState extends ConsumerState<GameScreen>
                     ),
                   ),
 
+                if (transition == ChapterTransition.error) ...[
+                  ElevatedButton.icon(
+                    onPressed: () => engine.retryNextChapter(),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Повторить'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
                 if (transition == ChapterTransition.completed ||
-                    transition == ChapterTransition.notReleased)
+                    transition == ChapterTransition.notReleased ||
+                    transition == ChapterTransition.error)
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(

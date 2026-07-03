@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
 
 final audioServiceProvider = Provider<AudioService>((ref) {
   final service = AudioService();
@@ -21,10 +23,25 @@ class AudioService {
   double get sfxVolume => _sfxVolume;
   bool get isMuted => _isMuted;
 
-  /// Играть фоновую музыку (с плавным переходом)
+  /// Играть фоновую музыку из bundle-ассета (с плавным переходом)
   Future<void> playBgMusic(String assetPath) async {
-    if (_currentBgTrack == assetPath) return;
-    _currentBgTrack = assetPath;
+    await _playBg(assetPath, isFile: false);
+  }
+
+  /// Играть фоновую музыку из файла новеллы в Documents.
+  /// [relativePath] — путь относительно `Documents/novels/`, напр.
+  /// `my_novel/music/theme.mp3`.
+  Future<void> playBgMusicFile(String relativePath) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final path = '${dir.path}/novels/$relativePath';
+      if (!File(path).existsSync()) return;
+      await _playBg(path, isFile: true);
+    } catch (_) {}
+  }
+
+  Future<void> _playBg(String source, {required bool isFile}) async {
+    if (_currentBgTrack == source) return;
 
     try {
       // Плавное затухание текущего трека
@@ -32,7 +49,14 @@ class AudioService {
         await _fadeOut(_bgPlayer);
       }
 
-      await _bgPlayer.setAsset(assetPath);
+      if (isFile) {
+        await _bgPlayer.setFilePath(source);
+      } else {
+        await _bgPlayer.setAsset(source);
+      }
+      // Метку трека выставляем ТОЛЬКО после успешной загрузки, иначе при
+      // ошибке загрузки early-return навсегда заблокирует повторный запуск.
+      _currentBgTrack = source;
       _bgPlayer.setLoopMode(LoopMode.one);
       _bgPlayer.setVolume(_isMuted ? 0 : _bgVolume);
       _bgPlayer.play();
@@ -55,10 +79,23 @@ class AudioService {
     _currentBgTrack = null;
   }
 
-  /// Играть звуковой эффект
+  /// Играть звуковой эффект из bundle-ассета
   Future<void> playSfx(String assetPath) async {
     try {
       await _sfxPlayer.setAsset(assetPath);
+      _sfxPlayer.setVolume(_isMuted ? 0 : _sfxVolume);
+      _sfxPlayer.play();
+    } catch (_) {}
+  }
+
+  /// Играть звуковой эффект из файла новеллы в Documents.
+  /// [relativePath] — путь относительно `Documents/novels/`.
+  Future<void> playSfxFile(String relativePath) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final path = '${dir.path}/novels/$relativePath';
+      if (!File(path).existsSync()) return;
+      await _sfxPlayer.setFilePath(path);
       _sfxPlayer.setVolume(_isMuted ? 0 : _sfxVolume);
       _sfxPlayer.play();
     } catch (_) {}

@@ -19,6 +19,8 @@ class UserProfile {
   final Set<String> unlockedCGs; // разблокированные CG-арты
   final Set<String> achievements; // полученные достижения
   final int totalDiamondsSpent;
+  final int adsWatched; // всего просмотрено rewarded-рекламы
+  final int premiumChoicesMade; // всего сделано платных выборов
   final DateTime createdAt;
 
   const UserProfile({
@@ -31,6 +33,8 @@ class UserProfile {
     this.unlockedCGs = const {},
     this.achievements = const {},
     this.totalDiamondsSpent = 0,
+    this.adsWatched = 0,
+    this.premiumChoicesMade = 0,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? const _DefaultDateTime();
 
@@ -44,6 +48,8 @@ class UserProfile {
     Set<String>? unlockedCGs,
     Set<String>? achievements,
     int? totalDiamondsSpent,
+    int? adsWatched,
+    int? premiumChoicesMade,
   }) =>
       UserProfile(
         displayName: displayName ?? this.displayName,
@@ -56,6 +62,8 @@ class UserProfile {
         unlockedCGs: unlockedCGs ?? this.unlockedCGs,
         achievements: achievements ?? this.achievements,
         totalDiamondsSpent: totalDiamondsSpent ?? this.totalDiamondsSpent,
+        adsWatched: adsWatched ?? this.adsWatched,
+        premiumChoicesMade: premiumChoicesMade ?? this.premiumChoicesMade,
         createdAt: createdAt,
       );
 
@@ -69,6 +77,8 @@ class UserProfile {
         'unlockedCGs': unlockedCGs.toList(),
         'achievements': achievements.toList(),
         'totalDiamondsSpent': totalDiamondsSpent,
+        'adsWatched': adsWatched,
+        'premiumChoicesMade': premiumChoicesMade,
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -82,6 +92,8 @@ class UserProfile {
         unlockedCGs: Set<String>.from(json['unlockedCGs'] as List? ?? []),
         achievements: Set<String>.from(json['achievements'] as List? ?? []),
         totalDiamondsSpent: json['totalDiamondsSpent'] as int? ?? 0,
+        adsWatched: json['adsWatched'] as int? ?? 0,
+        premiumChoicesMade: json['premiumChoicesMade'] as int? ?? 0,
         createdAt: json['createdAt'] != null
             ? DateTime.parse(json['createdAt'] as String)
             : DateTime.now(),
@@ -161,6 +173,16 @@ class UserProfileService extends StateNotifier<UserProfile> {
     _save();
   }
 
+  void incrementAdsWatched() {
+    state = state.copyWith(adsWatched: state.adsWatched + 1);
+    _save();
+  }
+
+  void incrementPremiumChoices() {
+    state = state.copyWith(premiumChoicesMade: state.premiumChoicesMade + 1);
+    _save();
+  }
+
   /// Выдать достижение
   bool grantAchievement(String achievementId) {
     if (state.achievements.contains(achievementId)) return false;
@@ -169,6 +191,12 @@ class UserProfileService extends StateNotifier<UserProfile> {
     state = state.copyWith(achievements: achievements);
     _save();
     return true;
+  }
+
+  /// Полный сброс профиля (смена аккаунта на устройстве).
+  void reset() {
+    state = const UserProfile();
+    _save();
   }
 
   Future<void> _save() async {
@@ -212,6 +240,13 @@ class UserProfileService extends StateNotifier<UserProfile> {
       totalDiamondsSpent: state.totalDiamondsSpent > serverProfile.totalDiamondsSpent
           ? state.totalDiamondsSpent
           : serverProfile.totalDiamondsSpent,
+      adsWatched: state.adsWatched > serverProfile.adsWatched
+          ? state.adsWatched
+          : serverProfile.adsWatched,
+      premiumChoicesMade:
+          state.premiumChoicesMade > serverProfile.premiumChoicesMade
+              ? state.premiumChoicesMade
+              : serverProfile.premiumChoicesMade,
     );
     _save();
   }

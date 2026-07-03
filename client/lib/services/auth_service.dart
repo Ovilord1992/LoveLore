@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'api_config.dart';
+import 'currency_service.dart';
+import 'user_profile_service.dart';
+import 'vip_service.dart';
 
 /// Состояние авторизации
 class AuthState {
@@ -49,7 +52,7 @@ class AuthState {
 
 final authServiceProvider =
     StateNotifierProvider<AuthService, AuthState>((ref) {
-  return AuthService();
+  return AuthService(ref);
 });
 
 /// Сервис авторизации (JWT + email/пароль + Google + Apple)
@@ -58,7 +61,9 @@ class AuthService extends StateNotifier<AuthState> {
   static const _tokenKey = 'auth_token';
   static const _baseUrl = ApiConfig.baseUrl;
 
-  AuthService() : super(const AuthState()) {
+  final Ref _ref;
+
+  AuthService(this._ref) : super(const AuthState()) {
     _loadToken();
   }
 
@@ -89,8 +94,10 @@ class AuthService extends StateNotifier<AuthState> {
           email: data['email'] as String,
           displayName: data['displayName'] as String?,
         );
-      } else {
-        // Токен невалиден — разлогиниваем
+      } else if (response.statusCode == 401) {
+        // Только 401 = токен реально невалиден. 500/502/503 (падение БД,
+        // деплой, прокси) НЕ должны разлогинивать — иначе временная ошибка
+        // сервера молча выкидывает пользователя из аккаунта.
         await logout();
       }
     } catch (_) {
@@ -302,11 +309,23 @@ class AuthService extends StateNotifier<AuthState> {
     }
   }
 
-  /// Выход
+  /// Выход. Помимо токена очищаем данные, привязанные к аккаунту, чтобы они
+  /// не «протекли» следующему пользователю на этом же устройстве.
   Future<void> logout() async {
     try {
       final box = Hive.box<String>(_boxName);
       await box.delete(_tokenKey);
+      await box.delete('vip_state');
+      await box.delete('pending_iap_verifications');
+      await box.delete('processed_purchase_ids');
+      await box.delete('starter_bundle_purchased');
+    } catch (_) {}
+    // Сбрасываем in-memory состояние сервисов (Hive-очистки недостаточно —
+    // StateNotifier'ы держат значения в памяти до перезапуска).
+    try {
+      _ref.read(currencyServiceProvider.notifier).reset();
+      _ref.read(vipServiceProvider.notifier).reset();
+      _ref.read(userProfileProvider.notifier).reset();
     } catch (_) {}
     state = const AuthState();
   }

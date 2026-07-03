@@ -155,6 +155,10 @@ class IapService extends StateNotifier<IapState> {
   }
 
   Future<void> _init() async {
+    // Восстанавливаем флаг «стартовый бандл куплен» из Hive — иначе после
+    // рестарта оффер снова показывается и покупается повторно.
+    state = state.copyWith(starterBundlePurchased: _readStarterPurchased());
+
     final available = await _iap.isAvailable();
     if (!available) {
       state = state.copyWith(isAvailable: false, isLoading: false);
@@ -223,8 +227,12 @@ class IapService extends StateNotifier<IapState> {
 
   Future<PendingProcessReport> _flushPending() async {
     final report = await _pendingQueue.processAll();
-    for (final result in report.successResults) {
-      _applyServerResult(result, productId: null);
+    for (var i = 0; i < report.successResults.length; i++) {
+      // Пробрасываем productId из очереди — иначе starter bundle из pending
+      // не пометится купленным и оффер вернётся.
+      final pid =
+          i < report.successItems.length ? report.successItems[i].productId : null;
+      _applyServerResult(report.successResults[i], productId: pid);
     }
     return report;
   }
@@ -313,10 +321,6 @@ class IapService extends StateNotifier<IapState> {
     if (result.isSuccess) {
       _applyServerResult(result, productId: purchase.productID);
 
-      if (purchase.productID == ProductIds.starterBundle) {
-        state = state.copyWith(starterBundlePurchased: true);
-      }
-
       if (purchaseId != null && purchaseId.isNotEmpty) {
         _appendProcessedId(purchaseId, processed);
       }
@@ -344,6 +348,14 @@ class IapService extends StateNotifier<IapState> {
       _ref.read(vipServiceProvider.notifier).setExpiresAt(vipExp);
     }
 
+    // Стартовый бандл — помечаем купленным и персистим (в т.ч. из pending-пути).
+    if (productId == ProductIds.starterBundle) {
+      if (!state.starterBundlePurchased) {
+        state = state.copyWith(starterBundlePurchased: true);
+      }
+      _writeStarterPurchased(true);
+    }
+
     // onReward — для UI (snackbar). Серверные rewards имеют приоритет,
     // fallback — Remote Config / хардкод (для старого UI, который кладёт
     // diamonds/tickets из Map<String,int>).
@@ -352,6 +364,26 @@ class IapService extends StateNotifier<IapState> {
       if (rewardsMap != null && rewardsMap.isNotEmpty) {
         onReward?.call(productId, rewardsMap);
       }
+    }
+  }
+
+  /// Прочитать флаг «стартовый бандл куплен» из Hive.
+  bool _readStarterPurchased() {
+    try {
+      final box = Hive.box<String>('app_settings');
+      return box.get('starter_bundle_purchased') == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Сохранить флаг «стартовый бандл куплен» в Hive.
+  void _writeStarterPurchased(bool value) {
+    try {
+      final box = Hive.box<String>('app_settings');
+      box.put('starter_bundle_purchased', value.toString());
+    } catch (e) {
+      debugPrint('[IAP] Failed to persist starter flag: $e');
     }
   }
 

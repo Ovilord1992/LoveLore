@@ -107,6 +107,8 @@ SceneEvent _$SceneEventFromJson(Map<String, dynamic> json) => SceneEvent(
   characterId: json['characterId'] as String?,
   spriteId: json['spriteId'] as String?,
   animation: json['animation'] as String?,
+  variable: json['variable'] as String?,
+  value: json['value'],
   effectType: $enumDecodeNullable(
     _$EffectTypeEnumMap,
     json['effectType'],
@@ -145,6 +147,8 @@ Map<String, dynamic> _$SceneEventToJson(SceneEvent instance) =>
       'characterId': instance.characterId,
       'spriteId': instance.spriteId,
       'animation': instance.animation,
+      'variable': instance.variable,
+      'value': instance.value,
       'effectType': _$EffectTypeEnumMap[instance.effectType],
       'effectDuration': instance.effectDuration,
       'effectIntensity': instance.effectIntensity,
@@ -172,6 +176,7 @@ const _$EventTypeEnumMap = {
   EventType.showCg: 'showCg',
   EventType.cameraMove: 'cameraMove',
   EventType.showEmotion: 'showEmotion',
+  EventType.setVariable: 'setVariable',
 };
 
 const _$EffectTypeEnumMap = {

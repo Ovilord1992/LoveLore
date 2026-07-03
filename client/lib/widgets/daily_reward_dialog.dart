@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
 import '../services/daily_reward_service.dart';
 import '../services/currency_service.dart';
-import '../services/remote_config_service.dart';
 
 /// Показывает popup ежедневной награды, если ещё не собрана сегодня.
 /// Вызывается из LibraryScreen при первой загрузке.
@@ -56,10 +55,11 @@ class _DailyRewardDialogState extends ConsumerState<_DailyRewardDialog>
 
   @override
   Widget build(BuildContext context) {
-    final dailyState = ref.read(dailyRewardProvider);
-    final config = ref.read(remoteConfigProvider);
-    final rewards = config.daily.isNotEmpty ? config.daily : _fallbackRewards;
-    final currentDay = dailyState.currentStreak % rewards.length;
+    // Единый источник каталога и дня — сервис, иначе показанная награда
+    // расходится с начисляемой.
+    final daily = ref.read(dailyRewardProvider.notifier);
+    final rewards = daily.rewards;
+    final currentDay = (daily.todayDayNumber - 1) % rewards.length;
     final todayReward = rewards[currentDay];
 
     final rewardText = todayReward.diamonds > 0
@@ -361,12 +361,3 @@ class _DayCell extends StatelessWidget {
   }
 }
 
-const _fallbackRewards = [
-  DailyRewardConfig(day: 1, diamonds: 1, label: '1 💎'),
-  DailyRewardConfig(day: 2, diamonds: 2, label: '2 💎'),
-  DailyRewardConfig(day: 3, diamonds: 3, label: '3 💎'),
-  DailyRewardConfig(day: 4, tickets: 1, label: '1 ⚡'),
-  DailyRewardConfig(day: 5, diamonds: 5, label: '5 💎'),
-  DailyRewardConfig(day: 6, tickets: 2, label: '2 ⚡'),
-  DailyRewardConfig(day: 7, diamonds: 10, label: '10 💎'),
-];

@@ -88,8 +88,12 @@ class NovelApiService {
     }
   }
 
-  /// Получить список глав новеллы
-  Future<List<ChapterInfo>> fetchChaptersList(String novelId) async {
+  /// Получить список глав новеллы.
+  ///
+  /// Возвращает `null` при сетевой ошибке или не-200 ответе — это ВАЖНО
+  /// отличать от пустого списка `[]` (реально нет глав): движок не должен
+  /// трактовать недоступность сервера как «конец истории».
+  Future<List<ChapterInfo>?> fetchChaptersList(String novelId) async {
     try {
       final response = await http
           .get(
@@ -105,9 +109,9 @@ class NovelApiService {
             .map((j) => ChapterInfo.fromJson(j as Map<String, dynamic>))
             .toList();
       }
-      return [];
+      return null;
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
@@ -202,7 +206,7 @@ class NovelApiService {
       // Определяем общий префикс (если файлы внутри подпапки)
       String prefix = '';
       final metaEntry = archive.files.firstWhere(
-        (f) => f.name.endsWith('meta.json'),
+        (f) => f.name == 'meta.json' || f.name.endsWith('/meta.json'),
         orElse: () => archive.files.first,
       );
       if (metaEntry.name.contains('/')) {
@@ -217,7 +221,16 @@ class NovelApiService {
         }
         if (name.isEmpty) continue;
 
-        final filePath = '${novelDir.path}/$name';
+        // Zip-slip защита: отбрасываем абсолютные пути и выход за пределы
+        // папки новеллы (вредоносный/битый архив не должен писать вовне,
+        // напр. перезаписать Hive-боксы с валютой/токеном).
+        final normalized = name.replaceAll('\\', '/');
+        if (normalized.startsWith('/') ||
+            normalized.split('/').contains('..')) {
+          continue;
+        }
+
+        final filePath = '${novelDir.path}/$normalized';
         if (file.isFile) {
           final outFile = File(filePath);
           await outFile.create(recursive: true);
@@ -254,13 +267,24 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
 
     final api = _ref.read(novelApiServiceProvider);
 
-    // 1. Скачиваем ZIP
-    final zipPath = await api.downloadNovelPack(
-      _novelId,
-      onProgress: (p) {
-        state = state.copyWith(progress: p * 0.8); // 80% — загрузка
-      },
-    );
+    // 1. Скачиваем ZIP. downloadNovelPack пробрасывает исключение при
+    // исчерпании ретраев (офлайн) — ловим его, иначе статус навсегда
+    // залипнет в `downloading` и кнопка «Играть» останется заблокированной.
+    String? zipPath;
+    try {
+      zipPath = await api.downloadNovelPack(
+        _novelId,
+        onProgress: (p) {
+          state = state.copyWith(progress: p * 0.8); // 80% — загрузка
+        },
+      );
+    } catch (e) {
+      state = state.copyWith(
+        status: DownloadStatus.error,
+        error: 'Нет соединения',
+      );
+      return;
+    }
 
     if (zipPath == null) {
       state = state.copyWith(

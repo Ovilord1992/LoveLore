@@ -11,7 +11,7 @@ import 'variable_engine.dart';
 import 'condition_evaluator.dart';
 
 /// Состояние перехода между главами
-enum ChapterTransition { none, loading, needsDownload, notReleased, completed }
+enum ChapterTransition { none, loading, needsDownload, notReleased, completed, error }
 
 /// Основной провайдер движка игры
 final sceneEngineProvider =
@@ -36,6 +36,8 @@ class SceneEngine extends StateNotifier<GameState?> {
   int _nextChapterNumber = 0;
   NovelTranslation? _translation;
   NovelMeta? _novelMeta;
+  // Защита от повторного входа в переход между главами (двойные тапы)
+  bool _transitioning = false;
 
   SceneEngine(this._ref) : super(null);
 
@@ -50,6 +52,17 @@ class SceneEngine extends StateNotifier<GameState?> {
   /// Установить перевод для текущей новеллы
   void setTranslation(NovelTranslation? translation) {
     _translation = translation;
+  }
+
+  /// Перезагрузить перевод по текущей локали (смена языка «на лету»).
+  /// Без этого запущенная новелла оставалась бы на старом языке до перезапуска.
+  Future<void> reloadTranslation() async {
+    if (state == null) return;
+    final loader = _ref.read(novelLoaderProvider);
+    final locale = _ref.read(localeProvider);
+    _translation = await loader.loadTranslation(state!.novelId, locale.name);
+    // Форсируем ребилд подписчиков (новый инстанс state).
+    state = state!.copyWith();
   }
 
   /// Перевести текст через текущий перевод
@@ -80,6 +93,9 @@ class SceneEngine extends StateNotifier<GameState?> {
     return _currentScene!.events[idx];
   }
 
+  /// Индекс текущего события (для дедупликации авто-переходов в UI)
+  int get currentEventIndex => state?.currentEventIndex ?? 0;
+
   bool get hasNextEvent {
     if (_currentScene == null || state == null) return false;
     return state!.currentEventIndex < _currentScene!.events.length - 1;
@@ -87,6 +103,12 @@ class SceneEngine extends StateNotifier<GameState?> {
 
   /// Начать новеллу (или продолжить с сохранения)
   Future<void> startNovel(String novelId, {bool forceNew = false}) async {
+    // Сбрасываем состояние перехода от предыдущей новеллы, иначе экран
+    // «Конец истории»/«Продолжение следует» залипнет на новой новелле.
+    _transitioning = false;
+    _nextChapterNumber = 0;
+    _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.none;
+
     final loader = _ref.read(novelLoaderProvider);
     _novelMeta = await loader.loadNovelMeta(novelId);
     _characters = await loader.loadCharacters(novelId);
@@ -167,59 +189,94 @@ class SceneEngine extends StateNotifier<GameState?> {
     } else if (_currentScene!.nextSceneId != null) {
       _goToScene(_currentScene!.nextSceneId!);
     } else {
-      // Конец главы — переход к следующей
+      // Конец главы — переход к следующей.
+      // Guard от повторного входа: без него быстрые тапы на последнем событии
+      // многократно накручивают статистику и запускают гонку сетевых запросов.
+      if (_transitioning) return;
+      _transitioning = true;
       _ref.read(userProfileProvider.notifier).incrementChaptersRead();
       _ref.read(achievementServiceProvider).checkAndGrant();
       _goToNextChapter();
     }
   }
 
+  /// Установить переменную из события setVariable (поддерживает "+N"/"-N"/"toggle"/значение)
+  void applySetVariable(String? variable, dynamic value) {
+    if (state == null || variable == null || variable.isEmpty) return;
+    state = _variableEngine.applyEffects(state!, {variable: value});
+  }
+
+  /// Повторить проверку следующей главы после сетевой ошибки (из UI)
+  Future<void> retryNextChapter() async {
+    if (state == null || _currentChapter == null) return;
+    _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.loading;
+    _transitioning = true;
+    await _goToNextChapter();
+  }
+
   /// Перейти к следующей главе
   Future<void> _goToNextChapter() async {
-    if (state == null || _currentChapter == null) return;
+    if (state == null || _currentChapter == null) {
+      _transitioning = false;
+      return;
+    }
 
     _nextChapterNumber = _currentChapter!.number + 1;
     final nextChapterId = 'chapter_$_nextChapterNumber';
 
-    final loader = _ref.read(novelLoaderProvider);
+    final transition = _ref.read(chapterTransitionProvider.notifier);
+    try {
+      final loader = _ref.read(novelLoaderProvider);
 
-    // Пробуем загрузить локально
-    final nextChapter = await loader.loadChapter(state!.novelId, nextChapterId);
+      // Пробуем загрузить локально
+      final nextChapter = await loader.loadChapter(state!.novelId, nextChapterId);
 
-    if (nextChapter != null) {
-      _currentChapter = nextChapter;
-      _currentScene = nextChapter.getScene(nextChapter.firstSceneId);
-      state = state!.copyWith(
-        currentChapterId: nextChapterId,
-        currentSceneId: nextChapter.firstSceneId,
-        currentEventIndex: 0,
-        lastPlayed: DateTime.now(),
-      );
-      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.none;
-      return;
+      if (nextChapter != null) {
+        _currentChapter = nextChapter;
+        _currentScene = nextChapter.getScene(nextChapter.firstSceneId);
+        state = state!.copyWith(
+          currentChapterId: nextChapterId,
+          currentSceneId: nextChapter.firstSceneId,
+          currentEventIndex: 0,
+          lastPlayed: DateTime.now(),
+        );
+        transition.state = ChapterTransition.none;
+        return;
+      }
+
+      // Главы нет локально — проверяем на сервере
+      final api = _ref.read(novelApiServiceProvider);
+      final chapters = await api.fetchChaptersList(state!.novelId);
+
+      // null → сеть/сервер недоступны. НЕ трактуем как конец истории, иначе
+      // офлайн-игрок увидит ложный «Конец истории» и испортит novelsCompleted.
+      if (chapters == null) {
+        transition.state = ChapterTransition.error;
+        return;
+      }
+
+      final serverChapter =
+          chapters.where((c) => c.number == _nextChapterNumber).firstOrNull;
+
+      if (serverChapter == null) {
+        // Главы действительно нет — конец новеллы
+        transition.state = ChapterTransition.completed;
+        _ref.read(userProfileProvider.notifier).incrementNovelsCompleted();
+        _ref.read(achievementServiceProvider).checkAndGrant();
+        return;
+      }
+
+      if (!serverChapter.isReleased) {
+        // Глава не вышла ещё
+        transition.state = ChapterTransition.notReleased;
+        return;
+      }
+
+      // Глава вышла, нужно скачать
+      transition.state = ChapterTransition.needsDownload;
+    } finally {
+      _transitioning = false;
     }
-
-    // Главы нет локально — проверяем на сервере
-    final api = _ref.read(novelApiServiceProvider);
-    final chapters = await api.fetchChaptersList(state!.novelId);
-    final serverChapter = chapters.where((c) => c.number == _nextChapterNumber).firstOrNull;
-
-    if (serverChapter == null) {
-      // Главы нет вообще — конец новеллы
-      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.completed;
-      _ref.read(userProfileProvider.notifier).incrementNovelsCompleted();
-      _ref.read(achievementServiceProvider).checkAndGrant();
-      return;
-    }
-
-    if (!serverChapter.isReleased) {
-      // Глава не вышла ещё
-      _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.notReleased;
-      return;
-    }
-
-    // Глава вышла, нужно скачать
-    _ref.read(chapterTransitionProvider.notifier).state = ChapterTransition.needsDownload;
   }
 
   /// Скачать и начать следующую главу (вызывается из UI)

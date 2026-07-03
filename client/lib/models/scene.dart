@@ -7,7 +7,7 @@ part 'scene.g.dart';
 enum CharacterPosition { left, center, right }
 
 /// Тип события в сцене
-enum EventType { dialogue, narration, choice, changeBackground, playSound, changeSprite, effect, showCg, cameraMove, showEmotion }
+enum EventType { dialogue, narration, choice, changeBackground, playSound, changeSprite, effect, showCg, cameraMove, showEmotion, setVariable }
 
 /// Тип перехода между сценами
 enum TransitionType { fade, slideLeft, slideRight, dissolve, none }
@@ -169,6 +169,9 @@ class SceneEvent extends Equatable {
   final String? characterId;
   final String? spriteId;
   final String? animation;
+  // Установка переменной (событие setVariable)
+  final String? variable;
+  final dynamic value; // строка "+1"/"-2"/"toggle" или прямое значение
   // Поля для события effect
   @JsonKey(unknownEnumValue: EffectType.shake)
   final EffectType? effectType;
@@ -202,6 +205,8 @@ class SceneEvent extends Equatable {
     this.characterId,
     this.spriteId,
     this.animation,
+    this.variable,
+    this.value,
     this.effectType,
     this.effectDuration,
     this.effectIntensity,
@@ -223,7 +228,7 @@ class SceneEvent extends Equatable {
   Map<String, dynamic> toJson() => _$SceneEventToJson(this);
 
   @override
-  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation, effectType, effectDuration, effectIntensity, cgImage, cgTransition, cgDuration, zoom, panX, panY, cameraDuration, emotionType, spriteDuration, timeLimit, defaultChoiceIndex];
+  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation, variable, value, effectType, effectDuration, effectIntensity, cgImage, cgTransition, cgDuration, zoom, panX, panY, cameraDuration, emotionType, spriteDuration, timeLimit, defaultChoiceIndex];
 }
 
 /// Слой фона для параллакса

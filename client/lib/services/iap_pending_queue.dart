@@ -100,6 +100,7 @@ class PendingProcessReport {
   final int stillPending;
   final int dropped; // 'invalid' от сервера → выкидываем
   final List<IapVerifyResult> successResults;
+  final List<PendingIapPurchase> successItems; // параллельно successResults
 
   const PendingProcessReport({
     required this.total,
@@ -107,6 +108,7 @@ class PendingProcessReport {
     required this.stillPending,
     required this.dropped,
     required this.successResults,
+    this.successItems = const [],
   });
 }
 
@@ -120,6 +122,9 @@ class PendingProcessReport {
 class IapPendingQueue {
   final PendingQueueStorage _storage;
   final IapVerifier _verifier;
+
+  /// Защита от параллельного запуска processAll (напр. _init + onResume).
+  bool _processing = false;
 
   /// Колбэк для применения успешного результата (обновить currency / vip / UI).
   final Future<void> Function(
@@ -150,8 +155,9 @@ class IapPendingQueue {
   /// - transient (network / 5xx) → оставить, попробовать в след. раз
   /// - unauthorized → оставить (юзер залогинится — повторим)
   Future<PendingProcessReport> processAll() async {
-    final items = _storage.read();
-    if (items.isEmpty) {
+    // Не запускаем два прохода параллельно — иначе двойное начисление и
+    // гонка записи очереди.
+    if (_processing) {
       return const PendingProcessReport(
         total: 0,
         succeeded: 0,
@@ -160,55 +166,87 @@ class IapPendingQueue {
         successResults: [],
       );
     }
-
-    final remaining = <PendingIapPurchase>[];
-    final successResults = <IapVerifyResult>[];
-    var succeeded = 0;
-    var dropped = 0;
-
-    for (final item in items) {
-      try {
-        final result = await _verifier.verifyPurchase(
-          platform: item.platform,
-          productId: item.productId,
-          receipt: item.receipt,
+    _processing = true;
+    try {
+      final items = _storage.read();
+      if (items.isEmpty) {
+        return const PendingProcessReport(
+          total: 0,
+          succeeded: 0,
+          stillPending: 0,
+          dropped: 0,
+          successResults: [],
         );
-        if (result.isSuccess) {
-          succeeded++;
-          successResults.add(result);
-          if (onApply != null) {
-            try {
-              await onApply!(item, result);
-            } catch (e) {
-              debugPrint('[IAP] pending onApply failed: $e');
-            }
-          }
-        } else {
-          // 400/invalid — выкидываем, повторять бесполезно.
-          dropped++;
-          debugPrint(
-              '[IAP] dropping pending ${item.productId}: status=${result.status} error=${result.error}');
-        }
-      } on IapVerifyTransientException catch (e) {
-        debugPrint('[IAP] pending transient ${item.productId}: $e');
-        remaining.add(item);
-      } on IapVerifyUnauthorizedException catch (e) {
-        debugPrint('[IAP] pending unauthorized ${item.productId}: $e');
-        remaining.add(item);
-      } catch (e) {
-        debugPrint('[IAP] pending unknown error ${item.productId}: $e');
-        remaining.add(item);
       }
+
+      final remaining = <PendingIapPurchase>[];
+      final successResults = <IapVerifyResult>[];
+      final successItems = <PendingIapPurchase>[];
+      var succeeded = 0;
+      var dropped = 0;
+
+      for (final item in items) {
+        try {
+          final result = await _verifier.verifyPurchase(
+            platform: item.platform,
+            productId: item.productId,
+            receipt: item.receipt,
+          );
+          if (result.isSuccess) {
+            succeeded++;
+            successResults.add(result);
+            successItems.add(item);
+            if (onApply != null) {
+              try {
+                await onApply!(item, result);
+              } catch (e) {
+                debugPrint('[IAP] pending onApply failed: $e');
+              }
+            }
+          } else {
+            // 400/invalid — выкидываем, повторять бесполезно.
+            dropped++;
+            debugPrint(
+                '[IAP] dropping pending ${item.productId}: status=${result.status} error=${result.error}');
+          }
+        } on IapVerifyTransientException catch (e) {
+          debugPrint('[IAP] pending transient ${item.productId}: $e');
+          remaining.add(item);
+        } on IapVerifyUnauthorizedException catch (e) {
+          debugPrint('[IAP] pending unauthorized ${item.productId}: $e');
+          remaining.add(item);
+        } catch (e) {
+          debugPrint('[IAP] pending unknown error ${item.productId}: $e');
+          remaining.add(item);
+        }
+      }
+
+      // Перечитываем очередь: за время сетевого прохода мог прийти новый
+      // add() (новая покупка с транзиентной ошибкой). Простой write(remaining)
+      // затёр бы его — и после completePurchase чек потерялся бы навсегда.
+      // Сливаем оставшиеся из этого прохода с новыми, дедуп по key.
+      final processedKeys = items.map((e) => e.key).toSet();
+      final latest = _storage.read();
+      final merged = <PendingIapPurchase>[];
+      final seen = <String>{};
+      for (final it in [
+        ...remaining,
+        ...latest.where((e) => !processedKeys.contains(e.key)),
+      ]) {
+        if (seen.add(it.key)) merged.add(it);
+      }
+      await _storage.write(merged);
+
+      return PendingProcessReport(
+        total: items.length,
+        succeeded: succeeded,
+        stillPending: merged.length,
+        dropped: dropped,
+        successResults: successResults,
+        successItems: successItems,
+      );
+    } finally {
+      _processing = false;
     }
-
-    await _storage.write(remaining);
-
-    return PendingProcessReport(
-      total: items.length,
-      succeeded: succeeded,
-      stillPending: remaining.length,
-      dropped: dropped,
-      successResults: successResults,
-    );
   }
 }

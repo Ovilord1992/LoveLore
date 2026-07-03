@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -5,19 +6,39 @@ import 'app/app.dart';
 import 'services/ad_service.dart';
 import 'services/remote_config_service.dart';
 
+/// Открыть Hive-бокс с восстановлением при коррупции. Если файл бокса
+/// повреждён (kill во время записи, заполненный диск), без recovery
+/// приложение падало бы на старте при каждом запуске («кирпич»).
+Future<void> _openBoxSafe(String name) async {
+  try {
+    await Hive.openBox<String>(name);
+  } catch (e) {
+    debugPrint('[Hive] Box "$name" corrupted ($e) — recreating');
+    try {
+      await Hive.deleteBoxFromDisk(name);
+      await Hive.openBox<String>(name);
+    } catch (e2) {
+      debugPrint('[Hive] Failed to recover box "$name": $e2');
+      rethrow;
+    }
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Future.wait([
-    Hive.openBox<String>('game_saves'),
-    Hive.openBox<String>('app_settings'),
-    Hive.openBox<String>('app_locale'),
-    Hive.openBox<String>('user_profile'),
-    Hive.openBox<String>('currency'),
-    Hive.openBox<String>('wardrobe'),
+    _openBoxSafe('game_saves'),
+    _openBoxSafe('app_settings'),
+    _openBoxSafe('app_locale'),
+    _openBoxSafe('user_profile'),
+    _openBoxSafe('currency'),
+    _openBoxSafe('wardrobe'),
   ]);
 
-  await AdService.initialize();
+  // Реклама не критична для старта — инициализируем в фоне, не блокируя
+  // запуск приложения (иначе на медленной сети — долгий белый экран).
+  unawaited(AdService.initialize());
 
   // Загружаем Remote Config ДО запуска приложения (с таймаутом 5с)
   final configService = RemoteConfigService();

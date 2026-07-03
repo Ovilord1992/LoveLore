@@ -105,6 +105,12 @@ class VipService extends StateNotifier<VipState> {
     _save();
   }
 
+  /// Полный сброс VIP-состояния (смена аккаунта на устройстве).
+  void reset() {
+    state = const VipState();
+    _save();
+  }
+
   /// Забрать ежедневные алмазы (вызывается при входе в приложение)
   bool collectDailyDiamonds() {
     if (!state.isActive) return false;
@@ -137,6 +143,12 @@ class VipService extends StateNotifier<VipState> {
 
   /// Без рекламы
   bool get isAdFree => state.isActive;
+
+  /// Пересчитать статус подписки (истечение) — вызывать при входе/возврате
+  /// в приложение, иначе VIP не «протухнет» в течение долгой сессии.
+  void refresh() {
+    _checkExpiry();
+  }
 
   /// Проверка истечения подписки
   void _checkExpiry() {
