@@ -17,15 +17,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    api
-      .get('/admin/stats')
-      .then((r) => setStats(r.data))
-      .catch((err) => {
-        message.error('Не удалось загрузить статистику');
-        console.error(err);
-      })
-      .finally(() => setLoading(false));
+    let active = true;
+    const load = async () => {
+      try {
+        const { data } = await api.get('/admin/stats');
+        if (active) setStats(data);
+      } catch (err: unknown) {
+        if (!active) return;
+        const e = err as { response?: { data?: { error?: string } } };
+        message.error(e.response?.data?.error || 'Не удалось загрузить статистику');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
   }, []);
 
   if (loading) {

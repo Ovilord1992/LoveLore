@@ -9,13 +9,25 @@ import ConfigPage from './pages/ConfigPage';
 import ReviewsPage from './pages/ReviewsPage';
 import AdminLayout from './components/AdminLayout';
 
+const pageFromHash = () => {
+  const hash = window.location.hash.replace('#/', '') || 'dashboard';
+  // '#/login' — служебный маршрут разлогина, не является страницей меню
+  return hash === 'login' ? 'dashboard' : hash;
+};
+
 function AppContent() {
-  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem('admin_token'));
-  const [page, setPage] = useState('dashboard');
+  const [loggedIn, setLoggedIn] = useState(() => !!localStorage.getItem('admin_token'));
+  // Ленивая инициализация из hash — без setState в теле эффекта
+  const [page, setPage] = useState(pageFromHash);
 
   useEffect(() => {
-    const hash = window.location.hash.replace('#/', '') || 'dashboard';
-    setPage(hash);
+    // Реагируем на смену hash: навигация + разлогин (интерсептор api.ts ставит #/login)
+    const onHashChange = () => {
+      setPage(pageFromHash());
+      setLoggedIn(!!localStorage.getItem('admin_token'));
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
   const navigate = (key: string) => {

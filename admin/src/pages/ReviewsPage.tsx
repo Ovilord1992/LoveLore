@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Table, Tag, Space, Button, Select, Typography, Popconfirm, App as AntApp } from 'antd';
 import { CheckOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
@@ -27,20 +27,27 @@ export default function ReviewsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(false);
+  const reqId = useRef(0);
   const { message } = AntApp.useApp();
 
   const fetchReviews = useCallback(async () => {
+    const myId = ++reqId.current; // защита от гонок при быстрой смене фильтра
     setLoading(true);
     try {
       const params: { page: number; limit: number; status?: string } = { page, limit: 10 };
       if (statusFilter !== 'all') params.status = statusFilter;
       const { data } = await getReviews(params);
+      if (myId !== reqId.current) return;
       setReviews(data.items);
       setTotal(data.total);
+    } catch (err: unknown) {
+      if (myId !== reqId.current) return;
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки отзывов');
     } finally {
-      setLoading(false);
+      if (myId === reqId.current) setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, statusFilter, message]);
 
   useEffect(() => { fetchReviews(); }, [fetchReviews]);
 

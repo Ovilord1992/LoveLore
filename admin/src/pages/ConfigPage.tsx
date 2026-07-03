@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, Tabs, Form, InputNumber, Switch, Button, message, Spin, Input, Space, Typography, Modal, Popconfirm } from 'antd';
 import { SaveOutlined, ReloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import api from '../services/api';
@@ -27,7 +27,7 @@ export default function ConfigPage() {
   const [jsonSections, setJsonSections] = useState<Record<string, string>>({});
   const [dirtyTabs, setDirtyTabs] = useState<Record<string, boolean>>({});
 
-  const loadConfigData = async () => {
+  const loadConfigData = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/admin/config');
@@ -42,12 +42,13 @@ export default function ConfigPage() {
         localization: JSON.stringify(data.localization, null, 2),
       });
       setDirtyTabs({});
-    } catch {
-      message.error('Ошибка загрузки конфигурации');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки конфигурации');
     } finally {
       setLoading(false);
     }
-  };
+  }, [economyForm, adsForm, vipForm]);
 
   const fetchConfig = (skipDirtyCheck = false) => {
     const dirtyList = Object.entries(dirtyTabs)
@@ -67,29 +68,35 @@ export default function ConfigPage() {
     loadConfigData();
   };
 
-  useEffect(() => { loadConfigData(); }, []);
+  useEffect(() => { loadConfigData(); }, [loadConfigData]);
 
   const saveSection = async (section: string, values: unknown) => {
     setSaving(true);
     try {
-      await api.put('/admin/config', { [section]: values });
+      const { data } = await api.put('/admin/config', { [section]: values });
       message.success(`Секция "${section}" сохранена`);
+      // Обновляем ТОЛЬКО эту секцию в локальном состоянии —
+      // не перезагружаем конфиг целиком, чтобы не стереть несохранённые правки
+      // в других вкладках.
+      setConfig((prev) => (prev ? { ...prev, [section]: values, version: data?.version ?? prev.version } : prev));
       setDirtyTabs((prev) => ({ ...prev, [section]: false }));
-      await loadConfigData();
-    } catch {
-      message.error('Ошибка сохранения');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка сохранения');
     } finally {
       setSaving(false);
     }
   };
 
   const saveJsonSection = async (section: string) => {
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(jsonSections[section]);
-      await saveSection(section, parsed);
-    } catch {
-      message.error('Невалидный JSON');
+      parsed = JSON.parse(jsonSections[section] ?? '');
+    } catch (err) {
+      message.error(`Невалидный JSON в секции "${section}": ${(err as Error).message}`);
+      return;
     }
+    await saveSection(section, parsed);
   };
 
   const markDirty = (section: string) => {
@@ -97,6 +104,13 @@ export default function ConfigPage() {
   };
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
+
+  // Клиент ждёт целые числа: дробь/пустое значение ломают Remote Config.
+  // required + type:'integer' блокируют submit (onFinish не сработает при невалидных данных).
+  const intRules = [
+    { required: true, message: 'Обязательное поле' },
+    { type: 'integer' as const, message: 'Только целое число' },
+  ];
 
   const tabs = [
     {
@@ -109,20 +123,20 @@ export default function ConfigPage() {
           onFinish={(v) => saveSection('economy', v)}
           onValuesChange={() => markDirty('economy')}
         >
-          <Form.Item name="maxTickets" label="Макс. билетов (энергия)">
-            <InputNumber min={1} max={99} />
+          <Form.Item name="maxTickets" label="Макс. билетов (энергия)" rules={intRules}>
+            <InputNumber min={1} max={99} precision={0} />
           </Form.Item>
-          <Form.Item name="ticketRefillMinutes" label="Рефилл билета (мин)">
-            <InputNumber min={1} max={1440} />
+          <Form.Item name="ticketRefillMinutes" label="Рефилл билета (мин)" rules={intRules}>
+            <InputNumber min={1} max={1440} precision={0} />
           </Form.Item>
-          <Form.Item name="startDiamonds" label="Стартовые алмазы">
-            <InputNumber min={0} max={9999} />
+          <Form.Item name="startDiamonds" label="Стартовые алмазы" rules={intRules}>
+            <InputNumber min={0} max={9999} precision={0} />
           </Form.Item>
-          <Form.Item name="startTickets" label="Стартовые билеты">
-            <InputNumber min={0} max={99} />
+          <Form.Item name="startTickets" label="Стартовые билеты" rules={intRules}>
+            <InputNumber min={0} max={99} precision={0} />
           </Form.Item>
-          <Form.Item name="diamondCostPerTicket" label="Цена билета (алмазы)">
-            <InputNumber min={1} max={999} />
+          <Form.Item name="diamondCostPerTicket" label="Цена билета (алмазы)" rules={intRules}>
+            <InputNumber min={1} max={999} precision={0} />
           </Form.Item>
           <Form.Item>
             <Popconfirm
@@ -149,14 +163,14 @@ export default function ConfigPage() {
           onFinish={(v) => saveSection('ads', v)}
           onValuesChange={() => markDirty('ads')}
         >
-          <Form.Item name="maxAdsPerDay" label="Макс. просмотров в день">
-            <InputNumber min={0} max={99} />
+          <Form.Item name="maxAdsPerDay" label="Макс. просмотров в день" rules={intRules}>
+            <InputNumber min={0} max={99} precision={0} />
           </Form.Item>
-          <Form.Item name="diamondReward" label="Алмазы за просмотр">
-            <InputNumber min={0} max={999} />
+          <Form.Item name="diamondReward" label="Алмазы за просмотр" rules={intRules}>
+            <InputNumber min={0} max={999} precision={0} />
           </Form.Item>
-          <Form.Item name="ticketReward" label="Билеты за просмотр">
-            <InputNumber min={0} max={99} />
+          <Form.Item name="ticketReward" label="Билеты за просмотр" rules={intRules}>
+            <InputNumber min={0} max={99} precision={0} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={saving}>
@@ -176,8 +190,8 @@ export default function ConfigPage() {
           onFinish={(v) => saveSection('vip', v)}
           onValuesChange={() => markDirty('vip')}
         >
-          <Form.Item name="dailyDiamonds" label="Ежедневные алмазы VIP">
-            <InputNumber min={0} max={999} />
+          <Form.Item name="dailyDiamonds" label="Ежедневные алмазы VIP" rules={intRules}>
+            <InputNumber min={0} max={999} precision={0} />
           </Form.Item>
           <Form.Item name="unlimitedTickets" label="Безлимитные билеты" valuePropName="checked">
             <Switch />

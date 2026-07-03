@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Table, Input, Button, Tag, Space, Modal, Descriptions, Typography, InputNumber, Select, App as AntApp, Popconfirm } from 'antd';
 import { SearchOutlined, EyeOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
@@ -31,42 +31,66 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ role: '', diamonds: 0, tickets: 0 });
+  const reqId = useRef(0);
   const { message } = AntApp.useApp();
 
+  // Debounce поля поиска
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchUsers = useCallback(async () => {
+    const myId = ++reqId.current; // защита от гонок
     setLoading(true);
     try {
-      const { data } = await api.get('/admin/users', { params: { page, limit: 20, search } });
+      const { data } = await api.get('/admin/users', { params: { page, limit: 20, search: debouncedSearch } });
+      if (myId !== reqId.current) return;
       setUsers(data.users);
       setTotal(data.total);
+    } catch (err: unknown) {
+      if (myId !== reqId.current) return;
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки пользователей');
     } finally {
-      setLoading(false);
+      if (myId === reqId.current) setLoading(false);
     }
-  }, [page, search]);
+  }, [page, debouncedSearch, message]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const showDetail = async (id: string) => {
-    const { data } = await api.get(`/admin/users/${id}`);
-    setDetail(data.user);
-    setDetailOpen(true);
+    try {
+      const { data } = await api.get(`/admin/users/${id}`);
+      setDetail(data.user);
+      setDetailOpen(true);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки пользователя');
+    }
   };
 
   const openEdit = async (id: string) => {
-    const { data } = await api.get(`/admin/users/${id}`);
-    const u = data.user as UserDetail;
-    setDetail(u);
-    setEditForm({
-      role: u.role,
-      diamonds: u.currency?.diamonds || 0,
-      tickets: u.currency?.tickets || 0,
-    });
-    setEditOpen(true);
+    try {
+      const { data } = await api.get(`/admin/users/${id}`);
+      const u = data.user as UserDetail;
+      setDetail(u);
+      setEditForm({
+        role: u.role,
+        diamonds: u.currency?.diamonds || 0,
+        tickets: u.currency?.tickets || 0,
+      });
+      setEditOpen(true);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки пользователя');
+    }
   };
 
   const saveEdit = async () => {
@@ -132,7 +156,7 @@ export default function UsersPage() {
         prefix={<SearchOutlined />}
         placeholder="Поиск по email или имени..."
         value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        onChange={(e) => setSearch(e.target.value)}
         style={{ marginBottom: 16, maxWidth: 400 }}
         allowClear
       />

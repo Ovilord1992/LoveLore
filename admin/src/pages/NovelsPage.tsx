@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Table, Input, Button, Space, Switch, Typography, App as AntApp, Popconfirm, Upload, Modal, Tag, Tooltip } from 'antd';
-import { SearchOutlined, UploadOutlined, DeleteOutlined, GlobalOutlined } from '@ant-design/icons';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Table, Input, Button, Space, Switch, Typography, App as AntApp, Popconfirm, Upload, Modal, Tag, Tooltip, DatePicker } from 'antd';
+import { SearchOutlined, UploadOutlined, DeleteOutlined, GlobalOutlined, ProfileOutlined } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { UploadProps } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import api from '../services/api';
 
 const { Title } = Typography;
@@ -19,28 +20,55 @@ interface NovelRow {
   updatedAt: string;
 }
 
+interface ChapterRow {
+  id: string;
+  number: number;
+  title: string;
+  isReleased: boolean;
+  releasedAt: string | null;
+}
+
 export default function NovelsPage() {
   const [novels, setNovels] = useState<NovelRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [translationModal, setTranslationModal] = useState<{ novelId: string; title: string } | null>(null);
   const [languages, setLanguages] = useState<{ sourceLanguage: string; translations: string[] }>({ sourceLanguage: 'ru', translations: [] });
   const [translationJson, setTranslationJson] = useState('');
   const [uploadLang, setUploadLang] = useState('en');
+  const [chaptersModal, setChaptersModal] = useState<{ novelId: string; title: string } | null>(null);
+  const [chapters, setChapters] = useState<ChapterRow[]>([]);
+  const [chaptersLoading, setChaptersLoading] = useState(false);
+  const [chaptersSaving, setChaptersSaving] = useState<number | null>(null);
+  const reqId = useRef(0);
   const { message } = AntApp.useApp();
 
+  // Debounce поля поиска: не шлём запрос на каждый символ
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchNovels = useCallback(async () => {
+    const myId = ++reqId.current; // защита от гонок: применяем только последний ответ
     setLoading(true);
     try {
-      const { data } = await api.get('/admin/novels', { params: { page, limit: 20, search } });
+      const { data } = await api.get('/admin/novels', { params: { page, limit: 20, search: debouncedSearch } });
+      if (myId !== reqId.current) return;
       setNovels(data.novels);
       setTotal(data.total);
+    } catch (err: unknown) {
+      if (myId !== reqId.current) return;
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки новелл');
     } finally {
-      setLoading(false);
+      if (myId === reqId.current) setLoading(false);
     }
-  }, [page, search]);
+  }, [page, debouncedSearch, message]);
 
   useEffect(() => { fetchNovels(); }, [fetchNovels]);
 
@@ -87,14 +115,60 @@ export default function NovelsPage() {
   };
 
   const uploadTranslation = async (novelId: string, lang: string) => {
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(translationJson);
+      parsed = JSON.parse(translationJson);
+    } catch (err) {
+      message.error(`Невалидный JSON: ${(err as Error).message}`);
+      return;
+    }
+    try {
       await api.post(`/novels/${novelId}/translations/${lang}`, parsed);
       message.success(`Перевод (${lang}) загружен на сервер`);
       openTranslations(novelId, translationModal?.title || '');
-    } catch (e) {
-      message.error('Ошибка: проверьте JSON');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки перевода');
     }
+  };
+
+  // ─── Управление главами (релиз/скрытие) ──────────────────────────────────
+  const openChapters = async (novelId: string, title: string) => {
+    setChaptersModal({ novelId, title });
+    setChapters([]);
+    setChaptersLoading(true);
+    try {
+      const { data } = await api.get(`/admin/novels/${novelId}/chapters`);
+      setChapters(data.chapters);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки глав');
+    } finally {
+      setChaptersLoading(false);
+    }
+  };
+
+  const patchChapter = async (number: number, body: Record<string, unknown>, okMsg: string) => {
+    if (!chaptersModal) return;
+    setChaptersSaving(number);
+    try {
+      const { data } = await api.patch(`/admin/novels/${chaptersModal.novelId}/chapters/${number}`, body);
+      setChapters((prev) => prev.map((c) => (c.number === number ? { ...c, ...data.chapter } : c)));
+      message.success(okMsg);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка обновления главы');
+    } finally {
+      setChaptersSaving(null);
+    }
+  };
+
+  const toggleChapterRelease = (number: number, current: boolean) =>
+    patchChapter(number, { isReleased: !current }, !current ? 'Глава выпущена' : 'Глава скрыта');
+
+  const updateChapterDate = (number: number, d: Dayjs | null) => {
+    if (!d) return;
+    patchChapter(number, { releasedAt: d.toISOString() }, 'Дата выпуска обновлена');
   };
 
   const uploadProps: UploadProps = {
@@ -104,11 +178,17 @@ export default function NovelsPage() {
     accept: '.zip',
     showUploadList: false,
     onChange(info) {
-      if (info.file.status === 'done') {
+      if (info.file.status === 'uploading') {
+        setUploading(true);
+      } else if (info.file.status === 'done') {
+        setUploading(false);
         message.success(`${info.file.response?.novel?.title || 'Новелла'} загружена`);
         fetchNovels();
       } else if (info.file.status === 'error') {
-        message.error('Ошибка загрузки');
+        setUploading(false);
+        // Сервер отдаёт осмысленный текст («Invalid novel pack…»/413)
+        const serverMsg = info.file.response?.error || info.file.error?.message;
+        message.error(serverMsg ? `Ошибка загрузки: ${serverMsg}` : 'Ошибка загрузки новеллы');
       }
     },
   };
@@ -145,9 +225,12 @@ export default function NovelsPage() {
       render: (d: string) => new Date(d).toLocaleDateString('ru'),
     },
     {
-      title: '', key: 'actions', width: 100,
+      title: '', key: 'actions', width: 140,
       render: (_: unknown, r: NovelRow) => (
         <Space>
+          <Tooltip title="Главы">
+            <Button icon={<ProfileOutlined />} size="small" onClick={() => openChapters(r.id, r.title)} />
+          </Tooltip>
           <Tooltip title="Переводы">
             <Button icon={<GlobalOutlined />} size="small" onClick={() => openTranslations(r.id, r.title)} />
           </Tooltip>
@@ -155,6 +238,38 @@ export default function NovelsPage() {
             <Button icon={<DeleteOutlined />} size="small" danger />
           </Popconfirm>
         </Space>
+      ),
+    },
+  ];
+
+  const chapterColumns: ColumnsType<ChapterRow> = [
+    { title: '№', dataIndex: 'number', key: 'number', width: 60 },
+    { title: 'Заголовок', dataIndex: 'title', key: 'title' },
+    {
+      title: 'Выпущена', key: 'isReleased', width: 110,
+      render: (_: unknown, r: ChapterRow) => (
+        <Switch
+          checked={r.isReleased}
+          checkedChildren="Да"
+          unCheckedChildren="Нет"
+          loading={chaptersSaving === r.number}
+          onChange={() => toggleChapterRelease(r.number, r.isReleased)}
+        />
+      ),
+    },
+    {
+      title: 'Дата выпуска', key: 'releasedAt', width: 210,
+      render: (_: unknown, r: ChapterRow) => (
+        <DatePicker
+          value={r.releasedAt ? dayjs(r.releasedAt) : null}
+          onChange={(d) => updateChapterDate(r.number, d)}
+          showTime
+          format="DD.MM.YYYY HH:mm"
+          allowClear={false}
+          size="small"
+          disabled={chaptersSaving === r.number}
+          placeholder="—"
+        />
       ),
     },
   ];
@@ -168,14 +283,16 @@ export default function NovelsPage() {
       <Space style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
         <Title level={3} style={{ margin: 0 }}>Новеллы</Title>
         <Upload {...uploadProps}>
-          <Button icon={<UploadOutlined />} type="primary">Загрузить ZIP</Button>
+          <Button icon={<UploadOutlined />} type="primary" loading={uploading}>
+            {uploading ? 'Загрузка…' : 'Загрузить ZIP'}
+          </Button>
         </Upload>
       </Space>
       <Input
         prefix={<SearchOutlined />}
         placeholder="Поиск по названию или автору..."
         value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        onChange={(e) => setSearch(e.target.value)}
         style={{ marginBottom: 16, maxWidth: 400 }}
         allowClear
       />
@@ -229,6 +346,27 @@ export default function NovelsPage() {
               style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, background: '#111', color: '#ccc', border: '1px solid #333', padding: 8, borderRadius: 4 }}
             />
           </div>
+        )}
+      </Modal>
+
+      {/* Модалка управления главами */}
+      <Modal
+        title={`📖 Главы — ${chaptersModal?.title || ''}`}
+        open={!!chaptersModal}
+        onCancel={() => { setChaptersModal(null); setChapters([]); }}
+        footer={null}
+        width={760}
+      >
+        {chaptersModal && (
+          <Table
+            columns={chapterColumns}
+            dataSource={chapters}
+            rowKey="id"
+            loading={chaptersLoading}
+            pagination={false}
+            size="small"
+            locale={{ emptyText: 'Нет глав' }}
+          />
         )}
       </Modal>
     </div>

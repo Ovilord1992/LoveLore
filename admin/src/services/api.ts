@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { message } from 'antd';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/v1';
 
@@ -13,13 +14,26 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// При 401 — перенаправляем на логин
+// Сбрасываем сессию и уводим на логин (с дедупликацией сообщений/редиректа)
+const handleAuthFailure = (msg?: string) => {
+  const alreadyOnLogin = window.location.hash === '#/login';
+  localStorage.removeItem('admin_token');
+  if (!alreadyOnLogin) {
+    if (msg) message.error(msg);
+    // Смена hash — App.tsx слушает 'hashchange' и разлогинивает UI
+    window.location.hash = '#/login';
+  }
+};
+
+// 401 — нет/просрочен токен; 403 — роль не admin. Оба ведут на логин.
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('admin_token');
-      window.location.hash = '#/login';
+    const status = err.response?.status;
+    if (status === 401) {
+      handleAuthFailure();
+    } else if (status === 403) {
+      handleAuthFailure('Доступ запрещён: требуется роль администратора');
     }
     return Promise.reject(err);
   },
