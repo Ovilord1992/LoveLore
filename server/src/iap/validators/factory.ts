@@ -17,6 +17,14 @@ export function getValidator(platform: IapPlatform): IapValidator {
   const mode = process.env.IAP_VALIDATOR || 'mock';
 
   if (mode === 'mock') {
+    // Mock всегда возвращает verified=true — в production это отдало бы награды
+    // за любой поддельный чек. Запрещаем mock при NODE_ENV=production; локальный
+    // dev/test (NODE_ENV не production) продолжает использовать mock как раньше.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'IAP_VALIDATOR=mock is not allowed in production — set IAP_VALIDATOR=real'
+      );
+    }
     return new MockValidator();
   }
 

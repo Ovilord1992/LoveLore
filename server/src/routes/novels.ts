@@ -5,12 +5,18 @@ import prisma from '../db';
 import { upload } from '../middleware/upload';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { adminMiddleware } from '../middleware/admin';
-import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip } from '../utils/zip';
+import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip, extractAllTranslationsFromZip, buildReleasedZipBuffer, zipHasUnreleasedChapters } from '../utils/zip';
 import { logger } from '../utils/logger';
 
 export const novelsRouter = Router();
 
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
+
+// Разрешённый формат id новеллы: строчные буквы/цифры/дефис/подчёркивание, 1..64.
+// Закрывает path traversal через meta.id (запись обложки, имена файлов, пути).
+const NOVEL_ID_RE = /^[a-z0-9_-]{1,64}$/;
+// Код языка перевода: ISO 639-1 + опциональный регион (например, ru, en, pt-BR).
+const LANG_RE = /^[a-z]{2}(-[A-Z]{2})?$/;
 
 // ─── GET /v1/novels ── Каталог опубликованных новелл ────────────────────────
 novelsRouter.get('/', async (_req: Request, res: Response) => {
@@ -129,7 +135,7 @@ novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
       where: { id: req.params.id },
     });
 
-    if (!novel || !novel.zipFilename) {
+    if (!novel || !novel.isPublished || !novel.zipFilename) {
       res.status(404).json({ error: 'Novel not found or no file available' });
       return;
     }
@@ -140,6 +146,14 @@ novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
       res.status(404).json({ error: 'File not found on server' });
       return;
     }
+
+    // Множество выпущенных глав. Невыпущенные главы не должны утечь в ZIP,
+    // даже если они физически лежат в архиве (управление через админку).
+    const releasedRows = await prisma.chapter.findMany({
+      where: { novelId: novel.id, isReleased: true },
+      select: { number: true },
+    });
+    const releasedNumbers = new Set(releasedRows.map((c) => c.number));
 
     // Инкремент счётчика загрузок
     await prisma.novel.update({
@@ -153,6 +167,15 @@ novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
       `attachment; filename="${novel.id}.zip"`
     );
 
+    // Если архив содержит невыпущенные главы — отдаём пересобранный буфер без них.
+    if (zipHasUnreleasedChapters(filePath, releasedNumbers)) {
+      const buffer = buildReleasedZipBuffer(filePath, releasedNumbers);
+      res.setHeader('Content-Length', buffer.length);
+      res.send(buffer);
+      return;
+    }
+
+    // Быстрый путь: все главы выпущены — стримим исходный файл как есть.
     const stat = fs.statSync(filePath);
     res.setHeader('Content-Length', stat.size);
 
@@ -193,6 +216,13 @@ novelsRouter.post(
       }
 
       const novelId = meta.id as string;
+
+      // Валидация id: закрывает path traversal (запись обложки, имена файлов, пути в ZIP).
+      if (typeof novelId !== 'string' || !NOVEL_ID_RE.test(novelId)) {
+        fs.unlinkSync(zipPath);
+        res.status(400).json({ error: 'Invalid novel id' });
+        return;
+      }
 
       // Извлекаем обложку
       const coversDir = path.join(uploadDir, 'covers');
@@ -235,6 +265,23 @@ novelsRouter.post(
         if (!oldPath.startsWith(uploadDirResolved)) {
           logger.warn({ oldPath }, 'Skipping old zip deletion: path traversal detected');
         } else if (fs.existsSync(oldPath)) {
+          // Переносим переводы (translations/*.json), добавленные через
+          // POST /translations, из старого архива в новый — иначе re-upload
+          // молча теряет их. Новые переводы (если есть в загруженном ZIP) имеют
+          // приоритет и не перезаписываются.
+          try {
+            const oldTranslations = extractAllTranslationsFromZip(oldPath);
+            if (oldTranslations.length > 0) {
+              const newLangs = new Set(extractTranslationLanguagesFromZip(zipPath));
+              for (const t of oldTranslations) {
+                if (!newLangs.has(t.language)) {
+                  addTranslationToZip(zipPath, t.language, t.content);
+                }
+              }
+            }
+          } catch (e) {
+            logger.warn({ err: e, novelId }, '[upload] Failed to migrate translations from old zip');
+          }
           fs.unlinkSync(oldPath);
         }
       }
@@ -351,7 +398,7 @@ novelsRouter.get('/:id/chapters', async (req: Request, res: Response) => {
       where: { id: req.params.id },
     });
 
-    if (!novel) {
+    if (!novel || !novel.isPublished) {
       res.status(404).json({ error: 'Novel not found' });
       return;
     }
@@ -394,7 +441,7 @@ novelsRouter.get(
         where: { id: req.params.id },
       });
 
-      if (!novel || !novel.zipFilename) {
+      if (!novel || !novel.isPublished || !novel.zipFilename) {
         res.status(404).json({ error: 'Novel not found' });
         return;
       }
@@ -440,7 +487,7 @@ novelsRouter.get('/:id/languages', async (req: Request, res: Response) => {
       where: { id: req.params.id },
     });
 
-    if (!novel || !novel.zipFilename) {
+    if (!novel || !novel.isPublished || !novel.zipFilename) {
       res.status(404).json({ error: 'Novel not found' });
       return;
     }
@@ -474,8 +521,13 @@ novelsRouter.get('/:id/translations/:lang', async (req: Request, res: Response) 
       where: { id: req.params.id },
     });
 
-    if (!novel || !novel.zipFilename) {
+    if (!novel || !novel.isPublished || !novel.zipFilename) {
       res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    if (!LANG_RE.test(req.params.lang)) {
+      res.status(400).json({ error: 'Invalid language code' });
       return;
     }
 
@@ -508,6 +560,11 @@ novelsRouter.post('/:id/translations/:lang', authMiddleware, adminMiddleware, as
 
     if (!novel || !novel.zipFilename) {
       res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    if (!LANG_RE.test(req.params.lang)) {
+      res.status(400).json({ error: 'Invalid language code' });
       return;
     }
 

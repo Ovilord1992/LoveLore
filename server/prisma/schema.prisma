@@ -128,7 +128,7 @@ model GameConfig {
   ads       Json     @default("{}")
   iap       Json     @default("{}")
   vip       Json     @default("{}")
-  daily     Json     @default("{}")
+  daily     Json     @default("[]")
   achievements Json  @default("[]")
   localization Json  @default("{}")
   updatedAt DateTime @updatedAt @map("updated_at")

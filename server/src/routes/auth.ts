@@ -141,6 +141,12 @@ authRouter.post('/social', socialAuthLimiter, async (req: AuthRequest, res: Resp
           res.status(401).json({ error: 'Invalid Google token' });
           return;
         }
+        // Не доверяем непроверенным email — иначе аккаунт можно угнать, зарегистрировав
+        // на чужой (ещё не подтверждённый) адрес.
+        if (payload.email_verified !== true) {
+          res.status(401).json({ error: 'Google email not verified' });
+          return;
+        }
         verifiedEmail = payload.email;
         verifiedName = payload.name || null;
       } catch {

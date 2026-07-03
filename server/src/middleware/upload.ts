@@ -26,7 +26,10 @@ export const upload = multer({
     if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
       cb(null, true);
     } else {
-      cb(new Error('Only ZIP files are allowed'));
+      // statusCode помечает ошибку как клиентскую (400) для глобального error-handler.
+      const err = new Error('Only ZIP files are allowed') as Error & { statusCode?: number };
+      err.statusCode = 400;
+      cb(err);
     }
   },
 });

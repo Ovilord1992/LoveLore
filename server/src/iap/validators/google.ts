@@ -189,17 +189,39 @@ export class GoogleValidator implements IapValidator {
       };
     }
 
-    let expiresAt: Date | undefined;
+    // Реальный productId берём из ответа Google (lineItems[].productId), а не из
+    // клиентского req.productId — иначе клиент мог бы подменить награду, прислав
+    // токен дешёвой подписки под видом дорогой (как сделано для Apple: entry.product_id).
     const lineItems = Array.isArray(data.lineItems) ? data.lineItems : [];
-    for (const item of lineItems) {
-      if (item && typeof item === 'object' && 'expiryTime' in item) {
-        const t = (item as { expiryTime?: string }).expiryTime;
+    const readPid = (item: unknown): string | undefined =>
+      item && typeof item === 'object' && typeof (item as { productId?: unknown }).productId === 'string'
+        ? (item as { productId: string }).productId
+        : undefined;
+
+    // Предпочитаем lineItem, совпадающий с запрошенным productId; иначе — первый с productId.
+    const chosen =
+      lineItems.find((it) => readPid(it) === req.productId) ??
+      lineItems.find((it) => readPid(it) !== undefined) ??
+      lineItems[0];
+    const storeProductId = readPid(chosen) ?? req.productId;
+
+    const readExpiry = (item: unknown): Date | undefined => {
+      if (item && typeof item === 'object') {
+        const t = (item as { expiryTime?: unknown }).expiryTime;
         if (typeof t === 'string') {
           const d = new Date(t);
-          if (!Number.isNaN(d.getTime())) {
-            expiresAt = d;
-            break;
-          }
+          if (!Number.isNaN(d.getTime())) return d;
+        }
+      }
+      return undefined;
+    };
+    let expiresAt = readExpiry(chosen);
+    if (!expiresAt) {
+      for (const item of lineItems) {
+        const d = readExpiry(item);
+        if (d) {
+          expiresAt = d;
+          break;
         }
       }
     }
@@ -207,7 +229,7 @@ export class GoogleValidator implements IapValidator {
     return {
       verified: true,
       transactionId: orderId,
-      productId: req.productId,
+      productId: storeProductId,
       isSubscription: true,
       expiresAt,
       raw: data,

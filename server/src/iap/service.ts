@@ -63,11 +63,13 @@ export async function processIapPurchase(req: VerifyRequest): Promise<ProcessRes
   });
 
   if (existing && existing.rewardClaimed) {
-    // Уже выдавали — возвращаем текущий баланс (idempotent).
+    // Уже выдавали — возвращаем баланс ТЕКУЩЕГО запрашивающего пользователя
+    // (req.userId), а не владельца исходной транзакции (existing.userId): иначе
+    // при повторной отправке чужого чека утёк бы баланс другого юзера.
     const [currency, user] = await Promise.all([
-      prisma.currencyData.findUnique({ where: { userId: existing.userId } }),
+      prisma.currencyData.findUnique({ where: { userId: req.userId } }),
       prisma.user.findUnique({
-        where: { id: existing.userId },
+        where: { id: req.userId },
         select: { vipExpiresAt: true },
       }),
     ]);

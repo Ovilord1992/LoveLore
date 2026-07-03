@@ -183,3 +183,97 @@ export function addTranslationToZip(
   zip.addFile(`translations/${language}.json`, Buffer.from(translationJson, 'utf-8'));
   zip.writeZip(zipPath);
 }
+
+/** Извлечь все переводы (язык + содержимое) из ZIP. */
+export function extractAllTranslationsFromZip(
+  zipPath: string
+): { language: string; content: string }[] {
+  try {
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+    const out: { language: string; content: string }[] = [];
+
+    for (const entry of entries) {
+      if (
+        entry.entryName.includes('translations/') &&
+        entry.entryName.endsWith('.json') &&
+        !entry.isDirectory
+      ) {
+        const fileName = entry.entryName.split('/').pop() || '';
+        const lang = fileName.replace('.json', '');
+        if (lang) out.push({ language: lang, content: entry.getData().toString('utf-8') });
+      }
+    }
+
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Определить номер главы для entry вида `chapters/*.json`.
+ * Возвращает null, если entry не является JSON-файлом главы.
+ * readData вызывается лениво — только для entry, похожих на главу.
+ */
+function chapterNumberOfEntry(entryName: string, readData: () => Buffer): number | null {
+  if (!entryName.includes('chapters/') || !entryName.endsWith('.json')) {
+    return null;
+  }
+  try {
+    const content = JSON.parse(readData().toString('utf-8'));
+    if (typeof content.number === 'number') return content.number;
+  } catch {
+    // fall through to filename parsing
+  }
+  const m = entryName.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/**
+ * Пересобрать ZIP, оставив только выпущенные главы.
+ *
+ * Файлы `chapters/*.json`, номер которых отсутствует в releasedNumbers,
+ * исключаются. Все прочие файлы (meta.json, обложка, спрайты, фоны,
+ * переводы, выпущенные главы) сохраняются как есть. Возвращает буфер
+ * пересобранного архива.
+ */
+export function buildReleasedZipBuffer(
+  zipPath: string,
+  releasedNumbers: Set<number>
+): Buffer {
+  const zip = new AdmZip(zipPath);
+  checkZipSize(zip);
+  const out = new AdmZip();
+
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) continue;
+    const chapterNum = chapterNumberOfEntry(entry.entryName, () => entry.getData());
+    if (chapterNum !== null && !releasedNumbers.has(chapterNum)) {
+      continue; // невыпущенная глава — не включаем
+    }
+    out.addFile(entry.entryName, entry.getData());
+  }
+
+  return out.toBuffer();
+}
+
+/**
+ * Есть ли в ZIP главы (`chapters/*.json`), номер которых отсутствует в releasedNumbers.
+ * Используется для выбора быстрого пути (стриминг исходника) vs пересборки.
+ */
+export function zipHasUnreleasedChapters(
+  zipPath: string,
+  releasedNumbers: Set<number>
+): boolean {
+  const zip = new AdmZip(zipPath);
+  checkZipSize(zip);
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) continue;
+    const chapterNum = chapterNumberOfEntry(entry.entryName, () => entry.getData());
+    if (chapterNum !== null && !releasedNumbers.has(chapterNum)) {
+      return true;
+    }
+  }
+  return false;
+}
