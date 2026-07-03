@@ -49,6 +49,9 @@
 .chapter-card.selected { border-color: #2a2a3e; }
 .chapter-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
 .chapter-header span:first-child { flex: 1; font-size: 13px; color: #fff; }
+.chapter-header .chapter-title-input { flex: 1; min-width: 0; width: auto; background: transparent; border: none; color: #fff; font-size: 13px; padding: 2px 4px; border-radius: 4px; }
+.chapter-header .chapter-title-input:hover { background: rgba(255,255,255,0.05); }
+.chapter-header .chapter-title-input:focus { background: #1a1a2e; outline: 1px solid #e91e63; border: none; }
 .scene-count, .event-count { font-size: 11px; color: #666; }
 .scenes-list { padding: 4px 8px 8px; }
 .scene-item { display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; color: #ccc; }

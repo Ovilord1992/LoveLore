@@ -1,9 +1,45 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import type { NovelProject } from '../types/novel';
+import type { NovelProject, NovelTranslation } from '../types/novel';
+import { validateProject } from './validator';
+
+/** Убрать пустые строки перевода из всех карт: пустой перевод НЕ должен попасть
+ *  в бандл, иначе на клиенте `texts[original] ?? original` подменит оригинал
+ *  пустышкой. Отсутствие ключа = корректный fallback на оригинал. */
+function sanitizeTranslation(t: NovelTranslation): NovelTranslation {
+  const texts: Record<string, string> = {};
+  for (const [k, v] of Object.entries(t.texts || {})) {
+    if (v && v.trim()) texts[k] = v;
+  }
+  const characters: Record<string, { name?: string }> = {};
+  for (const [k, v] of Object.entries(t.characters || {})) {
+    if (v?.name && v.name.trim()) characters[k] = { name: v.name };
+  }
+  const chapters: Record<string, { title?: string }> = {};
+  for (const [k, v] of Object.entries(t.chapters || {})) {
+    if (v?.title && v.title.trim()) chapters[k] = { title: v.title };
+  }
+  const novel: { title?: string; description?: string } = {};
+  if (t.novel?.title && t.novel.title.trim()) novel.title = t.novel.title;
+  if (t.novel?.description && t.novel.description.trim()) novel.description = t.novel.description;
+  return { meta: t.meta, novel, characters, chapters, texts };
+}
 
 /** Экспортировать проект как ZIP-пакет, готовый для Amoria */
 export async function exportAsZip(project: NovelProject, images: Map<string, File>): Promise<void> {
+  // Блокируем экспорт при структурных ошибках (битые ссылки, недостижимая
+  // firstSceneId, пустой nextSceneId у выбора и т.п.). Ассеты здесь НЕ проверяем
+  // (images не передаём) — их отсутствие не должно мешать экспорту текстовой
+  // новеллы; про потерянные картинки предупреждает баннер в UI.
+  const blocking = validateProject(project).filter((e) => e.type === 'error');
+  if (blocking.length > 0) {
+    alert(
+      `Экспорт заблокирован — исправьте ${blocking.length} ошиб(ку/ки):\n\n` +
+      blocking.map((e) => '• ' + e.message).join('\n')
+    );
+    return;
+  }
+
   const zip = new JSZip();
 
   // meta.json — в корне ZIP
@@ -26,12 +62,12 @@ export async function exportAsZip(project: NovelProject, images: Map<string, Fil
     );
   }
 
-  // translations/
+  // translations/ — пустые строки перевода вычищаем перед записью
   if (project.translations) {
     for (const [lang, translation] of Object.entries(project.translations)) {
       zip.file(
         `translations/${lang}.json`,
-        JSON.stringify(translation, null, 2)
+        JSON.stringify(sanitizeTranslation(translation), null, 2)
       );
     }
   }

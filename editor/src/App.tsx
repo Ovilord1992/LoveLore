@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useEditorStore } from './store/editorStore';
 import { Sidebar } from './components/sidebar/Sidebar';
 import { SceneGraph } from './components/editor/SceneGraph';
@@ -12,6 +12,17 @@ export default function App() {
   const { project, isDirty, selectedSceneId, selectedChapterIndex } = useEditorStore();
   const chapter = project.chapters[selectedChapterIndex];
   const scene = chapter?.scenes.find((s) => s.id === selectedSceneId);
+
+  // Предупреждаем о несохранённых изменениях при закрытии/перезагрузке вкладки.
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   return (
     <div className="app">

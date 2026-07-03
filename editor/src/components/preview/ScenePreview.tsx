@@ -86,7 +86,7 @@ export function ScenePreview() {
 
               {event.type === 'changeBackground' && (
                 <div className="preview-narration">
-                  <div className="preview-text italic">🖼 Смена фона → {event.background || '...'}</div>
+                  <div className="preview-text italic">🖼 Смена фона → {event.asset || '...'}</div>
                 </div>
               )}
 

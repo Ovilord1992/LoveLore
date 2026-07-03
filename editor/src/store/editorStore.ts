@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { NovelProject, NovelTranslation, Character, Chapter, Scene, SceneEvent, SceneCharacter, NovelMeta } from '../types/novel';
+import { allSceneIds, uniqueSceneId, nextChapterNumber } from '../utils/ids';
 
 const defaultMeta: NovelMeta = {
   id: 'new_novel',
@@ -64,6 +65,7 @@ interface EditorState {
 
   // Главы
   addChapter: () => void;
+  updateChapter: (index: number, updates: Partial<Chapter>) => void;
   removeChapter: (index: number) => void;
   selectChapter: (index: number) => void;
 
@@ -198,9 +200,12 @@ export const useEditorStore = create<EditorState>()(
   }),
 
   addChapter: () => set((state) => {
-    const num = state.project.chapters.length + 1;
+    // Номер = max(number)+1 — гарантирует уникальный id даже при разрывах.
+    const num = nextChapterNumber(state.project.chapters);
     const chapterId = `chapter_${num}`;
-    const firstSceneId = `${chapterId}_scene_1`;
+    // Уникальный id сцены среди ВСЕХ глав (id сцен обязаны быть глобально
+    // уникальны, т.к. updateScene ищет сцену по id во всех главах).
+    const firstSceneId = uniqueSceneId(chapterId, allSceneIds(state.project.chapters));
     const chapter: Chapter = {
       id: chapterId,
       title: `Глава ${num}`,
@@ -212,19 +217,36 @@ export const useEditorStore = create<EditorState>()(
         events: [{ type: 'narration', text: '' }],
       }],
     };
+    const chapters = [...state.project.chapters, chapter];
     return {
       project: {
         ...state.project,
-        chapters: [...state.project.chapters, chapter],
-        meta: { ...state.project.meta, chaptersCount: num },
+        chapters,
+        meta: { ...state.project.meta, chaptersCount: chapters.length },
       },
       isDirty: true,
     };
   }),
 
+  updateChapter: (index, updates) => set((state) => {
+    const chapters = state.project.chapters.map((ch, i) =>
+      i === index ? { ...ch, ...updates } : ch
+    );
+    return { project: { ...state.project, chapters }, isDirty: true };
+  }),
+
   removeChapter: (index) => set((state) => {
     if (state.project.chapters.length <= 1) return state;
-    const chapters = state.project.chapters.filter((_, i) => i !== index);
+    // Перенумеровываем оставшиеся главы в непрерывную последовательность 1..N
+    // (клиент требует chapter_1..chapter_N, number:int с 1). Id сцен НЕ трогаем —
+    // они остаются глобально уникальными, а firstSceneId по-прежнему ссылается
+    // на существующую сцену внутри главы.
+    const chapters = state.project.chapters
+      .filter((_, i) => i !== index)
+      .map((ch, i) => {
+        const number = i + 1;
+        return { ...ch, number, id: `chapter_${number}` };
+      });
     return {
       project: { ...state.project, chapters, meta: { ...state.project.meta, chaptersCount: chapters.length } },
       selectedChapterIndex: Math.min(state.selectedChapterIndex, chapters.length - 1),
@@ -250,10 +272,25 @@ export const useEditorStore = create<EditorState>()(
   }),
 
   removeScene: (sceneId) => set((state) => {
-    const chapters = state.project.chapters.map((ch) => ({
-      ...ch,
-      scenes: ch.scenes.filter((s) => s.id !== sceneId),
-    }));
+    const chapters = state.project.chapters.map((ch) => {
+      if (!ch.scenes.some((s) => s.id === sceneId)) return ch;
+      // Удаляем сцену и вычищаем висячие ссылки на неё у остальных сцен главы.
+      const scenes = ch.scenes
+        .filter((s) => s.id !== sceneId)
+        .map((s) => ({
+          ...s,
+          nextSceneId: s.nextSceneId === sceneId ? undefined : s.nextSceneId,
+          events: s.events.map((ev) =>
+            ev.type === 'choice' && ev.choices
+              ? { ...ev, choices: ev.choices.map((c) => c.nextSceneId === sceneId ? { ...c, nextSceneId: '' } : c) }
+              : ev
+          ),
+        }));
+      // Если удалили начальную сцену — переустанавливаем firstSceneId на первую
+      // из оставшихся (или пусто, если сцен не осталось — валидатор поймает).
+      const firstSceneId = ch.firstSceneId === sceneId ? (scenes[0]?.id ?? '') : ch.firstSceneId;
+      return { ...ch, scenes, firstSceneId };
+    });
     return {
       project: { ...state.project, chapters },
       selectedSceneId: state.selectedSceneId === sceneId ? null : state.selectedSceneId,
@@ -372,7 +409,15 @@ export const useEditorStore = create<EditorState>()(
     const translations = { ...(state.project.translations || {}) };
     const existing = translations[lang];
     if (!existing) return state;
-    translations[lang] = { ...existing, texts: { ...existing.texts, [original]: translated } };
+    // Пустой перевод НЕ храним: иначе на клиенте `texts[original] ?? original`
+    // подменит оригинал пустышкой. Отсутствие ключа = fallback на оригинал.
+    const texts = { ...existing.texts };
+    if (translated && translated.trim()) {
+      texts[original] = translated;
+    } else {
+      delete texts[original];
+    }
+    translations[lang] = { ...existing, texts };
     return { project: { ...state.project, translations }, isDirty: true };
   }),
 

@@ -5,11 +5,12 @@ import { useEditorStore } from '../../store/editorStore';
 import './SceneGraph.css';
 
 export function SceneGraph() {
-  const { project, selectedChapterIndex, selectedSceneId, selectScene, updateScenePosition } = useEditorStore();
+  const { project, selectedChapterIndex, selectedSceneId, selectScene, updateScenePosition, updateScene } = useEditorStore();
   const chapter = project.chapters[selectedChapterIndex];
-  if (!chapter) return <div className="scene-graph empty">Нет глав</div>;
 
+  // ВАЖНО: все хуки вызываются безусловно ДО любого раннего return (rules-of-hooks).
   const { initialNodes, initialEdges } = useMemo(() => {
+    if (!chapter) return { initialNodes: [] as Node[], initialEdges: [] as Edge[] };
     const nodes: Node[] = chapter.scenes.map((scene, i) => ({
       id: scene.id,
       // Если у сцены сохранена позиция — используем её; иначе авто-раскладка.
@@ -77,16 +78,65 @@ export function SceneGraph() {
   useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
   useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
 
-  const onConnect: OnConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+  // Drag-connect: связь из графа пишем в стор (иначе она теряется).
+  // Если у сцены-источника есть выбор с незаполненным nextSceneId — заполняем
+  // его; иначе устанавливаем scene.nextSceneId. addEdge даёт мгновенный отклик,
+  // а initialEdges пересчитается из стора и заменит рёбра — рассинхрона нет.
+  const onConnect: OnConnect = useCallback((params) => {
+    const { source, target } = params;
+    if (chapter && source && target) {
+      const sourceScene = chapter.scenes.find((s) => s.id === source);
+      if (sourceScene) {
+        let bound = false;
+        const events = sourceScene.events.map((ev) => {
+          if (bound || ev.type !== 'choice' || !ev.choices || ev.choices.length === 0) return ev;
+          const idx = ev.choices.findIndex((c) => !c.nextSceneId);
+          if (idx === -1) return ev;
+          bound = true;
+          const choices = ev.choices.map((c, i) => i === idx ? { ...c, nextSceneId: target } : c);
+          return { ...ev, choices };
+        });
+        if (bound) {
+          updateScene(source, { events });
+        } else {
+          updateScene(source, { nextSceneId: target });
+        }
+      }
+    }
+    setEdges((eds) => addEdge(params, eds));
+  }, [chapter, updateScene, setEdges]);
+
+  // Удаление ребра (Backspace/Delete): вычищаем соответствующую ссылку в сторе.
+  const onEdgesDelete = useCallback((deleted: Edge[]) => {
+    if (!chapter) return;
+    for (const edge of deleted) {
+      const src = chapter.scenes.find((s) => s.id === edge.source);
+      if (!src) continue;
+      // Ребро nextSceneId имеет id вида `${source}->${target}` (без суффикса).
+      if (edge.id === `${edge.source}->${edge.target}` && src.nextSceneId === edge.target) {
+        updateScene(edge.source, { nextSceneId: undefined });
+        continue;
+      }
+      // Иначе — ребро выбора: очищаем первый вариант, ведущий к target.
+      let cleared = false;
+      const events = src.events.map((ev) => {
+        if (cleared || ev.type !== 'choice' || !ev.choices) return ev;
+        const idx = ev.choices.findIndex((c) => c.nextSceneId === edge.target);
+        if (idx === -1) return ev;
+        cleared = true;
+        const choices = ev.choices.map((c, i) => i === idx ? { ...c, nextSceneId: '' } : c);
+        return { ...ev, choices };
+      });
+      if (cleared) updateScene(edge.source, { events });
+    }
+  }, [chapter, updateScene]);
 
   // Обёртка над onNodesChange из useNodesState: после завершения drag
   // (change.dragging === false) сохраняем позицию в стор, чтобы она
   // переживала переключение глав и перезагрузку.
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChange(changes);
+    if (!chapter) return;
     for (const change of changes) {
       if (change.type === 'position' && change.dragging === false && change.position) {
         updateScenePosition(chapter.id, change.id, {
@@ -95,11 +145,13 @@ export function SceneGraph() {
         });
       }
     }
-  }, [onNodesChange, updateScenePosition, chapter.id]);
+  }, [onNodesChange, updateScenePosition, chapter]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     selectScene(node.id);
   }, [selectScene]);
+
+  if (!chapter) return <div className="scene-graph empty">Нет глав</div>;
 
   return (
     <div className="scene-graph">
@@ -108,6 +160,7 @@ export function SceneGraph() {
         edges={edges}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
+        onEdgesDelete={onEdgesDelete}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         fitView

@@ -77,14 +77,16 @@ export function GamePreview() {
   }, [currentScene, gameState.eventIndex, goToScene]);
 
   const processNonVisualEvent = useCallback((event: SceneEvent) => {
-    if (event.type === 'set_variable' && event.variable) {
+    if (event.type === 'setVariable' && event.variable) {
+      // Как в движке: значение "+N"/"-N" инкрементирует, "toggle" инвертирует,
+      // иначе — прямое присвоение.
       setGameState(prev => ({
         ...prev,
-        variables: { ...prev.variables, [event.variable!]: event.value ?? '' },
+        variables: applyEffects(prev.variables, { [event.variable!]: event.value ?? '' }),
       }));
     }
     if (event.type === 'changeBackground') {
-      setGameState(prev => ({ ...prev, background: event.background }));
+      setGameState(prev => ({ ...prev, background: event.asset }));
     }
     if (event.type === 'changeSprite') {
       setGameState(prev => ({
@@ -139,12 +141,12 @@ export function GamePreview() {
   };
 
   const handleChoice = (choice: Choice) => {
-    if (choice.effects) {
-      setGameState(prev => ({
-        ...prev,
-        variables: { ...prev.variables, ...choice.effects },
-      }));
-    }
+    // Применяем эффекты как движок (variable_engine.dart): "+N"/"-N" —
+    // инкремент/декремент, "toggle" — инверсия bool, иначе — присвоение.
+    setGameState(prev => ({
+      ...prev,
+      variables: applyEffects(prev.variables, choice.effects),
+    }));
     setShowChoices(false);
     goToScene(choice.nextSceneId);
   };
@@ -326,6 +328,36 @@ export function GamePreview() {
       </div>
     </div>
   );
+}
+
+type Vars = Record<string, string | number | boolean>;
+
+/** Порт client/lib/engine/variable_engine.dart для превью:
+ *  "+N"/"-N" — инкремент/декремент числа, "toggle" — инверсия bool,
+ *  иначе — прямое присвоение. Так условия ведут себя как на клиенте. */
+function applyEffects(variables: Vars, effects?: Vars): Vars {
+  if (!effects) return variables;
+  const next: Vars = { ...variables };
+  for (const [key, value] of Object.entries(effects)) {
+    if (typeof value === 'string' && (value.startsWith('+') || value.startsWith('-'))) {
+      const delta = Number(value);
+      next[key] = toNum(next[key]) + (isNaN(delta) ? 0 : delta);
+    } else if (value === 'toggle') {
+      next[key] = !(typeof next[key] === 'boolean' ? next[key] : false);
+    } else {
+      next[key] = value;
+    }
+  }
+  return next;
+}
+
+function toNum(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const n = Number(value);
+    return isNaN(n) ? 0 : n;
+  }
+  return 0;
 }
 
 function getGradient(bg?: string): string {

@@ -169,13 +169,13 @@ export function validateProject(
           });
         }
 
-        // --- Проверка ассетов: changeBackground ---
-        if (checkAssets && event.type === 'changeBackground' && event.background?.trim()) {
-          const path = `backgrounds/${event.background}`;
+        // --- Проверка ассетов: changeBackground (поле asset) ---
+        if (checkAssets && event.type === 'changeBackground' && event.asset?.trim()) {
+          const path = `backgrounds/${event.asset}`;
           if (!images!.has(path)) {
             errors.push({
               type: 'error',
-              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий фон: ${event.background}`,
+              message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий фон: ${event.asset}`,
               chapterId: chapter.id,
               sceneId: scene.id,
               eventIndex: i,
@@ -207,9 +207,11 @@ export function validateProject(
         }
 
         // --- Проверка ассетов: showCg ---
+        // cgImage уже содержит префикс "cg/..." (UI кладёт его при загрузке и
+        // клиент ждёт novels/<id>/${cgImage}), поэтому проверяем путь как есть,
+        // без повторного префикса.
         if (checkAssets && event.type === 'showCg' && event.cgImage?.trim()) {
-          const path = `cg/${event.cgImage}`;
-          if (!images!.has(path)) {
+          if (!images!.has(event.cgImage)) {
             errors.push({
               type: 'error',
               message: `Сцена "${scene.id}" в главе "${chapter.id}" ссылается на несуществующий CG: ${event.cgImage}`,
@@ -220,7 +222,7 @@ export function validateProject(
           }
         }
 
-        // --- Проверка ассетов: play_sound ---
+        // --- Проверка ассетов: playSound ---
         // В editorStore сейчас нет Map для звуков (только images),
         // поэтому проверку звука пропускаем — не блокируем валидацию.
         // TODO: когда появится sounds Map — добавить аналогичную проверку.
@@ -247,7 +249,17 @@ export function validateProject(
                 eventIndex: i,
               });
             }
-            if (choice.nextSceneId && !sceneIds.has(choice.nextSceneId)) {
+            if (!choice.nextSceneId || !choice.nextSceneId.trim()) {
+              // Пустой nextSceneId (дефолт нового варианта {text:'', nextSceneId:''})
+              // — критическая ошибка: выбор никуда не ведёт.
+              errors.push({
+                type: 'error',
+                message: `Сцена "${scene.id}", событие #${i + 1}: вариант "${choice.text || '(без текста)'}" без ссылки на сцену (nextSceneId пуст)`,
+                chapterId: chapter.id,
+                sceneId: scene.id,
+                eventIndex: i,
+              });
+            } else if (!sceneIds.has(choice.nextSceneId)) {
               errors.push({
                 type: 'error',
                 message: `Сцена "${scene.id}": выбор "${choice.text}" ведёт к несуществующей сцене "${choice.nextSceneId}"`,

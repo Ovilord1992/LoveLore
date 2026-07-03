@@ -20,8 +20,8 @@
 .event-card.showCg { border-left: 3px solid #e040fb; }
 .event-card.cameraMove { border-left: 3px solid #00e5ff; }
 .event-card.showEmotion { border-left: 3px solid #ff5252; }
-.event-card.set_variable { border-left: 3px solid #7c4dff; }
-.event-card.play_sound { border-left: 3px solid #1de9b6; }
+.event-card.setVariable { border-left: 3px solid #7c4dff; }
+.event-card.playSound { border-left: 3px solid #1de9b6; }
 
 .event-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; }
 .drag-handle { color: #444; cursor: grab; }

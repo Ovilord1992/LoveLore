@@ -1,24 +1,14 @@
 import { useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
+import { useAssetsLost } from '../../hooks/useAssetsLost';
 import { validateProject, type ValidationError } from '../../utils/validator';
 import { exportAsZip, exportAsJson, importProject, importProjectFromZip } from '../../utils/exporter';
+import { allSceneIds, uniqueSceneId, uniqueCharacterId, uniqueSpriteId } from '../../utils/ids';
 import { Plus, Trash2, Download, Upload, AlertTriangle, CheckCircle, Users, BookOpen, Settings, Hash, Image, Globe } from 'lucide-react';
 import type { Scene, CharacterSprite, NovelTranslation, NovelMeta } from '../../types/novel';
 import './Sidebar.css';
 
 type Tab = 'meta' | 'characters' | 'chapters' | 'variables' | 'validate' | 'translations';
-
-/**
- * Условие "ассеты потеряны после refresh": persist уже отработал, у проекта
- * есть главы, но Map изображений пустая. Возвращает true только в этом
- * сочетании — нужно для warning-баннера и блокировки экспорта.
- */
-export function useAssetsLost(): boolean {
-  const hasHydrated = useEditorStore((s) => s.hasHydrated);
-  const chaptersLen = useEditorStore((s) => s.project.chapters.length);
-  const imagesSize = useEditorStore((s) => s.images.size);
-  return hasHydrated && chaptersLen > 0 && imagesSize === 0;
-}
 
 export function Sidebar() {
   const [tab, setTab] = useState<Tab>('meta');
@@ -57,7 +47,6 @@ export function Sidebar() {
 function MetaTab() {
   const { project, images, updateMeta, setProject, addImage, clearImages, setImages } = useEditorStore();
   const { meta } = project;
-  const assetsLost = useAssetsLost();
 
   const coverPath = meta.coverImage || 'cg/cover.png';
   const coverUrl = useEditorStore((s) => s.imageUrls.get(coverPath));
@@ -233,8 +222,6 @@ function MetaTab() {
         <button
           onClick={() => exportAsZip(project, images)}
           className="primary"
-          disabled={assetsLost}
-          title={assetsLost ? 'Загрузите ассеты перед экспортом' : undefined}
         >
           <Download size={14} /> ZIP для Amoria
         </button>
@@ -249,7 +236,8 @@ function CharactersTab() {
   const { project, addCharacter, updateCharacter, removeCharacter, addImage, removeImage } = useEditorStore();
 
   const handleAdd = () => {
-    const id = `char_${Date.now()}`;
+    // Детерминированный уникальный id (без Date.now в теле рендера).
+    const id = uniqueCharacterId(project.characters);
     addCharacter({
       id,
       name: 'Новый персонаж',
@@ -261,7 +249,7 @@ function CharactersTab() {
   const handleAddSprite = (charId: string) => {
     const char = project.characters.find((c) => c.id === charId);
     if (!char) return;
-    const spriteId = `sprite_${Date.now()}`;
+    const spriteId = uniqueSpriteId(char.sprites);
     const sprites: CharacterSprite[] = [...char.sprites, { id: spriteId, image: `sprites/${charId}/${charId}_${spriteId}.png`, label: 'Новый' }];
     updateCharacter(charId, { sprites });
   };
@@ -382,11 +370,13 @@ function CharacterCard({ char, onUpdate, onRemove, onAddSprite, onUpdateSprite, 
 }
 
 function ChaptersTab() {
-  const { project, selectedChapterIndex, selectChapter, addChapter, removeChapter, addScene, selectScene, selectedSceneId } = useEditorStore();
+  const { project, selectedChapterIndex, selectChapter, addChapter, updateChapter, removeChapter, addScene, selectScene, selectedSceneId } = useEditorStore();
 
   const handleAddScene = () => {
     const chapter = project.chapters[selectedChapterIndex];
-    const sceneId = `${chapter.id}_scene_${chapter.scenes.length + 1}`;
+    // Уникальный id среди ВСЕХ глав (после удаления средней сцены length+1
+    // коллизировал; updateScene правит сцены по id глобально).
+    const sceneId = uniqueSceneId(chapter.id, allSceneIds(project.chapters));
     const scene: Scene = {
       id: sceneId,
       charactersOnScreen: [],
@@ -404,7 +394,14 @@ function ChaptersTab() {
       {project.chapters.map((ch, i) => (
         <div key={ch.id} className={`chapter-card ${i === selectedChapterIndex ? 'selected' : ''}`}>
           <div className="chapter-header" onClick={() => selectChapter(i)}>
-            <span>{ch.title}</span>
+            <input
+              className="chapter-title-input"
+              value={ch.title}
+              onClick={(e) => e.stopPropagation()}
+              onFocus={() => selectChapter(i)}
+              onChange={(e) => updateChapter(i, { title: e.target.value })}
+              placeholder="Название главы"
+            />
             <span className="scene-count">{ch.scenes.length} сцен</span>
             {project.chapters.length > 1 && (
               <button onClick={(e) => { e.stopPropagation(); removeChapter(i); }} className="delete"><Trash2 size={12} /></button>

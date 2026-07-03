@@ -81,7 +81,7 @@ export interface SceneCharacter {
   animation?: 'fade_in' | 'fade_out' | 'slide_in_left' | 'slide_in_right' | 'bounce' | 'shake';
 }
 
-export type EventType = 'dialogue' | 'narration' | 'choice' | 'set_variable' | 'play_sound' | 'changeBackground' | 'changeSprite' | 'effect' | 'showCg' | 'cameraMove' | 'showEmotion';
+export type EventType = 'dialogue' | 'narration' | 'choice' | 'setVariable' | 'playSound' | 'changeBackground' | 'changeSprite' | 'effect' | 'showCg' | 'cameraMove' | 'showEmotion';
 
 export type EffectType = 'shake' | 'flash' | 'fadeToBlack' | 'rain' | 'snow' | 'particles';
 export type CgTransition = 'fade' | 'zoomIn';
@@ -92,12 +92,14 @@ export interface SceneEvent {
   speaker?: string;
   text?: string;
   choices?: Choice[];
+  // setVariable
   variable?: string;
   value?: string | number | boolean;
-  background?: string;
+  // Путь к ассету: имя файла фона для changeBackground ("forest.png"),
+  // путь к звуку для playSound ("sounds/door.mp3"). Клиент читает это поле.
+  asset?: string;
   characterId?: string;
   spriteId?: string;
-  sound?: string;
   // Поля для события effect
   effectType?: EffectType;
   effectDuration?: number; // мс

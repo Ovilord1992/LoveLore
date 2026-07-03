@@ -18,14 +18,14 @@ export function EventEditor() {
     if (type === 'dialogue') { event.speaker = ''; event.text = ''; }
     if (type === 'narration') { event.text = ''; }
     if (type === 'choice') { event.choices = [{ text: '', nextSceneId: '', effects: {} }]; }
-    if (type === 'changeBackground') { event.background = ''; }
+    if (type === 'changeBackground') { event.asset = ''; }
     if (type === 'changeSprite') { event.characterId = ''; event.spriteId = ''; }
     if (type === 'effect') { event.effectType = 'shake'; event.effectDuration = 500; event.effectIntensity = 0.7; }
     if (type === 'showCg') { event.cgImage = ''; event.cgTransition = 'fade'; event.cgDuration = 800; }
     if (type === 'cameraMove') { event.zoom = 1.0; event.panX = 0; event.panY = 0; event.cameraDuration = 1000; }
     if (type === 'showEmotion') { event.characterId = ''; event.emotionType = 'heart'; }
-    if (type === 'set_variable') { event.variable = ''; event.value = ''; }
-    if (type === 'play_sound') { event.sound = ''; }
+    if (type === 'setVariable') { event.variable = ''; event.value = ''; }
+    if (type === 'playSound') { event.asset = ''; }
     addEvent(scene.id, event);
   };
 
@@ -82,10 +82,10 @@ export function EventEditor() {
         <button onClick={() => handleAddEvent('showEmotion')} title="Эмоция">
           <Heart size={16} /> Эмоция
         </button>
-        <button onClick={() => handleAddEvent('set_variable')} title="Установить переменную">
+        <button onClick={() => handleAddEvent('setVariable')} title="Установить переменную">
           <Settings size={16} /> Переменная
         </button>
-        <button onClick={() => handleAddEvent('play_sound')} title="Проиграть звук">
+        <button onClick={() => handleAddEvent('playSound')} title="Проиграть звук">
           <Volume2 size={16} /> Звук
         </button>
       </div>
@@ -109,7 +109,7 @@ function SceneSettings({ scene }: { scene: Scene }) {
         if (sc.background) set.add(sc.background);
         sc.backgroundLayers?.forEach((l) => { if (l.image) set.add(l.image); });
         for (const ev of sc.events) {
-          if (ev.type === 'changeBackground' && ev.background) set.add(ev.background);
+          if (ev.type === 'changeBackground' && ev.asset) set.add(ev.asset);
         }
       }
     }
@@ -385,8 +385,8 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
     dialogue: '💬 Диалог',
     narration: '📖 Нарратив',
     choice: '🔀 Выбор',
-    set_variable: '⚙️ Переменная',
-    play_sound: '🔊 Звук',
+    setVariable: '⚙️ Переменная',
+    playSound: '🔊 Звук',
     changeBackground: '🖼 Смена фона',
     changeSprite: '🎭 Смена спрайта',
     effect: '✨ Эффект',
@@ -404,7 +404,7 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
       if (!file) return;
       const name = file.name.replace(/\s+/g, '_').toLowerCase();
       addImage(`backgrounds/${name}`, file);
-      onUpdate({ ...event, background: name });
+      onUpdate({ ...event, asset: name });
     };
     input.click();
   };
@@ -462,8 +462,8 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
           <div className="scene-settings-row">
             <input
               placeholder="Имя фона (city_night.png)"
-              value={event.background || ''}
-              onChange={(e) => onUpdate({ ...event, background: e.target.value })}
+              value={event.asset || ''}
+              onChange={(e) => onUpdate({ ...event, asset: e.target.value })}
             />
             <button className="upload-btn" onClick={handleBgEventUpload} title="Загрузить"><Image size={14} /></button>
           </div>
@@ -637,7 +637,7 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
         </div>
       )}
 
-      {event.type === 'set_variable' && (
+      {event.type === 'setVariable' && (
         <div className="event-body">
           <div className="scene-settings-row">
             <input
@@ -652,7 +652,7 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
                 const raw = e.target.value;
                 // Сохраняем как число, если это просто число (без +/-/=)
                 const asNum = Number(raw);
-                if (raw !== '' && !isNaN(asNum) && !/^[+\-]/.test(raw)) {
+                if (raw !== '' && !isNaN(asNum) && !/^[+-]/.test(raw)) {
                   onUpdate({ ...event, value: asNum });
                 } else if (raw === 'true' || raw === 'false') {
                   onUpdate({ ...event, value: raw === 'true' });
@@ -665,12 +665,12 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
         </div>
       )}
 
-      {event.type === 'play_sound' && (
+      {event.type === 'playSound' && (
         <div className="event-body">
           <input
-            placeholder="Файл звука (sfx/door_open.mp3)"
-            value={event.sound || ''}
-            onChange={(e) => onUpdate({ ...event, sound: e.target.value })}
+            placeholder="Файл звука (sounds/door_open.mp3)"
+            value={event.asset || ''}
+            onChange={(e) => onUpdate({ ...event, asset: e.target.value })}
           />
         </div>
       )}
@@ -867,7 +867,7 @@ function ChoiceEffectsEditor({ choice, onChange }: { choice: Choice; onChange: (
     if (raw === 'true') return true;
     if (raw === 'false') return false;
     // Оставляем строкой для синтаксиса +N/-N/toggle (см. variable_engine.dart)
-    if (/^[+\-]/.test(raw) || raw === 'toggle') return raw;
+    if (/^[+-]/.test(raw) || raw === 'toggle') return raw;
     const n = Number(raw);
     if (raw !== '' && !isNaN(n)) return n;
     return raw;
