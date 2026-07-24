@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/novel.dart';
 import 'user_profile_service.dart';
 import 'currency_service.dart';
 import 'daily_reward_service.dart';
@@ -1110,13 +1111,69 @@ class AchievementService {
       if (_meetsCondition(achievement.id, profile)) {
         final isNew = profileNotifier.grantAchievement(achievement.id);
         if (isNew) {
-          currencyNotifier.addDiamonds(achievement.diamondReward);
+          currencyNotifier.addDiamonds(
+            achievement.diamondReward,
+            reason: 'achievement',
+            refId: achievement.id,
+          );
           unlocked.add(achievement);
         }
       }
     }
 
     return unlocked;
+  }
+
+  /// Триггеры концовок (v2). Вызывается движком при достижении концовки:
+  /// - `secret_ending` — открыта скрытая (`hidden: true` в meta.endings);
+  /// - `all_endings` — открыты ВСЕ концовки новеллы из meta.endings;
+  /// - счётчиковые (`routes_completed` → число открытых концовок) добираются
+  ///   обычным [checkAndGrant].
+  List<AchievementDef> onEndingReached(
+    String novelId,
+    String endingId,
+    List<NovelEnding> metaEndings,
+  ) {
+    final unlocked = <AchievementDef>[];
+    final profile = _ref.read(userProfileProvider);
+
+    final reachedMeta =
+        metaEndings.where((e) => e.id == endingId).firstOrNull;
+    if (reachedMeta?.hidden == true) {
+      final def = _grantById('secret_ending');
+      if (def != null) unlocked.add(def);
+    }
+
+    if (metaEndings.isNotEmpty) {
+      final unlockedForNovel = profile.endingsForNovel(novelId);
+      final allUnlocked =
+          metaEndings.every((e) => unlockedForNovel.contains(e.id));
+      if (allUnlocked) {
+        final def = _grantById('all_endings');
+        if (def != null) unlocked.add(def);
+      }
+    }
+
+    // Счётчиковые триггеры (первая концовка → explorer/all_routes и т.д.)
+    unlocked.addAll(checkAndGrant());
+    return unlocked;
+  }
+
+  /// Выдать конкретное достижение по id (если ещё не выдано)
+  AchievementDef? _grantById(String id) {
+    final profile = _ref.read(userProfileProvider);
+    if (profile.achievements.contains(id)) return null;
+    final def = getAchievement(id);
+    if (def == null) return null;
+    final isNew =
+        _ref.read(userProfileProvider.notifier).grantAchievement(id);
+    if (!isNew) return null;
+    _ref.read(currencyServiceProvider.notifier).addDiamonds(
+          def.diamondReward,
+          reason: 'achievement',
+          refId: def.id,
+        );
+    return def;
   }
 
 
@@ -1141,8 +1198,8 @@ class AchievementService {
       'diamonds_spent' => profile.totalDiamondsSpent,
       'login_streak' => _ref.read(dailyRewardProvider).currentStreak,
       'achievements_unlocked' => profile.achievements.length,
-      // Маршрут ≈ завершённое прохождение новеллы.
-      'routes_completed' => profile.totalNovelsCompleted,
+      // v2: маршрут = открытая концовка (unlockedEndings из движка).
+      'routes_completed' => profile.unlockedEndings.length,
       'wardrobe_items' =>
         _ref.read(wardrobeServiceProvider).unlockedOutfitIds.length,
       'ads_watched' => profile.adsWatched,
@@ -1182,7 +1239,8 @@ class AchievementService {
           (e.value as num) >= firstLoveDef.targetValue);
       if (hasLove) {
         profileNotifier.grantAchievement('first_love');
-        currencyNotifier.addDiamonds(firstLoveDef.diamondReward);
+        currencyNotifier.addDiamonds(firstLoveDef.diamondReward,
+            reason: 'achievement', refId: 'first_love');
         unlocked.add(firstLoveDef);
       }
     }
@@ -1192,7 +1250,8 @@ class AchievementService {
     if (braveHeartDef != null && !profile.achievements.contains('brave_heart')) {
       if (variables['chose_brave'] == true) {
         profileNotifier.grantAchievement('brave_heart');
-        currencyNotifier.addDiamonds(braveHeartDef.diamondReward);
+        currencyNotifier.addDiamonds(braveHeartDef.diamondReward,
+            reason: 'achievement', refId: 'brave_heart');
         unlocked.add(braveHeartDef);
       }
     }
@@ -1204,7 +1263,8 @@ class AchievementService {
       final clues = variables['mystery_clues'];
       if (clues is num && clues >= mysterySolverDef.targetValue) {
         profileNotifier.grantAchievement('mystery_solver');
-        currencyNotifier.addDiamonds(mysterySolverDef.diamondReward);
+        currencyNotifier.addDiamonds(mysterySolverDef.diamondReward,
+            reason: 'achievement', refId: 'mystery_solver');
         unlocked.add(mysterySolverDef);
       }
     }

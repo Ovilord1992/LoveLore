@@ -558,6 +558,9 @@ class _AdRewardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final adService = ref.read(adServiceProvider);
 
+    // Реклама выключена (release без AdUnit ID в конфиге) — прячем карточку
+    if (!adService.adsEnabled) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -594,7 +597,7 @@ class _AdRewardCard extends StatelessWidget {
                       onReward: (_, amount) {
                         ref
                             .read(currencyServiceProvider.notifier)
-                            .addDiamonds(amount);
+                            .addDiamonds(amount, reason: 'ad_reward');
                       },
                     );
                     if (success && context.mounted) {

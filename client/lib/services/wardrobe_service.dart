@@ -8,47 +8,14 @@ final wardrobeServiceProvider =
   return WardrobeService();
 });
 
-/// Наряд персонажа
-class Outfit {
-  final String id;
-  final String characterId;
-  final String name;
-  final String spriteOverride; // файл спрайта в наряде
-  final String? description;
-  final bool isDefault;
-
-  const Outfit({
-    required this.id,
-    required this.characterId,
-    required this.name,
-    required this.spriteOverride,
-    this.description,
-    this.isDefault = false,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'characterId': characterId,
-        'name': name,
-        'spriteOverride': spriteOverride,
-        'description': description,
-        'isDefault': isDefault,
-      };
-
-  factory Outfit.fromJson(Map<String, dynamic> json) => Outfit(
-        id: json['id'] as String,
-        characterId: json['characterId'] as String,
-        name: json['name'] as String,
-        spriteOverride: json['spriteOverride'] as String,
-        description: json['description'] as String?,
-        isDefault: json['isDefault'] as bool? ?? false,
-      );
-}
-
-/// Состояние гардероба
+/// Состояние гардероба.
+///
+/// - [unlockedOutfitIds] — ключи `<novelId>:<characterId>:<outfitId>`
+///   (купленные или сюжетно разблокированные аутфиты).
+/// - [equippedOutfits] — `<novelId>:<characterId>` → outfitId (per novel).
 class WardrobeState {
   final Set<String> unlockedOutfitIds;
-  final Map<String, String> equippedOutfits; // characterId → outfitId
+  final Map<String, String> equippedOutfits;
 
   const WardrobeState({
     this.unlockedOutfitIds = const {},
@@ -77,15 +44,8 @@ class WardrobeState {
       );
 }
 
-/// Каталог доступных нарядов (загружаются из JSON новеллы)
-/// Пример записи в characters.json:
-/// {
-///   "id": "alex",
-///   "outfits": [
-///     { "id": "alex_casual", "name": "Повседневный", "spriteOverride": "alex_casual.png", "isDefault": true },
-///     { "id": "alex_formal", "name": "Костюм", "spriteOverride": "alex_formal.png" }
-///   ]
-/// }
+/// Сервис гардероба: разблокировка (покупка/сюжет) и экипировка аутфитов.
+/// Каталог аутфитов живёт в `characters.json` новеллы (Character.outfits).
 class WardrobeService extends StateNotifier<WardrobeState> {
   static const _boxName = 'wardrobe';
   static const _key = 'state';
@@ -94,39 +54,50 @@ class WardrobeService extends StateNotifier<WardrobeState> {
     _loadSync();
   }
 
-  /// Разблокировать наряд
-  bool unlockOutfit(String outfitId) {
-    if (state.unlockedOutfitIds.contains(outfitId)) return false;
-    final ids = Set<String>.from(state.unlockedOutfitIds)..add(outfitId);
+  /// Ключ разблокированного аутфита
+  static String outfitKey(String novelId, String characterId, String outfitId) =>
+      '$novelId:$characterId:$outfitId';
+
+  /// Ключ экипировки персонажа (per novel)
+  static String equipKey(String novelId, String characterId) =>
+      '$novelId:$characterId';
+
+  /// Разблокировать аутфит (покупка или Choice.unlockOutfits).
+  /// Возвращает true, если аутфит новый.
+  bool unlockOutfit(String novelId, String characterId, String outfitId) {
+    final key = outfitKey(novelId, characterId, outfitId);
+    if (state.unlockedOutfitIds.contains(key)) return false;
+    final ids = Set<String>.from(state.unlockedOutfitIds)..add(key);
     state = state.copyWith(unlockedOutfitIds: ids);
     _save();
     return true;
   }
 
-  /// Надеть наряд на персонажа
-  void equipOutfit(String characterId, String outfitId) {
+  /// Надеть аутфит на персонажа (в рамках новеллы)
+  void equipOutfit(String novelId, String characterId, String outfitId) {
     final equipped = Map<String, String>.from(state.equippedOutfits);
-    equipped[characterId] = outfitId;
+    equipped[equipKey(novelId, characterId)] = outfitId;
     state = state.copyWith(equippedOutfits: equipped);
     _save();
   }
 
-  /// Снять наряд (вернуть стандартный)
-  void unequipOutfit(String characterId) {
+  /// Снять аутфит (вернуть базовые спрайты)
+  void unequipOutfit(String novelId, String characterId) {
     final equipped = Map<String, String>.from(state.equippedOutfits);
-    equipped.remove(characterId);
+    equipped.remove(equipKey(novelId, characterId));
     state = state.copyWith(equippedOutfits: equipped);
     _save();
   }
 
-  /// Получить текущий наряд персонажа
-  String? getEquippedOutfit(String characterId) {
-    return state.equippedOutfits[characterId];
+  /// Текущий экипированный аутфит персонажа (или null — базовый)
+  String? getEquippedOutfit(String novelId, String characterId) {
+    return state.equippedOutfits[equipKey(novelId, characterId)];
   }
 
-  /// Проверить, разблокирован ли наряд
-  bool isUnlocked(String outfitId) {
-    return state.unlockedOutfitIds.contains(outfitId);
+  /// Разблокирован ли аутфит
+  bool isUnlocked(String novelId, String characterId, String outfitId) {
+    return state.unlockedOutfitIds
+        .contains(outfitKey(novelId, characterId, outfitId));
   }
 
   Future<void> _save() async {

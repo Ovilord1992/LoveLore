@@ -684,6 +684,10 @@ class _WatchAdButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final adService = ref.read(adServiceProvider);
+
+    // Реклама выключена (release без AdUnit ID в конфиге) — прячем кнопку
+    if (!adService.adsEnabled) return const SizedBox.shrink();
+
     adService.preloadAd();
 
     return GestureDetector(
@@ -701,7 +705,9 @@ class _WatchAdButton extends StatelessWidget {
         final success = await adService.showRewardedAd(
           rewardType: 'diamonds',
           onReward: (_, amount) {
-            ref.read(currencyServiceProvider.notifier).addDiamonds(amount);
+            ref
+                .read(currencyServiceProvider.notifier)
+                .addDiamonds(amount, reason: 'ad_reward');
           },
         );
 

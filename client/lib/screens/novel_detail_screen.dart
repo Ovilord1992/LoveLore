@@ -7,8 +7,10 @@ import '../models/character.dart';
 import '../services/save_service.dart';
 import '../services/novel_loader.dart';
 import '../services/novel_api_service.dart';
+import '../services/user_profile_service.dart';
 import '../widgets/novel_cover_image.dart';
 import 'game_screen.dart';
+import 'wardrobe_screen.dart';
 
 class NovelDetailScreen extends ConsumerStatefulWidget {
   final NovelMeta novel;
@@ -62,7 +64,8 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
   Widget build(BuildContext context) {
     ref.watch(saveServiceProvider); // реактивность при изменении сохранений
     final saveService = ref.read(saveServiceProvider.notifier);
-    final hasSave = saveService.hasSave(widget.novel.id);
+    // «Продолжить» учитывает автосейв И ручные слоты (самый свежий из всех)
+    final hasSave = saveService.hasAnySave(widget.novel.id);
     final novel = widget.novel;
     final downloadState = ref.watch(downloadStateProvider(novel.id));
 
@@ -245,6 +248,37 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                     ),
                   ],
 
+                  // v2: прогресс концовок «N из M» (спека 1.3)
+                  if (novel.endings.isNotEmpty)
+                    _buildEndingsSection(novel),
+
+                  // v2: гардероб (если у персонажей есть аутфиты)
+                  if (_characters.any((c) => c.outfits.isNotEmpty))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => WardrobeScreen(
+                                novelId: novel.id,
+                                characters: _characters,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.checkroom, size: 18),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.primary,
+                          side: const BorderSide(color: AppTheme.primary),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        label: Text(ref.tr('wardrobe')),
+                      ),
+                    ),
+
                   // Главы
                   if (_chapterInfos.isNotEmpty) ...[
                     Padding(
@@ -363,6 +397,73 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
     );
   }
 
+  /// v2: секция концовок с прогрессом; скрытые до открытия — «???»
+  Widget _buildEndingsSection(NovelMeta novel) {
+    final profile = ref.watch(userProfileProvider);
+    final unlocked = profile.endingsForNovel(novel.id);
+    final count =
+        novel.endings.where((e) => unlocked.contains(e.id)).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 8),
+          child: Text(
+            'Концовки: $count из ${novel.endings.length}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: novel.endings.map((ending) {
+            final isUnlocked = unlocked.contains(ending.id);
+            final title = isUnlocked || !ending.hidden
+                ? (ending.title.isNotEmpty ? ending.title : ending.id)
+                : '???';
+            return Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isUnlocked
+                    ? AppTheme.primary.withValues(alpha: 0.2)
+                    : const Color(0xFF16213E),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isUnlocked ? AppTheme.primary : Colors.white12,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isUnlocked ? Icons.emoji_events : Icons.lock,
+                    size: 14,
+                    color: isUnlocked ? AppTheme.primary : Colors.white24,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color:
+                          isUnlocked ? Colors.white : Colors.white38,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _infoChip(IconData icon, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -400,7 +501,9 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
-              await ref.read(saveServiceProvider.notifier).deleteSave(widget.novel.id);
+              await ref
+                  .read(saveServiceProvider.notifier)
+                  .deleteAllSaves(widget.novel.id);
               if (ctx.mounted) Navigator.pop(ctx);
               if (context.mounted) {
                 Navigator.of(context).push(

@@ -369,6 +369,15 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
     }
   }
 
+  /// Мемоизация alpha-bounds по пути спрайта: попиксельный скан в UI-изоляте
+  /// дорог (фризы), а результат детерминирован для одного файла — считаем
+  /// один раз за жизнь процесса.
+  static final Map<String, ui.Rect> _boundsCache = {};
+
+  /// Изображения крупнее ~4 МП не сканируем вовсе (rawRgba-читка и цикл по
+  /// пикселям на таких размерах гарантированно роняют кадры).
+  static const int _maxTrimPixels = 4000000;
+
   Future<void> _resolveSprite() async {
     if (widget.spriteImage == null || widget.novelId == null) {
       if (mounted) setState(() => _resolved = true);
@@ -396,7 +405,8 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
     }
 
     if (bytes != null) {
-      final trimmed = await _decodeAndTrimBytes(bytes);
+      final cacheKey = '${widget.novelId}|${widget.spriteImage}';
+      final trimmed = await _decodeAndTrimBytes(bytes, cacheKey);
       if (!mounted) {
         trimmed?.image.dispose();
         return;
@@ -413,7 +423,10 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
     if (mounted) setState(() => _resolved = true);
   }
 
-  Future<_TrimmedSprite?> _decodeAndTrimBytes(Uint8List bytes) async {
+  Future<_TrimmedSprite?> _decodeAndTrimBytes(
+    Uint8List bytes,
+    String cacheKey,
+  ) async {
     ui.Codec? codec;
     ui.Image? image;
 
@@ -422,17 +435,28 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
       final frame = await codec.getNextFrame();
       image = frame.image;
 
+      final fullRect = ui.Rect.fromLTWH(
+        0,
+        0,
+        image.width.toDouble(),
+        image.height.toDouble(),
+      );
+
+      // 1) Кеш: bounds уже посчитаны для этого пути — скан не нужен.
+      final cached = _boundsCache[cacheKey];
+      if (cached != null) {
+        return _TrimmedSprite(image: image, srcRect: cached);
+      }
+
+      // 2) Слишком большое изображение — пропускаем скан (полный кадр).
+      if (image.width * image.height > _maxTrimPixels) {
+        _boundsCache[cacheKey] = fullRect;
+        return _TrimmedSprite(image: image, srcRect: fullRect);
+      }
+
       final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
       if (data == null) {
-        return _TrimmedSprite(
-          image: image,
-          srcRect: ui.Rect.fromLTWH(
-            0,
-            0,
-            image.width.toDouble(),
-            image.height.toDouble(),
-          ),
-        );
+        return _TrimmedSprite(image: image, srcRect: fullRect);
       }
 
       final rect = _computeOpaqueBounds(
@@ -443,6 +467,7 @@ class _AnimatedCharacterSpriteState extends State<AnimatedCharacterSprite>
         paddingPx: 2,
       );
 
+      _boundsCache[cacheKey] = rect;
       return _TrimmedSprite(image: image, srcRect: rect);
     } catch (_) {
       image?.dispose();
@@ -979,12 +1004,22 @@ class _CameraTransformWidgetState extends State<CameraTransformWidget> {
   }
 }
 
-/// Анимированная эмоция-иконка над персонажем
+/// Анимированная эмоция-иконка над персонажем.
+/// v2: если задан [imageFile]/[assetPath] — показывается картинка из новеллы,
+/// фолбэк — emoji по [emotionType].
 class EmotionBubble extends StatefulWidget {
   final EmotionType emotionType;
+  final File? imageFile;
+  final String? assetPath;
   final VoidCallback? onComplete;
 
-  const EmotionBubble({super.key, required this.emotionType, this.onComplete});
+  const EmotionBubble({
+    super.key,
+    required this.emotionType,
+    this.imageFile,
+    this.assetPath,
+    this.onComplete,
+  });
 
   @override
   State<EmotionBubble> createState() => _EmotionBubbleState();
@@ -1035,6 +1070,33 @@ class _EmotionBubbleState extends State<EmotionBubble>
       end: const Offset(0, -0.5),
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
+    final emojiFallback = Text(
+      _emotionEmojis[widget.emotionType] ?? '❓',
+      style: const TextStyle(fontSize: 36),
+    );
+
+    // v2: эмоция артом (image из события) с фолбэком на emoji
+    final Widget content;
+    if (widget.imageFile != null) {
+      content = Image.file(
+        widget.imageFile!,
+        width: 64,
+        height: 64,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => emojiFallback,
+      );
+    } else if (widget.assetPath != null) {
+      content = Image.asset(
+        widget.assetPath!,
+        width: 64,
+        height: 64,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => emojiFallback,
+      );
+    } else {
+      content = emojiFallback;
+    }
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -1042,10 +1104,7 @@ class _EmotionBubbleState extends State<EmotionBubble>
           position: slideAnim,
           child: Transform.scale(
             scale: scaleAnim.value,
-            child: Text(
-              _emotionEmojis[widget.emotionType] ?? '❓',
-              style: const TextStyle(fontSize: 36),
-            ),
+            child: content,
           ),
         );
       },
@@ -1053,17 +1112,30 @@ class _EmotionBubbleState extends State<EmotionBubble>
   }
 }
 
-/// Параллакс фон из нескольких слоёв
+/// Параллакс фон из нескольких слоёв (Scene.backgroundLayers, спека 1.10).
+///
+/// Слои сортируются по depth (0.0 — дальний, неподвижный);
+/// pan камеры (cameraMove.panX/panY) умножается на depth каждого слоя.
 class ParallaxBackground extends StatelessWidget {
   final List<BackgroundLayer> layers;
   final String novelId;
   final double scrollOffset;
+
+  /// Смещение камеры (cameraMove), применяется с коэффициентом depth
+  final double panX;
+  final double panY;
+
+  /// Длительность анимации pan, мс
+  final int panDuration;
 
   const ParallaxBackground({
     super.key,
     required this.layers,
     required this.novelId,
     this.scrollOffset = 0.0,
+    this.panX = 0.0,
+    this.panY = 0.0,
+    this.panDuration = 1000,
   });
 
   @override
@@ -1078,7 +1150,10 @@ class ParallaxBackground extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: sorted.map((layer) {
-            final offset = scrollOffset * (1.0 - layer.depth);
+            final dx = layer.offsetX +
+                scrollOffset * (1.0 - layer.depth) +
+                panX * layer.depth;
+            final dy = layer.offsetY + panY * layer.depth;
             // Ищем по прямому пути и в подпапке backgrounds/ (редактор кладёт
             // слои именно в backgrounds/, а поле image — голое имя файла).
             File? found;
@@ -1116,8 +1191,12 @@ class ParallaxBackground extends StatelessWidget {
                 ),
               );
             }
-            return Transform.translate(
-              offset: Offset(offset, 0),
+            // AnimatedContainer лерпит матрицу трансляции — pan камеры
+            // двигает слой плавно, как одиночный фон в CameraTransformWidget.
+            return AnimatedContainer(
+              duration: Duration(milliseconds: panDuration),
+              curve: Curves.easeInOut,
+              transform: Matrix4.translationValues(dx, dy, 0),
               child: img,
             );
           }).toList(),

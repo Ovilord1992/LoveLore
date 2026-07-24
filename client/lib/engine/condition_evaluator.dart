@@ -28,10 +28,57 @@ class ConditionEvaluator {
     }
   }
 
-  /// Проверяет, доступен ли выбор
+  /// v2: проверка набора условий с логикой and/or.
+  ///
+  /// Приоритет: непустой [conditions] → одиночное [legacy] → true (нет условий).
+  /// [logic]: "or" — достаточно одного; иначе (включая null/"and") — все.
+  bool evaluateAll(
+    List<Condition>? conditions,
+    String? logic,
+    Condition? legacy,
+    GameState state,
+  ) {
+    if (conditions != null && conditions.isNotEmpty) {
+      final isOr = (logic ?? 'and').toLowerCase() == 'or';
+      if (isOr) {
+        return conditions.any((c) => evaluate(c, state));
+      }
+      return conditions.every((c) => evaluate(c, state));
+    }
+    if (legacy != null) return evaluate(legacy, state);
+    return true;
+  }
+
+  /// Проверяет, доступен ли выбор (v2: conditions[] приоритетнее condition)
   bool isChoiceAvailable(Choice choice, GameState state) {
-    if (choice.condition == null) return true;
-    return evaluate(choice.condition!, state);
+    return evaluateAll(
+      choice.conditions,
+      choice.conditionsLogic,
+      choice.condition,
+      state,
+    );
+  }
+
+  /// Проверяет, срабатывает ли ветка branches
+  bool branchMatches(SceneBranch branch, GameState state) {
+    return evaluateAll(
+      branch.conditions,
+      branch.conditionsLogic,
+      branch.condition,
+      state,
+    );
+  }
+
+  /// v2: резолв перехода в конце сцены — первая сработавшая ветка
+  /// [Scene.branches], иначе [Scene.nextSceneId], иначе null (конец главы).
+  String? resolveNextSceneId(Scene scene, GameState state) {
+    final branches = scene.branches;
+    if (branches != null) {
+      for (final branch in branches) {
+        if (branchMatches(branch, state)) return branch.nextSceneId;
+      }
+    }
+    return scene.nextSceneId;
   }
 
   num _toNum(dynamic value) {

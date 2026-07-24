@@ -8,19 +8,24 @@ import 'package:path_provider/path_provider.dart';
 import '../engine/scene_engine.dart';
 import '../models/scene.dart';
 import '../models/game_state.dart';
+import '../services/audio_service.dart';
 import '../services/save_service.dart';
 import '../services/currency_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/achievement_service.dart';
 import '../services/ad_service.dart';
-import '../services/audio_service.dart';
 import '../services/vip_service.dart';
+import '../services/wardrobe_service.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/dialogue_overlay.dart';
 import '../widgets/choice_buttons.dart';
+import '../widgets/recap_overlay.dart';
+import '../widgets/save_load_sheet.dart';
 import '../widgets/scene_transitions.dart';
+import '../widgets/stats_panel.dart';
 import '../widgets/chapter_progress.dart';
 import '../widgets/achievement_popup.dart';
+import 'dialogue_log_screen.dart';
 import 'wardrobe_screen.dart';
 import '../app/theme.dart';
 import 'settings_screen.dart';
@@ -42,6 +47,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
   // Кешируем ссылки для безопасного сохранения в deactivate
   SaveService? _saveService;
   GameState? _lastState;
+  AudioService? _audio;
   // Активный эффект
   SceneEvent? _activeEffect;
   // CG-арт оверлей
@@ -55,12 +61,23 @@ class _GameScreenState extends ConsumerState<GameScreen>
   int _cameraDuration = 1000;
   // Эмоции
   SceneEvent? _activeEmotion;
+  File? _emotionFile;
+  String? _emotionAsset;
   // Оверрайды визуала внутри сцены (события changeBackground/changeSprite)
   String? _overridesSceneId;
   String? _bgOverride;
   Map<String, String> _spriteOverrides = {};
   // Ключ последнего запланированного авто-события (дедуп rebuild'ов)
   String? _lastAutoKey;
+  // Ключ последней озвученной реплики (v2 voice)
+  String? _lastVoiceKey;
+  // Fast-forward по прочитанному (v2)
+  bool _fastForward = false;
+  Timer? _ffTimer;
+  // Показан ли запрос имени игрока
+  bool _namePromptShown = false;
+  // Путь Documents (резолв картинок концовки)
+  String? _docsPath;
   // Immersive mode: top UI auto-hide
   late AnimationController _uiAnimController;
   Timer? _uiHideTimer;
@@ -77,16 +94,20 @@ class _GameScreenState extends ConsumerState<GameScreen>
       duration: const Duration(milliseconds: 250),
       vsync: this,
     );
+    getApplicationDocumentsDirectory().then((dir) {
+      if (mounted) setState(() => _docsPath = dir.path);
+    });
     // Откладываем загрузку, чтобы не модифицировать провайдеры во время build
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadNovel());
   }
 
   Future<void> _loadNovel() async {
+    _audio = ref.read(audioServiceProvider);
     // VIP — безлимитные билеты
     final vip = ref.read(vipServiceProvider);
     if (!vip.isActive) {
       final currency = ref.read(currencyServiceProvider.notifier);
-      if (!currency.spendTicket()) {
+      if (!currency.spendTicket(refId: widget.novelId)) {
         if (mounted) {
           _showNoTicketsDialog();
         }
@@ -98,8 +119,63 @@ class _GameScreenState extends ConsumerState<GameScreen>
         .read(sceneEngineProvider.notifier)
         .startNovel(widget.novelId, forceNew: widget.forceNew);
     _saveService = ref.read(saveServiceProvider.notifier);
+    if (!mounted) return;
     setState(() => _isLoading = false);
     _fadeController.forward();
+    _maybeShowNamePrompt();
+  }
+
+  /// v2: запрос имени игрока при первом старте (playerNamePrompt, спека 1.4)
+  void _maybeShowNamePrompt() {
+    if (_namePromptShown) return;
+    final engine = ref.read(sceneEngineProvider.notifier);
+    if (!engine.needsPlayerName) return;
+    _namePromptShown = true;
+    final prompt = engine.novelMeta?.playerNamePrompt;
+    final controller = TextEditingController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.surfaceDark,
+          title: Text(
+            engine.tr(prompt?.prompt ?? 'Как тебя зовут?'),
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 20,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: prompt?.defaultName ?? '',
+              hintStyle: const TextStyle(color: Colors.white38),
+              counterStyle: const TextStyle(color: Colors.white38),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.primary),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                engine.setPlayerName(controller.text);
+                Navigator.of(ctx).pop();
+              },
+              child: const Text(
+                'Продолжить',
+                style: TextStyle(color: AppTheme.primary),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   void _showNoTicketsDialog() {
@@ -109,7 +185,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final min = timeLeft.inMinutes;
     final sec = timeLeft.inSeconds % 60;
 
-    adService.preloadAd();
+    if (adService.adsEnabled) adService.preloadAd();
 
     showDialog(
       context: context,
@@ -143,7 +219,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   onReward: (_, amount) {
                     ref
                         .read(currencyServiceProvider.notifier)
-                        .addTickets(amount);
+                        .addTickets(amount, reason: 'ad_reward');
                   },
                 );
                 if (success && ctx.mounted) {
@@ -160,7 +236,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
             onPressed: () {
               final cs = ref.read(currencyServiceProvider.notifier);
               if (cs.canAfford(10)) {
-                cs.spendDiamonds(10);
+                cs.spendDiamonds(
+                  10,
+                  reason: 'spend_choice',
+                  refId: 'ticket_skip:${widget.novelId}',
+                );
                 Navigator.pop(ctx);
                 _loadNovelAfterTicket();
               } else {
@@ -189,8 +269,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
         .read(sceneEngineProvider.notifier)
         .startNovel(widget.novelId, forceNew: widget.forceNew);
     _saveService = ref.read(saveServiceProvider.notifier);
+    if (!mounted) return;
     setState(() => _isLoading = false);
     _fadeController.forward();
+    _maybeShowNamePrompt();
   }
 
   Future<void> _autoSave() async {
@@ -212,9 +294,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   @override
   void dispose() {
+    _audio?.stopVoice();
     _fadeController.dispose();
     _uiAnimController.dispose();
     _uiHideTimer?.cancel();
+    _ffTimer?.cancel();
     super.dispose();
   }
 
@@ -225,7 +309,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
       setState(() => _uiVisible = true);
       _uiAnimController.forward();
     }
-    _uiHideTimer = Timer(const Duration(seconds: 3), _hideUI);
+    _uiHideTimer = Timer(const Duration(seconds: 5), _hideUI);
   }
 
   void _hideUI() {
@@ -238,8 +322,64 @@ class _GameScreenState extends ConsumerState<GameScreen>
   void _resetUITimer() {
     if (_uiVisible) {
       _uiHideTimer?.cancel();
-      _uiHideTimer = Timer(const Duration(seconds: 3), _hideUI);
+      _uiHideTimer = Timer(const Duration(seconds: 5), _hideUI);
     }
+  }
+
+  // ── Fast-forward: автопродвижение по прочитанным событиям (v2) ──
+
+  void _toggleFastForward() {
+    setState(() => _fastForward = !_fastForward);
+    _ffTimer?.cancel();
+    _ffTimer = null;
+    if (_fastForward) {
+      _ffTimer = Timer.periodic(
+        const Duration(milliseconds: 120),
+        (_) => _ffTick(),
+      );
+    }
+  }
+
+  void _stopFastForward() {
+    _ffTimer?.cancel();
+    _ffTimer = null;
+    if (_fastForward && mounted) {
+      setState(() => _fastForward = false);
+    }
+  }
+
+  void _ffTick() {
+    if (!mounted) return;
+    // Пока активен оверлей — ждём (оверлей сам продвинет сюжет)
+    if (_activeEffect != null || _activeCg != null || _activeEmotion != null) {
+      return;
+    }
+    final engine = ref.read(sceneEngineProvider.notifier);
+    if (ref.read(chapterTransitionProvider) != ChapterTransition.none ||
+        engine.pendingRecap != null) {
+      _stopFastForward();
+      return;
+    }
+    final event = engine.currentEvent;
+    if (event == null) {
+      engine.nextEvent();
+      return;
+    }
+    if (event.type == EventType.choice) {
+      // Стоп на выборе
+      _stopFastForward();
+      return;
+    }
+    if (event.type == EventType.dialogue ||
+        event.type == EventType.narration) {
+      if (engine.isCurrentEventRead) {
+        engine.nextEvent();
+      } else {
+        // Дошли до непрочитанного — стоп
+        _stopFastForward();
+      }
+    }
+    // Остальные (авто-)события продвигаются сами.
   }
 
   @override
@@ -247,6 +387,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final gameState = ref.watch(sceneEngineProvider);
     final engine = ref.read(sceneEngineProvider.notifier);
     final chapterTransition = ref.watch(chapterTransitionProvider);
+    final wardrobeState = ref.watch(wardrobeServiceProvider);
 
     // Смена языка «на лету»: перезагружаем перевод текущей новеллы.
     ref.listen(localeProvider, (prev, next) {
@@ -259,8 +400,11 @@ class _GameScreenState extends ConsumerState<GameScreen>
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // Показываем UI перехода между главами
+    // Показываем UI перехода между главами / экран концовки
     if (chapterTransition != ChapterTransition.none) {
+      if (chapterTransition == ChapterTransition.ending) {
+        return _buildEndingScreen(engine);
+      }
       return _buildChapterTransitionScreen(chapterTransition, engine);
     }
 
@@ -287,6 +431,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
       });
     }
 
+    // v2: озвучка реплики — играет при показе события, обрывается на следующем
+    _handleVoice(engine, event);
+
+    final layers = scene?.backgroundLayers;
+    final hasLayers = layers != null && layers.isNotEmpty;
+    final recap = engine.pendingRecap;
+
     return Scaffold(
       body: GestureDetector(
         onTap: () {
@@ -297,6 +448,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
               _activeEmotion != null) {
             return;
           }
+          // Тап руками выключает fast-forward
+          if (_fastForward) _stopFastForward();
           // Тапом продвигаем только реплики; авто-события (камера, звук,
           // setVariable) продвигаются сами, choice — по кнопке.
           if (event != null &&
@@ -308,23 +461,33 @@ class _GameScreenState extends ConsumerState<GameScreen>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Фон с камерой (zoom/pan)
+            // Фон с камерой (zoom/pan). v2: многослойный параллакс —
+            // pan применяется к слоям с коэффициентом depth (спека 1.10),
+            // поэтому у обёртки камеры pan обнуляется (иначе двойной сдвиг).
             CameraTransformWidget(
               zoom: _cameraZoom,
-              panX: _cameraPanX,
-              panY: _cameraPanY,
+              panX: hasLayers ? 0.0 : _cameraPanX,
+              panY: hasLayers ? 0.0 : _cameraPanY,
               duration: _cameraDuration,
-              child: AnimatedBackground(
-                backgroundKey: _bgOverride ?? scene?.background,
-                novelId: widget.novelId,
-                duration: Duration(
-                  milliseconds: scene?.transition?.duration ?? 800,
-                ),
-              ),
+              child: hasLayers
+                  ? ParallaxBackground(
+                      layers: layers,
+                      novelId: widget.novelId,
+                      panX: _cameraPanX,
+                      panY: _cameraPanY,
+                      panDuration: _cameraDuration,
+                    )
+                  : AnimatedBackground(
+                      backgroundKey: _bgOverride ?? scene?.background,
+                      novelId: widget.novelId,
+                      duration: Duration(
+                        milliseconds: scene?.transition?.duration ?? 800,
+                      ),
+                    ),
             ),
 
             // Персонажи на экране
-            if (scene != null) _buildCharacters(scene, engine),
+            if (scene != null) _buildCharacters(scene, engine, wardrobeState),
 
             // Диалог / Выбор
             _buildEventPositioned(event, engine),
@@ -352,8 +515,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   child: Container(
                     padding: EdgeInsets.only(
                       top: MediaQuery.of(context).padding.top + 8,
-                      left: 8,
-                      right: 8,
+                      left: 4,
+                      right: 4,
                       bottom: 8,
                     ),
                     decoration: const BoxDecoration(
@@ -367,6 +530,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         IconButton(
+                          visualDensity: VisualDensity.compact,
                           icon: const Icon(
                             Icons.arrow_back,
                             color: Colors.white70,
@@ -386,7 +550,63 @@ class _GameScreenState extends ConsumerState<GameScreen>
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // v2: панель статов (если statsDisplay задан)
+                            if (engine.novelMeta?.statsDisplay.isNotEmpty ==
+                                true)
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                icon: const Icon(
+                                  Icons.favorite_border,
+                                  color: Colors.white70,
+                                ),
+                                tooltip: 'Отношения',
+                                onPressed: () {
+                                  _resetUITimer();
+                                  showStatsPanel(
+                                    context,
+                                    stats:
+                                        engine.novelMeta?.statsDisplay ?? [],
+                                    variables: gameState.variables,
+                                    translate: engine.tr,
+                                  );
+                                },
+                              ),
+                            // Backlog — лог диалогов
                             IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(
+                                Icons.menu_book,
+                                color: Colors.white70,
+                              ),
+                              tooltip: 'Лог диалогов',
+                              onPressed: () {
+                                _resetUITimer();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => DialogueLogScreen(
+                                      entries: engine.backlog,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            // v2: fast-forward по прочитанному
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: Icon(
+                                Icons.fast_forward,
+                                color: _fastForward
+                                    ? AppTheme.primary
+                                    : Colors.white70,
+                              ),
+                              tooltip: 'Пропуск прочитанного',
+                              onPressed: () {
+                                _resetUITimer();
+                                _toggleFastForward();
+                              },
+                            ),
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
                               icon: const Icon(
                                 Icons.checkroom,
                                 color: Colors.white70,
@@ -394,30 +614,24 @@ class _GameScreenState extends ConsumerState<GameScreen>
                               tooltip: ref.tr('wardrobe'),
                               onPressed: () {
                                 _resetUITimer();
-                                _showWardrobePicker(context, engine);
+                                _openWardrobe(context, engine);
                               },
                             ),
                             IconButton(
+                              visualDensity: VisualDensity.compact,
                               icon: const Icon(
                                 Icons.save_outlined,
                                 color: Colors.white70,
                               ),
-                              onPressed: () async {
+                              tooltip: 'Сохранить / Загрузить',
+                              onPressed: () {
                                 _resetUITimer();
-                                final messenger = ScaffoldMessenger.of(context);
-                                await _autoSave();
-                                if (mounted) {
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text(ref.tr('saved')),
-                                      duration: const Duration(seconds: 1),
-                                      backgroundColor: AppTheme.surfaceDark,
-                                    ),
-                                  );
-                                }
+                                showSaveLoadSheet(
+                                    context, ref, widget.novelId);
                               },
                             ),
                             IconButton(
+                              visualDensity: VisualDensity.compact,
                               icon: const Icon(
                                 Icons.menu,
                                 color: Colors.white70,
@@ -458,11 +672,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
                 duration: _activeCg!.cgDuration ?? 800,
                 onDismiss: () {
                   // Разблокировать CG в профиле (синхронизируется с сервером)
-                  // и проверить достижения-коллекционера. Раньше список CG
-                  // строился и выбрасывался — фича не работала.
+                  // и проверить достижения-коллекционера.
+                  // v2: ключ — `<novelId>|<путь>` (группировка в галерее).
                   final cg = _activeCg?.cgImage;
                   if (cg != null) {
-                    ref.read(userProfileProvider.notifier).unlockCG(cg);
+                    ref
+                        .read(userProfileProvider.notifier)
+                        .unlockCG('${widget.novelId}|$cg');
                     _checkAchievements();
                   }
                   setState(() {
@@ -477,13 +693,48 @@ class _GameScreenState extends ConsumerState<GameScreen>
             // Эмоции-иконки
             if (_activeEmotion != null && scene != null)
               ..._buildEmotionOverlays(scene, engine),
+
+            // v2: toast-уведомления об изменении статов («+1 ♥ Мия»)
+            const StatToastHost(),
+
+            // v2: рекап главы «Ранее…» (поверх всего, пропускаемый)
+            if (recap != null)
+              RecapOverlay(
+                chapterTitle: engine.tr(engine.currentChapter?.title ?? ''),
+                recapText: engine.trx(recap),
+                onDismiss: () => engine.dismissRecap(),
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCharacters(Scene scene, SceneEngine engine) {
+  /// v2: проиграть/оборвать озвучку при смене события (спека 1.6)
+  void _handleVoice(SceneEngine engine, SceneEvent? event) {
+    final key = _eventKey(engine);
+    if (_lastVoiceKey == key) return;
+    _lastVoiceKey = key;
+    final isSpeech = event != null &&
+        (event.type == EventType.dialogue ||
+            event.type == EventType.narration);
+    final voice = isSpeech ? event.voice : null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final audio = ref.read(audioServiceProvider);
+      if (voice != null && voice.isNotEmpty) {
+        audio.playVoice(widget.novelId, voice);
+      } else {
+        audio.stopVoice();
+      }
+    });
+  }
+
+  Widget _buildCharacters(
+    Scene scene,
+    SceneEngine engine,
+    WardrobeState wardrobeState,
+  ) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final spriteH = screenHeight * 0.83;
@@ -494,15 +745,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
         final character = engine.getCharacter(sc.characterId);
         if (character == null) return const SizedBox.shrink();
 
-        // Найти путь к спрайту (с учётом оверрайда от события changeSprite)
+        // Найти путь к спрайту (с учётом оверрайда от события changeSprite).
+        // v2: резолв через экипированный аутфит (спека 1.5) с полным
+        // фолбэком на базовые спрайты персонажа.
         final effectiveSpriteId = _spriteOverrides[sc.characterId] ?? sc.spriteId;
-        String? spriteImage;
-        try {
-          final sprite = character.sprites.firstWhere(
-            (s) => s.id == effectiveSpriteId,
-          );
-          spriteImage = sprite.image;
-        } catch (_) {}
+        final equippedOutfitId = wardrobeState.equippedOutfits[
+            WardrobeService.equipKey(widget.novelId, sc.characterId)];
+        final spriteImage = character.resolveSpriteImage(
+          effectiveSpriteId,
+          equippedOutfitId: equippedOutfitId,
+        );
 
         // Горизонтальный сдвиг для позиционирования как в Клубе Романтики
         final xOffset = switch (sc.position) {
@@ -512,7 +764,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
         };
 
         final sprite = AnimatedCharacterSprite(
-          key: ValueKey('${sc.characterId}_$effectiveSpriteId'),
+          key: ValueKey(
+              '${sc.characterId}_${equippedOutfitId ?? ''}_$effectiveSpriteId'),
           characterId: sc.characterId,
           spriteImage: spriteImage,
           novelId: widget.novelId,
@@ -541,7 +794,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
     );
   }
 
-  void _handleChoice(Choice choice, SceneEngine engine) {
+  void _handleChoice(Choice choice, SceneEvent event, SceneEngine engine) {
     if (choice.premium && choice.cost > 0) {
       final currency = ref.read(currencyServiceProvider.notifier);
       if (!currency.canAfford(choice.cost)) {
@@ -556,7 +809,14 @@ class _GameScreenState extends ConsumerState<GameScreen>
         );
         return;
       }
-      currency.spendDiamonds(choice.cost);
+      // refId по спеке 2.2: `<novelId>:<sceneId>:<индекс выбора>`
+      final choiceIndex = event.choices?.indexOf(choice) ?? -1;
+      currency.spendDiamonds(
+        choice.cost,
+        reason: 'spend_choice',
+        refId:
+            '${widget.novelId}:${engine.currentScene?.id ?? ''}:$choiceIndex',
+      );
       ref.read(userProfileProvider.notifier).incrementPremiumChoices();
     }
     ref.read(userProfileProvider.notifier).incrementChoicesMade();
@@ -632,7 +892,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
           speakerColor: character?.color != null
               ? _parseColor(character!.color!)
               : null,
-          text: engine.tr(event.text),
+          text: engine.trx(event.text),
           onTap: () => engine.nextEvent(),
           frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
           customFrameColor: _parseHexColor(
@@ -673,10 +933,10 @@ class _GameScreenState extends ConsumerState<GameScreen>
         final available = engine.getAvailableChoices(event.choices ?? []);
         return ChoiceButtons(
           choices: available,
-          onChoiceSelected: (choice) => _handleChoice(choice, engine),
+          onChoiceSelected: (choice) => _handleChoice(choice, event, engine),
           timeLimit: event.timeLimit,
           defaultChoiceIndex: event.defaultChoiceIndex,
-          translateText: engine.tr,
+          translateText: engine.trx,
           frameTheme: engine.novelMeta?.frameTheme ?? DialogueFrameTheme.ornate,
           customFrameColor: _parseHexColor(
             engine.novelMeta?.dialogueFrameColor,
@@ -696,13 +956,13 @@ class _GameScreenState extends ConsumerState<GameScreen>
           speakerColor: character?.color != null
               ? _parseColor(character!.color!)
               : null,
-          text: engine.tr(event.text),
+          text: engine.trx(event.text),
           onTap: () => engine.nextEvent(),
         );
 
       case EventType.narration:
         return DialogueBox(
-          text: engine.tr(event.text),
+          text: engine.trx(event.text),
           onTap: () => engine.nextEvent(),
         );
 
@@ -736,10 +996,31 @@ class _GameScreenState extends ConsumerState<GameScreen>
           });
           return const SizedBox.shrink();
         }
-        if (event.type == EventType.showEmotion && event.emotionType != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (event.type == EventType.showEmotion &&
+            (event.emotionType != null || event.image != null)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (mounted && _activeEmotion == null) {
-              setState(() => _activeEmotion = event);
+              // v2: эмоция картинкой из новеллы (файл → asset → emoji)
+              File? file;
+              String? asset;
+              final img = event.image;
+              if (img != null && img.isNotEmpty) {
+                final appDir = await getApplicationDocumentsDirectory();
+                final f = File(
+                  '${appDir.path}/novels/${widget.novelId}/$img',
+                );
+                if (f.existsSync()) {
+                  file = f;
+                } else {
+                  asset = 'assets/novels/${widget.novelId}/$img';
+                }
+              }
+              if (!mounted) return;
+              setState(() {
+                _activeEmotion = event;
+                _emotionFile = file;
+                _emotionAsset = asset;
+              });
             }
           });
           return const SizedBox.shrink();
@@ -827,6 +1108,15 @@ class _GameScreenState extends ConsumerState<GameScreen>
     final sc = scene.charactersOnScreen
         .where((c) => c.characterId == charId)
         .firstOrNull;
+    void onEmotionComplete() {
+      setState(() {
+        _activeEmotion = null;
+        _emotionFile = null;
+        _emotionAsset = null;
+      });
+      engine.nextEvent();
+    }
+
     if (sc == null) {
       // Персонаж не на экране — показываем по центру
       return [
@@ -838,10 +1128,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
             child: EmotionBubble(
               key: ValueKey('emotion_${_activeEmotion.hashCode}'),
               emotionType: _activeEmotion!.emotionType ?? EmotionType.heart,
-              onComplete: () {
-                setState(() => _activeEmotion = null);
-                engine.nextEvent();
-              },
+              imageFile: _emotionFile,
+              assetPath: _emotionAsset,
+              onComplete: onEmotionComplete,
             ),
           ),
         ),
@@ -861,10 +1150,9 @@ class _GameScreenState extends ConsumerState<GameScreen>
         child: EmotionBubble(
           key: ValueKey('emotion_${_activeEmotion.hashCode}'),
           emotionType: _activeEmotion!.emotionType ?? EmotionType.heart,
-          onComplete: () {
-            setState(() => _activeEmotion = null);
-            engine.nextEvent();
-          },
+          imageFile: _emotionFile,
+          assetPath: _emotionAsset,
+          onComplete: onEmotionComplete,
         ),
       ),
     ];
@@ -879,6 +1167,122 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Color? _parseHexColor(String? hex) {
     if (hex == null || hex.isEmpty) return null;
     return _parseColor(hex);
+  }
+
+  /// v2: экран концовки (спека 1.3)
+  Widget _buildEndingScreen(SceneEngine engine) {
+    final ending = engine.currentEnding;
+    final meta = engine.novelMeta;
+    final profile = ref.watch(userProfileProvider);
+    final totalEndings = meta?.endings.length ?? 0;
+    final unlockedForNovel = profile.endingsForNovel(widget.novelId);
+    final unlockedCount = totalEndings > 0
+        ? meta!.endings.where((e) => unlockedForNovel.contains(e.id)).length
+        : 0;
+
+    // Резолв картинки концовки: Documents → asset
+    Widget? endingImage;
+    final imgPath = ending?.image;
+    if (imgPath != null && imgPath.isNotEmpty) {
+      File? file;
+      if (_docsPath != null) {
+        final f = File('$_docsPath/novels/${widget.novelId}/$imgPath');
+        if (f.existsSync()) file = f;
+      }
+      endingImage = ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: file != null
+            ? Image.file(file, fit: BoxFit.cover)
+            : Image.asset(
+                'assets/novels/${widget.novelId}/$imgPath',
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+      );
+    }
+
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2D1854), AppTheme.bgDark],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (endingImage != null) ...[
+                    Flexible(child: endingImage),
+                    const SizedBox(height: 24),
+                  ] else ...[
+                    const Icon(
+                      Icons.auto_awesome,
+                      size: 64,
+                      color: AppTheme.primary,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  Text(
+                    engine.trx(ending?.title ?? 'Конец'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  if (ending?.description != null &&
+                      ending!.description!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      engine.trx(ending.description),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                  if (totalEndings > 0) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Концовки: $unlockedCount из $totalEndings',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.cyan,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text('Вернуться в библиотеку'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildChapterTransitionScreen(
@@ -1036,8 +1440,24 @@ class _GameScreenState extends ConsumerState<GameScreen>
       builder: (ctx) => _PauseMenuDialog(
         onResume: () => Navigator.of(ctx).pop(),
         onSave: () {
-          _autoSave();
           Navigator.of(ctx).pop();
+          // Быстрый автосейв + меню слотов
+          _autoSave();
+          showSaveLoadSheet(context, ref, widget.novelId);
+        },
+        onWardrobe: () {
+          Navigator.of(ctx).pop();
+          _openWardrobe(context, ref.read(sceneEngineProvider.notifier));
+        },
+        onLog: () {
+          Navigator.of(ctx).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => DialogueLogScreen(
+                entries: ref.read(sceneEngineProvider.notifier).backlog,
+              ),
+            ),
+          );
         },
         onSettings: () {
           Navigator.of(ctx).pop();
@@ -1053,78 +1473,12 @@ class _GameScreenState extends ConsumerState<GameScreen>
     );
   }
 
-  void _showWardrobePicker(BuildContext context, SceneEngine engine) {
-    final characters = engine.characters;
-    if (characters.isEmpty) return;
-
-    // Если один персонаж — сразу открыть гардероб
-    if (characters.length == 1) {
-      final c = characters.first;
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => WardrobeScreen(
-            characterId: c.id,
-            characterName: c.name,
-            allOutfits: [],
-          ),
-        ),
-      );
-      return;
-    }
-
-    // Показать выбор персонажа
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.surfaceDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Выбери персонажа',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ...characters.map(
-              (c) => ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: c.color != null
-                      ? _parseColor(c.color!)
-                      : AppTheme.primary,
-                  child: Text(
-                    c.name[0],
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                title: Text(
-                  c.name,
-                  style: const TextStyle(color: Colors.white),
-                ),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => WardrobeScreen(
-                        characterId: c.id,
-                        characterName: c.name,
-                        allOutfits: [],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+  void _openWardrobe(BuildContext context, SceneEngine engine) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WardrobeScreen(
+          novelId: widget.novelId,
+          characters: engine.characters,
         ),
       ),
     );
@@ -1134,12 +1488,16 @@ class _GameScreenState extends ConsumerState<GameScreen>
 class _PauseMenuDialog extends ConsumerWidget {
   final VoidCallback onResume;
   final VoidCallback onSave;
+  final VoidCallback onWardrobe;
+  final VoidCallback onLog;
   final VoidCallback onSettings;
   final VoidCallback onExit;
 
   const _PauseMenuDialog({
     required this.onResume,
     required this.onSave,
+    required this.onWardrobe,
+    required this.onLog,
     required this.onSettings,
     required this.onExit,
   });
@@ -1174,9 +1532,10 @@ class _PauseMenuDialog extends ConsumerWidget {
               const SizedBox(height: 20),
               _menuItem(Icons.save, '💾 ${ref.tr("save")}', onSave),
               const Divider(color: Colors.white10),
-              _menuItem(Icons.checkroom, '👗 ${ref.tr("wardrobe")}', () {
-                Navigator.of(context).pop();
-              }),
+              _menuItem(
+                  Icons.checkroom, '👗 ${ref.tr("wardrobe")}', onWardrobe),
+              const Divider(color: Colors.white10),
+              _menuItem(Icons.menu_book, '📖 Лог диалогов', onLog),
               const Divider(color: Colors.white10),
               _menuItem(Icons.settings, '⚙️ ${ref.tr("settings")}', onSettings),
               const Divider(color: Colors.white10),

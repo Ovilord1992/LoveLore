@@ -1,9 +1,8 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'economy_service.dart';
 import 'remote_config_service.dart';
-import 'sync_service.dart';
 import 'user_profile_service.dart';
 
 /// Провайдер сервиса валюты
@@ -50,15 +49,16 @@ class CurrencyState {
       );
 }
 
-/// Сервис управления внутриигровой валютой
+/// Сервис управления внутриигровой валютой.
+///
+/// Экономика серверно-авторитетна (спека 2.2): каждая мутация применяется
+/// локально мгновенно И кладётся в офлайн-очередь [EconomyService];
+/// серверные балансы из ответа флаша перезаписывают локальные.
 class CurrencyService extends StateNotifier<CurrencyState> {
   static const _boxName = 'currency';
   static const _key = 'state';
 
   final Ref _ref;
-
-  // Дебаунс автопуша валюты на сервер после изменений баланса.
-  Timer? _pushDebounce;
 
   // Геттеры для конфигурируемых значений
   EconomyConfig get _economy => _ref.read(remoteConfigProvider).economy;
@@ -74,6 +74,8 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     _refillTickets();
   }
 
+  EconomyService get _queue => _ref.read(economyServiceProvider);
+
   /// Начальное состояние для нового пользователя (из Remote Config)
   CurrencyState get _initialState => CurrencyState(
         diamonds: _economy.startDiamonds,
@@ -88,24 +90,47 @@ class CurrencyService extends StateNotifier<CurrencyState> {
   /// Хватает ли алмазов на покупку
   bool canAfford(int cost) => state.diamonds >= cost;
 
-  /// Потратить алмазы (возвращает true если успешно)
-  bool spendDiamonds(int amount) {
+  /// Потратить алмазы (возвращает true если успешно).
+  /// [reason]: `spend_choice` | `spend_wardrobe` (таблица спеки 2.2).
+  bool spendDiamonds(
+    int amount, {
+    String reason = 'spend_choice',
+    String? refId,
+  }) {
     if (state.diamonds < amount) return false;
     state = state.copyWith(diamonds: state.diamonds - amount);
     _save();
+    _queue.enqueue(
+      currency: 'diamonds',
+      delta: -amount,
+      reason: reason,
+      refId: refId,
+    );
     _ref.read(userProfileProvider.notifier).incrementDiamondsSpent(amount);
     return true;
   }
 
-  /// Добавить алмазы (награда, покупка)
-  void addDiamonds(int amount) {
+  /// Добавить алмазы (награда). [reason] обязателен по таблице спеки 2.2:
+  /// `ad_reward` | `daily_reward` | `achievement` | `vip_daily`.
+  void addDiamonds(
+    int amount, {
+    required String reason,
+    String? refId,
+  }) {
+    if (amount <= 0) return;
     state = state.copyWith(diamonds: state.diamonds + amount);
     _save();
+    _queue.enqueue(
+      currency: 'diamonds',
+      delta: amount,
+      reason: reason,
+      refId: refId,
+    );
   }
 
   /// Абсолютная установка баланса от сервера (источник истины — backend).
-  /// Используется после успешной серверной верификации IAP, чтобы
-  /// клиент не мог разойтись с реальным балансом.
+  /// Используется после серверной верификации IAP и после флаша леджера.
+  /// НИЧЕГО не кладёт в очередь — сервер уже учёл операцию.
   ///
   /// Билеты НЕ клампим по maxTickets: покупка `tickets_5` может легитимно
   /// увести баланс выше лимита рефилла, и сервер здесь авторитетен —
@@ -118,8 +143,9 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     _save();
   }
 
-  /// Потратить билет (энергию) для чтения главы
-  bool spendTicket() {
+  /// Потратить билет (энергию) для чтения главы.
+  /// Леджер: reason `ticket_entry`, refId — id новеллы.
+  bool spendTicket({String? refId}) {
     _refillTickets();
     if (state.tickets <= 0) return false;
     final wasFull = state.tickets >= maxTickets;
@@ -129,15 +155,28 @@ class CurrencyService extends StateNotifier<CurrencyState> {
       lastTicketRefill: wasFull ? DateTime.now() : state.lastTicketRefill ?? DateTime.now(),
     );
     _save();
+    _queue.enqueue(
+      currency: 'tickets',
+      delta: -1,
+      reason: 'ticket_entry',
+      refId: refId,
+    );
     return true;
   }
 
-  /// Добавить билеты
-  void addTickets(int amount) {
+  /// Добавить билеты (награда). [reason]: `ad_reward` | `daily_reward` | ...
+  void addTickets(int amount, {required String reason, String? refId}) {
+    if (amount <= 0) return;
     state = state.copyWith(
       tickets: (state.tickets + amount).clamp(0, maxTickets),
     );
     _save();
+    _queue.enqueue(
+      currency: 'tickets',
+      delta: amount,
+      reason: reason,
+      refId: refId,
+    );
   }
 
   /// Проверить и пополнить билеты по времени
@@ -148,11 +187,22 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     final ticketsToAdd = elapsed.inMinutes ~/ ticketRefillMinutes;
 
     if (ticketsToAdd > 0) {
+      final before = state.tickets;
       state = state.copyWith(
         tickets: (state.tickets + ticketsToAdd).clamp(0, maxTickets),
         lastTicketRefill: DateTime.now(),
       );
       _save();
+      // Леджер: по одной операции ticket_refill на каждый реально
+      // добавленный билет (сервер троттлит по интервалу рефилла).
+      final added = state.tickets - before;
+      for (var i = 0; i < added; i++) {
+        _queue.enqueue(
+          currency: 'tickets',
+          delta: 1,
+          reason: 'ticket_refill',
+        );
+      }
     }
   }
 
@@ -170,9 +220,6 @@ class CurrencyService extends StateNotifier<CurrencyState> {
     try {
       final box = Hive.box<String>(_boxName);
       await box.put(_key, jsonEncode(state.toJson()));
-      // Любое изменение баланса планирует отправку на сервер, чтобы серверный
-      // баланс не отставал (иначе pull откатит траты).
-      _schedulePush();
     } catch (_) {}
   }
 
@@ -193,11 +240,9 @@ class CurrencyService extends StateNotifier<CurrencyState> {
   }
 
   /// Мерж данных с сервера при pull (логин / ручная синхронизация).
-  ///
-  /// Сервер авторитетен: берём его значение, а НЕ максимум. Прежний max
-  /// делал траты необратимыми — любой pull воскрешал потраченные алмазы,
-  /// обесценивая экономику. Корректность обеспечивается автопушем валюты
-  /// после каждой траты (см. [_schedulePush]), поэтому сервер актуален.
+  /// Сервер авторитетен: берём его значение, а НЕ максимум.
+  /// Незафлашенные локальные операции доедут через очередь леджера
+  /// и вернутся в balances.
   void mergeFromServer(Map<String, dynamic> serverData) {
     final serverCurrency = CurrencyState.fromJson(serverData);
     state = state.copyWith(
@@ -212,22 +257,5 @@ class CurrencyService extends StateNotifier<CurrencyState> {
   void reset() {
     state = _initialState;
     _save();
-  }
-
-  /// Запланировать (с дебаунсом) отправку баланса на сервер.
-  /// Вызывается после любых изменений валюты; при отсутствии логина
-  /// pushCurrency сам ничего не делает.
-  void _schedulePush() {
-    _pushDebounce?.cancel();
-    _pushDebounce = Timer(const Duration(seconds: 2), () {
-      // ignore: discarded_futures
-      _ref.read(syncServiceProvider).pushCurrency();
-    });
-  }
-
-  @override
-  void dispose() {
-    _pushDebounce?.cancel();
-    super.dispose();
   }
 }

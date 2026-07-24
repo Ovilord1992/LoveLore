@@ -185,16 +185,21 @@ class _DailyRewardDialogState extends ConsumerState<_DailyRewardDialog>
                   ),
                   child: ElevatedButton(
                     onPressed: () {
-                      final rewards = ref
-                          .read(dailyRewardProvider.notifier)
-                          .claimReward();
+                      final rewardNotifier =
+                          ref.read(dailyRewardProvider.notifier);
+                      final rewards = rewardNotifier.claimReward();
+                      // refId — индекс дня серии (таблица спеки 2.2)
+                      final dayRef =
+                          '${ref.read(dailyRewardProvider).currentStreak}';
                       final currency =
                           ref.read(currencyServiceProvider.notifier);
                       if (rewards.containsKey('diamonds')) {
-                        currency.addDiamonds(rewards['diamonds']!);
+                        currency.addDiamonds(rewards['diamonds']!,
+                            reason: 'daily_reward', refId: dayRef);
                       }
                       if (rewards.containsKey('tickets')) {
-                        currency.addTickets(rewards['tickets']!);
+                        currency.addTickets(rewards['tickets']!,
+                            reason: 'daily_reward', refId: dayRef);
                       }
                       Navigator.of(context).pop();
 

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import 'analytics_service.dart';
 import 'currency_service.dart';
 import 'iap_api_client.dart';
 import 'iap_pending_queue.dart';
@@ -334,6 +335,15 @@ class IapService extends StateNotifier<IapState> {
 
   /// Применить результат сервера: обновить кеш баланса / VIP / позвать onReward.
   void _applyServerResult(IapVerifyResult result, {String? productId}) {
+    // Аналитика: успешная покупка (спека 2.3)
+    if (result.status == IapVerifyStatus.success && productId != null) {
+      try {
+        _ref.read(analyticsServiceProvider).log('iap_success', {
+          'productId': productId,
+        });
+      } catch (_) {}
+    }
+
     // Сервер — источник истины: ставим баланс абсолютно.
     final newBalance = result.newBalance;
     if (newBalance != null) {

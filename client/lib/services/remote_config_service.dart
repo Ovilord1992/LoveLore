@@ -115,22 +115,35 @@ class AdsConfig {
   final int diamondReward;
   final int ticketReward;
 
+  /// AdMob rewarded ad unit ID (Android). Пустой в release = реклама выключена.
+  final String rewardedAdUnitIdAndroid;
+
+  /// AdMob rewarded ad unit ID (iOS). Пустой в release = реклама выключена.
+  final String rewardedAdUnitIdIos;
+
   const AdsConfig({
     this.maxAdsPerDay = 5,
     this.diamondReward = 3,
     this.ticketReward = 1,
+    this.rewardedAdUnitIdAndroid = '',
+    this.rewardedAdUnitIdIos = '',
   });
 
   factory AdsConfig.fromJson(Map<String, dynamic> json) => AdsConfig(
         maxAdsPerDay: json['maxAdsPerDay'] as int? ?? 5,
         diamondReward: json['diamondReward'] as int? ?? 3,
         ticketReward: json['ticketReward'] as int? ?? 1,
+        rewardedAdUnitIdAndroid:
+            json['rewardedAdUnitIdAndroid'] as String? ?? '',
+        rewardedAdUnitIdIos: json['rewardedAdUnitIdIos'] as String? ?? '',
       );
 
   Map<String, dynamic> toJson() => {
         'maxAdsPerDay': maxAdsPerDay,
         'diamondReward': diamondReward,
         'ticketReward': ticketReward,
+        'rewardedAdUnitIdAndroid': rewardedAdUnitIdAndroid,
+        'rewardedAdUnitIdIos': rewardedAdUnitIdIos,
       };
 }
 

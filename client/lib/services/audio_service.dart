@@ -9,15 +9,20 @@ final audioServiceProvider = Provider<AudioService>((ref) {
   return service;
 });
 
-/// Сервис управления аудио — фоновая музыка и звуковые эффекты
+/// Сервис управления аудио — фоновая музыка, звуковые эффекты и озвучка
 class AudioService {
   final AudioPlayer _bgPlayer = AudioPlayer();
   final AudioPlayer _sfxPlayer = AudioPlayer();
+  // Отдельный канал озвучки реплик (v2, спека 1.6) — не глушит музыку/SFX
+  final AudioPlayer _voicePlayer = AudioPlayer();
 
   String? _currentBgTrack;
   double _bgVolume = 0.7;
   double _sfxVolume = 1.0;
   bool _isMuted = false;
+  // Токен последнего запроса озвучки: защищает от гонки, когда старый
+  // асинхронный playVoice завершается ПОСЛЕ stopVoice/нового playVoice.
+  int _voiceRequestId = 0;
 
   double get bgVolume => _bgVolume;
   double get sfxVolume => _sfxVolume;
@@ -101,6 +106,40 @@ class AudioService {
     } catch (_) {}
   }
 
+  /// Проиграть озвучку реплики (v2). [novelId] + [voicePath] — путь внутри
+  /// новеллы (напр. `voice/ch1/mia_001.mp3`). Ищет в Documents (скачанные),
+  /// затем во встроенных assets. Предыдущая озвучка обрывается.
+  Future<void> playVoice(String novelId, String voicePath) async {
+    final requestId = ++_voiceRequestId;
+    try {
+      await _voicePlayer.stop();
+
+      final dir = await getApplicationDocumentsDirectory();
+      final filePath = '${dir.path}/novels/$novelId/$voicePath';
+      if (requestId != _voiceRequestId) return;
+
+      if (File(filePath).existsSync()) {
+        await _voicePlayer.setFilePath(filePath);
+      } else {
+        await _voicePlayer.setAsset('assets/novels/$novelId/$voicePath');
+      }
+      if (requestId != _voiceRequestId) return;
+
+      _voicePlayer.setVolume(_isMuted ? 0 : _sfxVolume);
+      _voicePlayer.play();
+    } catch (_) {
+      // Файла озвучки может не быть — не критично
+    }
+  }
+
+  /// Остановить озвучку (при переходе к следующему событию)
+  Future<void> stopVoice() async {
+    _voiceRequestId++;
+    try {
+      await _voicePlayer.stop();
+    } catch (_) {}
+  }
+
   /// Установить громкость фоновой музыки (0.0 - 1.0)
   void setBgVolume(double volume) {
     _bgVolume = volume.clamp(0.0, 1.0);
@@ -118,6 +157,7 @@ class AudioService {
     _isMuted = !_isMuted;
     _bgPlayer.setVolume(_isMuted ? 0 : _bgVolume);
     _sfxPlayer.setVolume(_isMuted ? 0 : _sfxVolume);
+    _voicePlayer.setVolume(_isMuted ? 0 : _sfxVolume);
   }
 
   Future<void> _fadeOut(AudioPlayer player, {int durationMs = 500}) async {
@@ -145,5 +185,6 @@ class AudioService {
   void dispose() {
     _bgPlayer.dispose();
     _sfxPlayer.dispose();
+    _voicePlayer.dispose();
   }
 }

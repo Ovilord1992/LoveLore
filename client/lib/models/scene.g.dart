@@ -81,6 +81,13 @@ Choice _$ChoiceFromJson(Map<String, dynamic> json) => Choice(
       : Condition.fromJson(json['condition'] as Map<String, dynamic>),
   premium: json['premium'] as bool? ?? false,
   cost: (json['cost'] as num?)?.toInt() ?? 0,
+  conditions: (json['conditions'] as List<dynamic>?)
+      ?.map((e) => Condition.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  conditionsLogic: json['conditionsLogic'] as String?,
+  unlockOutfits: (json['unlockOutfits'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
 );
 
 Map<String, dynamic> _$ChoiceToJson(Choice instance) => <String, dynamic>{
@@ -90,7 +97,44 @@ Map<String, dynamic> _$ChoiceToJson(Choice instance) => <String, dynamic>{
   'condition': instance.condition,
   'premium': instance.premium,
   'cost': instance.cost,
+  'conditions': instance.conditions,
+  'conditionsLogic': instance.conditionsLogic,
+  'unlockOutfits': instance.unlockOutfits,
 };
+
+SceneBranch _$SceneBranchFromJson(Map<String, dynamic> json) => SceneBranch(
+  conditions: (json['conditions'] as List<dynamic>?)
+      ?.map((e) => Condition.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  conditionsLogic: json['conditionsLogic'] as String?,
+  condition: json['condition'] == null
+      ? null
+      : Condition.fromJson(json['condition'] as Map<String, dynamic>),
+  nextSceneId: json['nextSceneId'] as String,
+);
+
+Map<String, dynamic> _$SceneBranchToJson(SceneBranch instance) =>
+    <String, dynamic>{
+      'conditions': instance.conditions,
+      'conditionsLogic': instance.conditionsLogic,
+      'condition': instance.condition,
+      'nextSceneId': instance.nextSceneId,
+    };
+
+SceneEnding _$SceneEndingFromJson(Map<String, dynamic> json) => SceneEnding(
+  id: json['id'] as String,
+  title: json['title'] as String? ?? '',
+  description: json['description'] as String?,
+  image: json['image'] as String?,
+);
+
+Map<String, dynamic> _$SceneEndingToJson(SceneEnding instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'title': instance.title,
+      'description': instance.description,
+      'image': instance.image,
+    };
 
 SceneEvent _$SceneEventFromJson(Map<String, dynamic> json) => SceneEvent(
   type: $enumDecode(
@@ -135,6 +179,8 @@ SceneEvent _$SceneEventFromJson(Map<String, dynamic> json) => SceneEvent(
   spriteDuration: (json['spriteDuration'] as num?)?.toInt(),
   timeLimit: (json['timeLimit'] as num?)?.toInt(),
   defaultChoiceIndex: (json['defaultChoiceIndex'] as num?)?.toInt(),
+  voice: json['voice'] as String?,
+  image: json['image'] as String?,
 );
 
 Map<String, dynamic> _$SceneEventToJson(SceneEvent instance) =>
@@ -163,6 +209,8 @@ Map<String, dynamic> _$SceneEventToJson(SceneEvent instance) =>
       'spriteDuration': instance.spriteDuration,
       'timeLimit': instance.timeLimit,
       'defaultChoiceIndex': instance.defaultChoiceIndex,
+      'voice': instance.voice,
+      'image': instance.image,
     };
 
 const _$EventTypeEnumMap = {
@@ -241,6 +289,12 @@ Scene _$SceneFromJson(Map<String, dynamic> json) => Scene(
           .toList() ??
       const [],
   nextSceneId: json['nextSceneId'] as String?,
+  branches: (json['branches'] as List<dynamic>?)
+      ?.map((e) => SceneBranch.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  ending: json['ending'] == null
+      ? null
+      : SceneEnding.fromJson(json['ending'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$SceneToJson(Scene instance) => <String, dynamic>{
@@ -252,4 +306,6 @@ Map<String, dynamic> _$SceneToJson(Scene instance) => <String, dynamic>{
   'charactersOnScreen': instance.charactersOnScreen,
   'events': instance.events,
   'nextSceneId': instance.nextSceneId,
+  'branches': instance.branches,
+  'ending': instance.ending,
 };

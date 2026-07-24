@@ -18,6 +18,7 @@ class UserProfile {
   final int totalChaptersRead;
   final Set<String> unlockedCGs; // разблокированные CG-арты
   final Set<String> achievements; // полученные достижения
+  final Set<String> unlockedEndings; // концовки, формат "<novelId>:<endingId>"
   final int totalDiamondsSpent;
   final int adsWatched; // всего просмотрено rewarded-рекламы
   final int premiumChoicesMade; // всего сделано платных выборов
@@ -32,6 +33,7 @@ class UserProfile {
     this.totalChaptersRead = 0,
     this.unlockedCGs = const {},
     this.achievements = const {},
+    this.unlockedEndings = const {},
     this.totalDiamondsSpent = 0,
     this.adsWatched = 0,
     this.premiumChoicesMade = 0,
@@ -47,6 +49,7 @@ class UserProfile {
     int? totalChaptersRead,
     Set<String>? unlockedCGs,
     Set<String>? achievements,
+    Set<String>? unlockedEndings,
     int? totalDiamondsSpent,
     int? adsWatched,
     int? premiumChoicesMade,
@@ -61,11 +64,25 @@ class UserProfile {
         totalChaptersRead: totalChaptersRead ?? this.totalChaptersRead,
         unlockedCGs: unlockedCGs ?? this.unlockedCGs,
         achievements: achievements ?? this.achievements,
+        unlockedEndings: unlockedEndings ?? this.unlockedEndings,
         totalDiamondsSpent: totalDiamondsSpent ?? this.totalDiamondsSpent,
         adsWatched: adsWatched ?? this.adsWatched,
         premiumChoicesMade: premiumChoicesMade ?? this.premiumChoicesMade,
         createdAt: createdAt,
       );
+
+  /// Ключ концовки в [unlockedEndings]
+  static String endingKey(String novelId, String endingId) =>
+      '$novelId:$endingId';
+
+  /// Концовки, открытые в конкретной новелле (набор endingId)
+  Set<String> endingsForNovel(String novelId) {
+    final prefix = '$novelId:';
+    return unlockedEndings
+        .where((e) => e.startsWith(prefix))
+        .map((e) => e.substring(prefix.length))
+        .toSet();
+  }
 
   Map<String, dynamic> toJson() => {
         'displayName': displayName,
@@ -76,6 +93,7 @@ class UserProfile {
         'totalChaptersRead': totalChaptersRead,
         'unlockedCGs': unlockedCGs.toList(),
         'achievements': achievements.toList(),
+        'unlockedEndings': unlockedEndings.toList(),
         'totalDiamondsSpent': totalDiamondsSpent,
         'adsWatched': adsWatched,
         'premiumChoicesMade': premiumChoicesMade,
@@ -91,6 +109,8 @@ class UserProfile {
         totalChaptersRead: json['totalChaptersRead'] as int? ?? 0,
         unlockedCGs: Set<String>.from(json['unlockedCGs'] as List? ?? []),
         achievements: Set<String>.from(json['achievements'] as List? ?? []),
+        unlockedEndings:
+            Set<String>.from(json['unlockedEndings'] as List? ?? []),
         totalDiamondsSpent: json['totalDiamondsSpent'] as int? ?? 0,
         adsWatched: json['adsWatched'] as int? ?? 0,
         premiumChoicesMade: json['premiumChoicesMade'] as int? ?? 0,
@@ -183,6 +203,17 @@ class UserProfileService extends StateNotifier<UserProfile> {
     _save();
   }
 
+  /// Разблокировать концовку. Ключ — `<novelId>:<endingId>`.
+  /// Возвращает true, если концовка новая.
+  bool unlockEnding(String novelId, String endingId) {
+    final key = UserProfile.endingKey(novelId, endingId);
+    if (state.unlockedEndings.contains(key)) return false;
+    final endings = Set<String>.from(state.unlockedEndings)..add(key);
+    state = state.copyWith(unlockedEndings: endings);
+    _save();
+    return true;
+  }
+
   /// Выдать достижение
   bool grantAchievement(String achievementId) {
     if (state.achievements.contains(achievementId)) return false;
@@ -237,6 +268,8 @@ class UserProfileService extends StateNotifier<UserProfile> {
           : serverProfile.totalChaptersRead,
       unlockedCGs: state.unlockedCGs.union(serverProfile.unlockedCGs),
       achievements: state.achievements.union(serverProfile.achievements),
+      unlockedEndings:
+          state.unlockedEndings.union(serverProfile.unlockedEndings),
       totalDiamondsSpent: state.totalDiamondsSpent > serverProfile.totalDiamondsSpent
           ? state.totalDiamondsSpent
           : serverProfile.totalDiamondsSpent,

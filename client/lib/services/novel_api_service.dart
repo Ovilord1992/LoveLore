@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../models/novel.dart';
+import 'analytics_service.dart';
 import 'api_config.dart';
 
 /// Таймаут для обычных GET-запросов (каталог, главы, переводы).
@@ -303,6 +304,9 @@ class DownloadNotifier extends StateNotifier<DownloadState> {
         status: DownloadStatus.completed,
         progress: 1.0,
       );
+      _ref
+          .read(analyticsServiceProvider)
+          .log('novel_download', {'novelId': _novelId});
     } else {
       state = state.copyWith(
         status: DownloadStatus.error,

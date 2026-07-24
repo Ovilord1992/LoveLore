@@ -140,6 +140,15 @@ class Choice extends Equatable {
   final bool premium;
   final int cost;
 
+  /// v2: составные условия (приоритет над одиночным [condition])
+  final List<Condition>? conditions;
+
+  /// v2: логика составных условий: "and" (по умолчанию) | "or"
+  final String? conditionsLogic;
+
+  /// v2: сюжетная разблокировка аутфитов, формат "characterId:outfitId"
+  final List<String>? unlockOutfits;
+
   const Choice({
     required this.text,
     required this.nextSceneId,
@@ -147,6 +156,9 @@ class Choice extends Equatable {
     this.condition,
     this.premium = false,
     this.cost = 0,
+    this.conditions,
+    this.conditionsLogic,
+    this.unlockOutfits,
   });
 
   factory Choice.fromJson(Map<String, dynamic> json) =>
@@ -154,7 +166,53 @@ class Choice extends Equatable {
   Map<String, dynamic> toJson() => _$ChoiceToJson(this);
 
   @override
-  List<Object?> get props => [text, nextSceneId, effects, condition, premium, cost];
+  List<Object?> get props => [text, nextSceneId, effects, condition, premium, cost, conditions, conditionsLogic, unlockOutfits];
+}
+
+/// v2: ветка перехода в конце сцены (branches)
+@JsonSerializable()
+class SceneBranch extends Equatable {
+  final List<Condition>? conditions;
+  final String? conditionsLogic; // "and" | "or"
+  final Condition? condition; // одиночное условие (легаси-стиль)
+  final String nextSceneId;
+
+  const SceneBranch({
+    this.conditions,
+    this.conditionsLogic,
+    this.condition,
+    required this.nextSceneId,
+  });
+
+  factory SceneBranch.fromJson(Map<String, dynamic> json) =>
+      _$SceneBranchFromJson(json);
+  Map<String, dynamic> toJson() => _$SceneBranchToJson(this);
+
+  @override
+  List<Object?> get props => [conditions, conditionsLogic, condition, nextSceneId];
+}
+
+/// v2: концовка новеллы, привязанная к сцене
+@JsonSerializable()
+class SceneEnding extends Equatable {
+  final String id;
+  final String title;
+  final String? description;
+  final String? image;
+
+  const SceneEnding({
+    required this.id,
+    this.title = '',
+    this.description,
+    this.image,
+  });
+
+  factory SceneEnding.fromJson(Map<String, dynamic> json) =>
+      _$SceneEndingFromJson(json);
+  Map<String, dynamic> toJson() => _$SceneEndingToJson(this);
+
+  @override
+  List<Object?> get props => [id, title, description, image];
 }
 
 /// Событие в сцене (диалог, выбор, смена фона, эффект и т.д.)
@@ -195,6 +253,10 @@ class SceneEvent extends Equatable {
   // Таймер на выбор
   final int? timeLimit; // секунды
   final int? defaultChoiceIndex;
+  // v2: озвучка реплики (dialogue/narration), путь внутри новеллы
+  final String? voice;
+  // v2: эмоция картинкой (showEmotion), путь внутри новеллы
+  final String? image;
 
   const SceneEvent({
     required this.type,
@@ -221,6 +283,8 @@ class SceneEvent extends Equatable {
     this.spriteDuration,
     this.timeLimit,
     this.defaultChoiceIndex,
+    this.voice,
+    this.image,
   });
 
   factory SceneEvent.fromJson(Map<String, dynamic> json) =>
@@ -228,7 +292,7 @@ class SceneEvent extends Equatable {
   Map<String, dynamic> toJson() => _$SceneEventToJson(this);
 
   @override
-  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation, variable, value, effectType, effectDuration, effectIntensity, cgImage, cgTransition, cgDuration, zoom, panX, panY, cameraDuration, emotionType, spriteDuration, timeLimit, defaultChoiceIndex];
+  List<Object?> get props => [type, speaker, text, choices, asset, characterId, spriteId, animation, variable, value, effectType, effectDuration, effectIntensity, cgImage, cgTransition, cgDuration, zoom, panX, panY, cameraDuration, emotionType, spriteDuration, timeLimit, defaultChoiceIndex, voice, image];
 }
 
 /// Слой фона для параллакса
@@ -265,6 +329,10 @@ class Scene extends Equatable {
   final List<SceneCharacter> charactersOnScreen;
   final List<SceneEvent> events;
   final String? nextSceneId; // автоматический переход если нет выбора
+  // v2: ветвление по переменным в конце сцены (приоритет над nextSceneId)
+  final List<SceneBranch>? branches;
+  // v2: концовка — при достижении конца сцены завершает прохождение
+  final SceneEnding? ending;
 
   const Scene({
     required this.id,
@@ -275,6 +343,8 @@ class Scene extends Equatable {
     this.charactersOnScreen = const [],
     this.events = const [],
     this.nextSceneId,
+    this.branches,
+    this.ending,
   });
 
   factory Scene.fromJson(Map<String, dynamic> json) =>
@@ -282,5 +352,5 @@ class Scene extends Equatable {
   Map<String, dynamic> toJson() => _$SceneToJson(this);
 
   @override
-  List<Object?> get props => [id, background, music, transition, backgroundLayers, charactersOnScreen, events, nextSceneId];
+  List<Object?> get props => [id, background, music, transition, backgroundLayers, charactersOnScreen, events, nextSceneId, branches, ending];
 }

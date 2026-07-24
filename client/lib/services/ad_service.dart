@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'analytics_service.dart';
 import 'remote_config_service.dart';
 import 'user_profile_service.dart';
 
@@ -21,6 +22,10 @@ class AdService {
   static const _adsCountKey = 'ads_watched_today';
   static const _adsResetDateKey = 'ads_last_reset_date';
 
+  // Тестовые Google-ID — только для debug-сборок (фолбэк при пустом конфиге)
+  static const _testAdUnitIdAndroid = 'ca-app-pub-3940256099942544/5224354917';
+  static const _testAdUnitIdIos = 'ca-app-pub-3940256099942544/1712485313';
+
   AdsConfig get _cfg => _ref.read(remoteConfigProvider).ads;
   int get maxAdsPerDay => _cfg.maxAdsPerDay;
   int get diamondReward => _cfg.diamondReward;
@@ -28,40 +33,56 @@ class AdService {
 
   AdService(this._ref);
 
-  // Тестовые AdUnit ID (заменить на боевые перед релизом)
-  static String get _rewardedAdUnitId {
+  /// AdUnit ID из Remote Config (ads.rewardedAdUnitIdAndroid/Ios).
+  /// В debug при пустом конфиге — тестовые ID Google.
+  /// В release при пустом конфиге — null → реклама отключена (UI прячет кнопки).
+  String? get _rewardedAdUnitId {
+    final String configured;
     if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/5224354917'; // Android test
+      configured = _cfg.rewardedAdUnitIdAndroid;
     } else if (Platform.isIOS) {
-      return 'ca-app-pub-3940256099942544/1712485313'; // iOS test
+      configured = _cfg.rewardedAdUnitIdIos;
+    } else {
+      configured = '';
     }
-    return '';
+    if (configured.isNotEmpty) return configured;
+    if (kDebugMode) {
+      if (Platform.isAndroid) return _testAdUnitIdAndroid;
+      if (Platform.isIOS) return _testAdUnitIdIos;
+    }
+    return null;
   }
+
+  /// Включена ли реклама вообще (есть валидный AdUnit ID)
+  bool get adsEnabled => _rewardedAdUnitId != null;
 
   /// Инициализация Mobile Ads SDK
   static Future<void> initialize() async {
     await MobileAds.instance.initialize();
   }
 
-  /// Можно ли смотреть рекламу (лимит в день)
+  /// Можно ли смотреть рекламу (реклама включена + лимит в день)
   bool get canShowAd {
+    if (!adsEnabled) return false;
     _checkDailyReset();
     return _adsWatchedToday < maxAdsPerDay;
   }
 
   /// Сколько просмотров осталось
   int get adsRemainingToday {
+    if (!adsEnabled) return 0;
     _checkDailyReset();
     return maxAdsPerDay - _adsWatchedToday;
   }
 
   /// Загрузить rewarded ad заранее
   void preloadAd() {
-    if (_rewardedAd != null || _isLoading) return;
+    final adUnitId = _rewardedAdUnitId;
+    if (adUnitId == null || _rewardedAd != null || _isLoading) return;
     _isLoading = true;
 
     RewardedAd.load(
-      adUnitId: _rewardedAdUnitId,
+      adUnitId: adUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
@@ -82,6 +103,7 @@ class AdService {
     required void Function(String rewardType, int amount) onReward,
     String rewardType = 'diamonds',
   }) async {
+    if (!adsEnabled) return false;
     _checkDailyReset();
     if (_adsWatchedToday >= maxAdsPerDay) return false;
 
@@ -119,6 +141,10 @@ class AdService {
       _ref.read(userProfileProvider.notifier).incrementAdsWatched();
       rewarded = true;
       final amount = rewardType == 'tickets' ? ticketReward : diamondReward;
+      _ref.read(analyticsServiceProvider).log('ad_reward', {
+        'rewardType': rewardType,
+        'amount': amount,
+      });
       onReward(rewardType, amount);
     });
 

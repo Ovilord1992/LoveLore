@@ -85,7 +85,9 @@ class _HomeTab extends ConsumerWidget {
           final novels = snapshot.data ?? [];
           ref.watch(saveServiceProvider);
           final saveService = ref.read(saveServiceProvider.notifier);
-          final continuePlaying = novels.where((n) => saveService.hasSave(n.id)).toList();
+          // «Продолжить» — учитывает автосейв и ручные слоты
+          final continuePlaying =
+              novels.where((n) => saveService.hasAnySave(n.id)).toList();
 
           return CustomScrollView(
             slivers: [

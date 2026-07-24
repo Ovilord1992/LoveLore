@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import '../models/game_state.dart';
-import 'api_config.dart';
 import 'auth_service.dart';
+import 'http_client.dart';
 import 'save_service.dart';
 import 'user_profile_service.dart';
 import 'currency_service.dart';
@@ -13,19 +12,19 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   return SyncService(ref);
 });
 
-/// Сервис синхронизации данных с сервером
+/// Сервис синхронизации данных с сервером.
+/// Все запросы идут через единый HTTP-слой (refresh на 401 — спека 2.1).
+///
+/// ВАЖНО: PUT /sync/currency больше НЕ используется — балансы поднимаются
+/// только через леджер POST /economy/transactions (спека 2.2).
 class SyncService {
-  static const _baseUrl = ApiConfig.baseUrl;
   final Ref _ref;
 
   SyncService(this._ref);
 
-  /// Получить auth headers или null если не авторизован
-  Map<String, String>? get _headers {
-    return _ref.read(authServiceProvider.notifier).authHeaders;
-  }
-
   bool get _isLoggedIn => _ref.read(authServiceProvider).isLoggedIn;
+
+  ApiHttpClient get _client => _ref.read(httpClientProvider);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SAVES — сохранения игры
@@ -34,18 +33,15 @@ class SyncService {
   /// Отправить сохранение на сервер
   Future<void> pushSave(String novelId) async {
     if (!_isLoggedIn) return;
-    final headers = _headers;
-    if (headers == null) return;
 
     final saveService = _ref.read(saveServiceProvider.notifier);
     final gameState = saveService.loadGame(novelId);
     if (gameState == null) return;
 
     try {
-      await http.put(
-        Uri.parse('$_baseUrl/sync/saves/$novelId'),
-        headers: headers,
-        body: jsonEncode({'data': gameState.toJson()}),
+      await _client.put(
+        '/sync/saves/$novelId',
+        body: {'data': gameState.toJson()},
       );
     } catch (_) {}
   }
@@ -53,14 +49,9 @@ class SyncService {
   /// Получить сохранение с сервера
   Future<Map<String, dynamic>?> pullSave(String novelId) async {
     if (!_isLoggedIn) return null;
-    final headers = _headers;
-    if (headers == null) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/sync/saves/$novelId'),
-        headers: headers,
-      );
+      final response = await _client.get('/sync/saves/$novelId');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -77,31 +68,20 @@ class SyncService {
   /// Отправить профиль на сервер
   Future<void> pushProfile() async {
     if (!_isLoggedIn) return;
-    final headers = _headers;
-    if (headers == null) return;
 
     final profile = _ref.read(userProfileProvider);
 
     try {
-      await http.put(
-        Uri.parse('$_baseUrl/sync/profile'),
-        headers: headers,
-        body: jsonEncode(profile.toJson()),
-      );
+      await _client.put('/sync/profile', body: profile.toJson());
     } catch (_) {}
   }
 
   /// Получить профиль с сервера
   Future<Map<String, dynamic>?> pullProfile() async {
     if (!_isLoggedIn) return null;
-    final headers = _headers;
-    if (headers == null) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/sync/profile'),
-        headers: headers,
-      );
+      final response = await _client.get('/sync/profile');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -112,37 +92,15 @@ class SyncService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CURRENCY — валюта
+  // CURRENCY — валюта (только чтение; запись — через леджер)
   // ═══════════════════════════════════════════════════════════════════════════
-
-  /// Отправить валюту на сервер
-  Future<void> pushCurrency() async {
-    if (!_isLoggedIn) return;
-    final headers = _headers;
-    if (headers == null) return;
-
-    final currency = _ref.read(currencyServiceProvider);
-
-    try {
-      await http.put(
-        Uri.parse('$_baseUrl/sync/currency'),
-        headers: headers,
-        body: jsonEncode(currency.toJson()),
-      );
-    } catch (_) {}
-  }
 
   /// Получить валюту с сервера
   Future<Map<String, dynamic>?> pullCurrency() async {
     if (!_isLoggedIn) return null;
-    final headers = _headers;
-    if (headers == null) return null;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/sync/currency'),
-        headers: headers,
-      );
+      final response = await _client.get('/sync/currency');
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -159,14 +117,9 @@ class SyncService {
   /// Полная синхронизация: pull всех данных с сервера
   Future<void> pullAll() async {
     if (!_isLoggedIn) return;
-    final headers = _headers;
-    if (headers == null) return;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/sync/all'),
-        headers: headers,
-      );
+      final response = await _client.get('/sync/all');
 
       if (response.statusCode != 200) return;
 
@@ -201,13 +154,12 @@ class SyncService {
     } catch (_) {}
   }
 
-  /// Push всех данных на сервер
+  /// Push всех данных на сервер (валюта — только через леджер-очередь)
   Future<void> pushAll() async {
     if (!_isLoggedIn) return;
 
     await Future.wait([
       pushProfile(),
-      pushCurrency(),
       _pushAllSaves(),
     ]);
   }

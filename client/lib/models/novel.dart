@@ -13,12 +13,16 @@ class Chapter extends Equatable {
   final List<Scene> scenes;
   final String firstSceneId;
 
+  /// v2: текст «Ранее…» — показывается один раз перед первой сценой главы
+  final String? recap;
+
   const Chapter({
     required this.id,
     required this.title,
     required this.number,
     required this.scenes,
     required this.firstSceneId,
+    this.recap,
   });
 
   factory Chapter.fromJson(Map<String, dynamic> json) =>
@@ -34,7 +38,76 @@ class Chapter extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, number, scenes, firstSceneId];
+  List<Object?> get props => [id, title, number, scenes, firstSceneId, recap];
+}
+
+/// v2: описание концовки в meta.json (для галереи «N из M»)
+@JsonSerializable()
+class NovelEnding extends Equatable {
+  final String id;
+  final String title;
+  final bool hidden;
+
+  const NovelEnding({
+    required this.id,
+    this.title = '',
+    this.hidden = false,
+  });
+
+  factory NovelEnding.fromJson(Map<String, dynamic> json) =>
+      _$NovelEndingFromJson(json);
+  Map<String, dynamic> toJson() => _$NovelEndingToJson(this);
+
+  @override
+  List<Object?> get props => [id, title, hidden];
+}
+
+/// v2: конфиг отображения стата в панели отношений (meta.statsDisplay)
+@JsonSerializable()
+class StatDisplayConfig extends Equatable {
+  final String variable;
+  final String label;
+
+  /// heart | star | flame | diamond | moon | sun | leaf
+  final String? icon;
+  final String? color; // HEX
+  final num max;
+
+  const StatDisplayConfig({
+    required this.variable,
+    this.label = '',
+    this.icon,
+    this.color,
+    this.max = 100,
+  });
+
+  factory StatDisplayConfig.fromJson(Map<String, dynamic> json) =>
+      _$StatDisplayConfigFromJson(json);
+  Map<String, dynamic> toJson() => _$StatDisplayConfigToJson(this);
+
+  @override
+  List<Object?> get props => [variable, label, icon, color, max];
+}
+
+/// v2: запрос имени игрока при первом старте новеллы
+@JsonSerializable()
+class PlayerNamePrompt extends Equatable {
+  final bool enabled;
+  final String? prompt;
+  final String? defaultName;
+
+  const PlayerNamePrompt({
+    this.enabled = false,
+    this.prompt,
+    this.defaultName,
+  });
+
+  factory PlayerNamePrompt.fromJson(Map<String, dynamic> json) =>
+      _$PlayerNamePromptFromJson(json);
+  Map<String, dynamic> toJson() => _$PlayerNamePromptToJson(this);
+
+  @override
+  List<Object?> get props => [enabled, prompt, defaultName];
 }
 
 /// Метаданные новеллы
@@ -71,6 +144,15 @@ class NovelMeta extends Equatable {
   @JsonKey(includeFromJson: false, includeToJson: false)
   final String? localizedDescription;
 
+  /// v2: список всех концовок новеллы (для прогресса «N из M»)
+  final List<NovelEnding> endings;
+
+  /// v2: статы для панели отношений
+  final List<StatDisplayConfig> statsDisplay;
+
+  /// v2: запрос имени игрока при первом старте
+  final PlayerNamePrompt? playerNamePrompt;
+
   const NovelMeta({
     required this.id,
     required this.title,
@@ -87,6 +169,9 @@ class NovelMeta extends Equatable {
     this.dialogueStyle,
     this.localizedTitle,
     this.localizedDescription,
+    this.endings = const [],
+    this.statsDisplay = const [],
+    this.playerNamePrompt,
   });
 
   factory NovelMeta.fromJson(Map<String, dynamic> json) =>
@@ -143,11 +228,14 @@ class NovelMeta extends Equatable {
       dialogueStyle: dialogueStyle,
       localizedTitle: translatedTitle,
       localizedDescription: translatedDescription,
+      endings: endings,
+      statsDisplay: statsDisplay,
+      playerNamePrompt: playerNamePrompt,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, chaptersCount, releasedChapters, dialogueTheme, dialogueFrameColor, dialogueBgColor, dialogueStyle, localizedTitle, localizedDescription];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, chaptersCount, releasedChapters, dialogueTheme, dialogueFrameColor, dialogueBgColor, dialogueStyle, localizedTitle, localizedDescription, endings, statsDisplay, playerNamePrompt];
 }
 
 /// Читает количество глав из JSON, поддерживая legacy-ключ "totalChapters".

@@ -1,23 +1,10 @@
 import 'package:flutter/material.dart';
+import '../models/backlog_entry.dart';
 
-class DialogueLogEntry {
-  final String? speakerName;
-  final String? speakerColor;
-  final String text;
-  final bool isChoice;
-  final bool isNarration;
-
-  const DialogueLogEntry({
-    this.speakerName,
-    this.speakerColor,
-    required this.text,
-    this.isChoice = false,
-    this.isNarration = false,
-  });
-}
-
+/// Лог диалогов (backlog): реплики, нарратив и сделанные выборы.
+/// Данные — [SceneEngine.backlog] (кап 200), открывается из игрового UI.
 class DialogueLogScreen extends StatelessWidget {
-  final List<DialogueLogEntry> entries;
+  final List<BacklogEntry> entries;
 
   const DialogueLogScreen({super.key, required this.entries});
 
@@ -76,7 +63,7 @@ class DialogueLogScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEntry(DialogueLogEntry entry) {
+  Widget _buildEntry(BacklogEntry entry) {
     final speakerColor = _parseColor(entry.speakerColor);
 
     return Container(

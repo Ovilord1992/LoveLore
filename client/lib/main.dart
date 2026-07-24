@@ -34,6 +34,10 @@ void main() async {
     _openBoxSafe('user_profile'),
     _openBoxSafe('currency'),
     _openBoxSafe('wardrobe'),
+    // v2: очередь экономики (леджер), очередь аналитики, прогресс чтения
+    _openBoxSafe('economy_queue'),
+    _openBoxSafe('analytics_queue'),
+    _openBoxSafe('reading_progress'),
   ]);
 
   // Реклама не критична для старта — инициализируем в фоне, не блокируя

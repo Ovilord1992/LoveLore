@@ -15,13 +15,15 @@ abstract class IapAuthTokenSource {
 }
 
 /// Реальная реализация — читает токен из [AuthService] через [Ref].
+/// Берёт ВАЛИДНЫЙ access-токен: при истечении срока выполняется
+/// сериализованный refresh (спека 2.1) — общий с остальным HTTP-слоем.
 class _RiverpodAuthTokenSource implements IapAuthTokenSource {
   final Ref _ref;
   _RiverpodAuthTokenSource(this._ref);
 
   @override
-  Future<String?> getToken() async {
-    return _ref.read(authServiceProvider).token;
+  Future<String?> getToken() {
+    return _ref.read(authServiceProvider.notifier).getValidAccessToken();
   }
 }
 

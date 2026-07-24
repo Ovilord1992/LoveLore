@@ -126,7 +126,9 @@ class VipService extends StateNotifier<VipState> {
       return false;
     }
 
-    _ref.read(currencyServiceProvider.notifier).addDiamonds(_cfg.dailyDiamonds);
+    _ref
+        .read(currencyServiceProvider.notifier)
+        .addDiamonds(_cfg.dailyDiamonds, reason: 'vip_daily');
     state = state.copyWith(
       lastDailyReward: now,
       dailyDiamondsCollected: state.dailyDiamondsCollected + 1,

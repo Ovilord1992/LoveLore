@@ -9,6 +9,7 @@ class GameState extends Equatable {
   final Map<String, dynamic> variables;
   final List<String> history; // история пройденных сцен
   final List<String> unlockedCg; // разблокированные CG-арты
+  final List<String> seenRecaps; // главы, чей recap уже показан (id глав)
   final DateTime lastPlayed;
 
   const GameState({
@@ -19,6 +20,7 @@ class GameState extends Equatable {
     this.variables = const {},
     this.history = const [],
     this.unlockedCg = const [],
+    this.seenRecaps = const [],
     required this.lastPlayed,
   });
 
@@ -45,6 +47,7 @@ class GameState extends Equatable {
     Map<String, dynamic>? variables,
     List<String>? history,
     List<String>? unlockedCg,
+    List<String>? seenRecaps,
     DateTime? lastPlayed,
   }) {
     return GameState(
@@ -55,6 +58,7 @@ class GameState extends Equatable {
       variables: variables ?? this.variables,
       history: history ?? this.history,
       unlockedCg: unlockedCg ?? this.unlockedCg,
+      seenRecaps: seenRecaps ?? this.seenRecaps,
       lastPlayed: lastPlayed ?? this.lastPlayed,
     );
   }
@@ -88,6 +92,7 @@ class GameState extends Equatable {
         'variables': variables,
         'history': history,
         'unlockedCg': unlockedCg,
+        'seenRecaps': seenRecaps,
         'lastPlayed': lastPlayed.toIso8601String(),
       };
 
@@ -99,6 +104,7 @@ class GameState extends Equatable {
         variables: Map<String, dynamic>.from(json['variables'] as Map? ?? {}),
         history: List<String>.from(json['history'] as List? ?? []),
         unlockedCg: List<String>.from(json['unlockedCg'] as List? ?? []),
+        seenRecaps: List<String>.from(json['seenRecaps'] as List? ?? []),
         lastPlayed: DateTime.parse(json['lastPlayed'] as String),
       );
 
@@ -111,6 +117,7 @@ class GameState extends Equatable {
         variables,
         history,
         unlockedCg,
+        seenRecaps,
         lastPlayed,
       ];
 }
