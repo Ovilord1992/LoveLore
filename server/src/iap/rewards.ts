@@ -46,3 +46,23 @@ export async function getRewardForProduct(productId: string): Promise<Reward> {
 export function isEmptyReward(r: Reward): boolean {
   return !r.diamonds && !r.tickets && !r.vipDays;
 }
+
+/**
+ * Оценка суммы покупки в центах USD из iap.products[].usdCents конфига
+ * (спека 2.7) — для подсчёта выручки в аналитике.
+ */
+export async function getUsdCentsForProduct(productId: string): Promise<number | null> {
+  const config = await prisma.gameConfig.findUnique({
+    where: { id: 'singleton' },
+    select: { iap: true },
+  });
+
+  const iapConfig = config?.iap as { products?: unknown } | null | undefined;
+  const products = Array.isArray(iapConfig?.products) ? iapConfig!.products : [];
+  const entry = products.find(
+    (p: unknown): p is { id: string; usdCents?: unknown } =>
+      !!p && typeof p === 'object' && (p as { id?: unknown }).id === productId
+  );
+  const usdCents = entry?.usdCents;
+  return typeof usdCents === 'number' && Number.isInteger(usdCents) && usdCents >= 0 ? usdCents : null;
+}

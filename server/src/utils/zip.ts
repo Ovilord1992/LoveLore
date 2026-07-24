@@ -184,6 +184,45 @@ export function addTranslationToZip(
   zip.writeZip(zipPath);
 }
 
+/**
+ * Вставить/заменить JSON главы внутри ZIP (по образцу addTranslationToZip).
+ * Учитывает возможную вложенную папку (кладёт рядом с meta.json).
+ */
+export function upsertChapterInZip(
+  zipPath: string,
+  chapterNumber: number,
+  chapterJson: string
+): void {
+  const zip = new AdmZip(zipPath);
+  checkZipSize(zip);
+  const entries = zip.getEntries();
+  const data = Buffer.from(chapterJson, 'utf-8');
+
+  const existing = entries.find(
+    (e) =>
+      e.entryName === `chapters/chapter_${chapterNumber}.json` ||
+      e.entryName.endsWith(`/chapters/chapter_${chapterNumber}.json`) ||
+      e.entryName === `chapters/ch${chapterNumber}.json` ||
+      e.entryName.endsWith(`/chapters/ch${chapterNumber}.json`)
+  );
+
+  if (existing) {
+    const name = existing.entryName;
+    zip.deleteFile(name);
+    zip.addFile(name, data);
+  } else {
+    const metaEntry = entries.find(
+      (e) => e.entryName === 'meta.json' || e.entryName.endsWith('/meta.json')
+    );
+    const prefix = metaEntry
+      ? metaEntry.entryName.slice(0, metaEntry.entryName.length - 'meta.json'.length)
+      : '';
+    zip.addFile(`${prefix}chapters/chapter_${chapterNumber}.json`, data);
+  }
+
+  zip.writeZip(zipPath);
+}
+
 /** Извлечь все переводы (язык + содержимое) из ZIP. */
 export function extractAllTranslationsFromZip(
   zipPath: string

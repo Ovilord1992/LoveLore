@@ -5,7 +5,10 @@ import prisma from '../db';
 import { upload } from '../middleware/upload';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { adminMiddleware } from '../middleware/admin';
-import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip, extractAllTranslationsFromZip, buildReleasedZipBuffer, zipHasUnreleasedChapters } from '../utils/zip';
+import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip, extractAllTranslationsFromZip, zipHasUnreleasedChapters } from '../utils/zip';
+import { getOrBuildReleasedZip, invalidateNovelZipCache } from '../utils/zip-cache';
+import { mergeChapterReleaseState } from '../utils/chapters';
+import { parseCatalogPaging } from '../utils/pagination';
 import { logger } from '../utils/logger';
 
 export const novelsRouter = Router();
@@ -18,27 +21,50 @@ const NOVEL_ID_RE = /^[a-z0-9_-]{1,64}$/;
 // Код языка перевода: ISO 639-1 + опциональный регион (например, ru, en, pt-BR).
 const LANG_RE = /^[a-z]{2}(-[A-Z]{2})?$/;
 
-// ─── GET /v1/novels ── Каталог опубликованных новелл ────────────────────────
-novelsRouter.get('/', async (_req: Request, res: Response) => {
+// ─── GET /v1/novels ── Каталог опубликованных новелл (спека 2.5) ────────────
+// С параметром ?page → envelope { items, total, page, limit };
+// без параметров → легаси-ответ { novels } с капом 200.
+novelsRouter.get('/', async (req: Request, res: Response) => {
   try {
+    const catalogSelect = {
+      id: true,
+      title: true,
+      description: true,
+      author: true,
+      coverUrl: true,
+      tags: true,
+      version: true,
+      chaptersCount: true,
+      releasedChapters: true,
+      fileSize: true,
+      downloads: true,
+      createdAt: true,
+      updatedAt: true,
+    } as const;
+
+    const paging = parseCatalogPaging(req.query);
+
+    if (paging.paginated) {
+      const [items, total] = await Promise.all([
+        prisma.novel.findMany({
+          where: { isPublished: true },
+          orderBy: { updatedAt: 'desc' },
+          skip: paging.skip,
+          take: paging.take,
+          select: catalogSelect,
+        }),
+        prisma.novel.count({ where: { isPublished: true } }),
+      ]);
+
+      res.json({ items, total, page: paging.page, limit: paging.limit });
+      return;
+    }
+
     const novels = await prisma.novel.findMany({
       where: { isPublished: true },
       orderBy: { updatedAt: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        author: true,
-        coverUrl: true,
-        tags: true,
-        version: true,
-        chaptersCount: true,
-        releasedChapters: true,
-        fileSize: true,
-        downloads: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      take: paging.take,
+      select: catalogSelect,
     });
 
     res.json({ novels });
@@ -167,11 +193,13 @@ novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
       `attachment; filename="${novel.id}.zip"`
     );
 
-    // Если архив содержит невыпущенные главы — отдаём пересобранный буфер без них.
+    // Если архив содержит невыпущенные главы — отдаём пересобранный ZIP из
+    // файлового кеша (uploads/cache/), собрав его при первом запросе.
     if (zipHasUnreleasedChapters(filePath, releasedNumbers)) {
-      const buffer = buildReleasedZipBuffer(filePath, releasedNumbers);
-      res.setHeader('Content-Length', buffer.length);
-      res.send(buffer);
+      const cachePath = getOrBuildReleasedZip(filePath, novel.id, novel.version, releasedNumbers);
+      const cacheStat = fs.statSync(cachePath);
+      res.setHeader('Content-Length', cacheStat.size);
+      fs.createReadStream(cachePath).pipe(res);
       return;
     }
 
@@ -258,6 +286,16 @@ novelsRouter.post(
         where: { id: novelId },
       });
 
+      // Состояние релиза существующих глав сохраняется по number; новые главы
+      // при перезаливке создаются невыпущенными (спека 2.4).
+      const existingChapters = existing
+        ? await prisma.chapter.findMany({
+            where: { novelId },
+            select: { number: true, isReleased: true, releasedAt: true },
+          })
+        : [];
+      const merge = mergeChapterReleaseState(chapterInfos, existingChapters, !existing);
+
       // Удаляем старый ZIP если обновляем
       if (existing?.zipFilename) {
         const oldPath = path.resolve(uploadDir, 'packs', existing.zipFilename);
@@ -295,7 +333,7 @@ novelsRouter.post(
           tags: (meta.tags as string[]) || [],
           version: existing ? existing.version + 1 : 1,
           chaptersCount,
-          releasedChapters: chaptersCount,
+          releasedChapters: merge.releasedCount,
           zipFilename,
           fileSize,
           coverUrl,
@@ -308,15 +346,17 @@ novelsRouter.post(
           tags: (meta.tags as string[]) || [],
           version: 1,
           chaptersCount,
-          releasedChapters: chaptersCount,
+          releasedChapters: merge.releasedCount,
           zipFilename,
           fileSize,
           coverUrl,
         },
       });
 
-      // Создаём записи Chapter для каждой главы из ZIP
-      for (const ch of chapterInfos) {
+      // Синхронизируем записи Chapter с содержимым ZIP: существующие сохраняют
+      // isReleased/releasedAt, новые — невыпущенные (released для новой новеллы),
+      // исчезнувшие из архива — удаляются.
+      for (const ch of merge.chapters) {
         await prisma.chapter.upsert({
           where: {
             novelId_number: { novelId, number: ch.number },
@@ -328,11 +368,18 @@ novelsRouter.post(
             novelId,
             number: ch.number,
             title: ch.title,
-            isReleased: true,
-            releasedAt: new Date(),
+            isReleased: ch.isReleased,
+            releasedAt: ch.releasedAt,
           },
         });
       }
+      if (merge.removedNumbers.length > 0) {
+        await prisma.chapter.deleteMany({
+          where: { novelId, number: { in: merge.removedNumbers } },
+        });
+      }
+
+      invalidateNovelZipCache(novelId);
 
       res.status(201).json({
         message: 'Novel uploaded successfully',
@@ -383,6 +430,8 @@ novelsRouter.delete('/:id', authMiddleware, adminMiddleware, async (req: Request
     }
 
     await prisma.novel.delete({ where: { id: req.params.id } });
+
+    invalidateNovelZipCache(req.params.id);
 
     res.json({ message: 'Novel deleted' });
   } catch (err) {
@@ -581,6 +630,9 @@ novelsRouter.post('/:id/translations/:lang', authMiddleware, adminMiddleware, as
     }
 
     addTranslationToZip(zipPath, req.params.lang, JSON.stringify(translationData, null, 2));
+
+    // Содержимое архива изменилось — released-ZIP в кеше устарел.
+    invalidateNovelZipCache(req.params.id);
 
     res.json({
       message: `Translation for '${req.params.lang}' uploaded successfully`,

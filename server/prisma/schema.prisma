@@ -19,6 +19,8 @@ model User {
   displayName   String    @default("Читатель") @map("display_name")
   role          Role      @default(user)
   vipExpiresAt  DateTime? @map("vip_expires_at")
+  tokenVersion  Int       @default(0) @map("token_version")
+  lastActiveAt  DateTime? @map("last_active_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -29,6 +31,8 @@ model User {
   reviews   Review[]
   favorites Favorite[]
   iapTransactions IapTransaction[]
+  refreshTokens   RefreshToken[]
+  ledgerEntries   CurrencyLedger[]
 
   @@map("users")
 }
@@ -102,6 +106,7 @@ model Novel {
   reviews   Review[]
   favorites Favorite[]
 
+  @@index([isPublished, updatedAt])
   @@map("novels")
 }
 
@@ -118,6 +123,7 @@ model Chapter {
   novel Novel @relation(fields: [novelId], references: [id], onDelete: Cascade)
 
   @@unique([novelId, number])
+  @@index([novelId, isReleased])
   @@map("chapters")
 }
 
@@ -162,6 +168,7 @@ model Review {
   novel     Novel    @relation(fields: [novelId], references: [id], onDelete: Cascade)
 
   @@unique([userId, novelId])
+  @@index([novelId, status])
   @@map("reviews")
 }
 
@@ -186,6 +193,8 @@ model IapTransaction {
   receiptHash     String   @map("receipt_hash")    // SHA-256 от полного receipt — чтобы не хранить весь чек
   verified        Boolean  @default(false)
   rewardClaimed   Boolean  @default(false) @map("reward_claimed")
+  revokedAt       DateTime? @map("revoked_at")     // refund/отмена от стора (S2S-нотификация)
+  usdCents        Int?     @map("usd_cents")       // оценка выручки из iap.products[].usdCents конфига
   rawResponseLog  Json?    @map("raw_response_log") // для дебага, опционально
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -194,4 +203,80 @@ model IapTransaction {
   @@unique([platform, transactionId])
   @@index([userId])
   @@map("iap_transactions")
+}
+
+// ─── Серверный леджер валюты — источник истины по балансам ───────────────────
+model CurrencyLedger {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  currency       String   // "diamonds" | "tickets"
+  delta          Int      // применённая дельта (после клампов) — sum(delta) == баланс
+  reason         String   // spend_choice | ad_reward | daily_reward | iap | admin_grant | ...
+  refId          String?  @map("ref_id")
+  idempotencyKey String   @map("idempotency_key")
+  createdAt      DateTime @default(now()) @map("created_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@map("currency_ledger")
+}
+
+// ─── Refresh-токены (ротация + family revoke) ────────────────────────────────
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash") // sha256 от raw-токена
+  familyId     String    @map("family_id")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// ─── Аналитика событий клиента ───────────────────────────────────────────────
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id") // без FK: события переживают удаление аккаунта
+  deviceId  String   @map("device_id")
+  name      String
+  params    Json?
+  ts        DateTime
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([name, ts])
+  @@index([userId, ts])
+  @@map("analytics_events")
+}
+
+// ─── История изменений GameConfig (снапшоты для отката) ──────────────────────
+model ConfigHistory {
+  id        String   @id @default(uuid())
+  version   Int      @unique
+  data      Json     // полный снапшот всех секций
+  changedBy String   @map("changed_by") // userId админа
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("config_history")
+}
+
+// ─── Сырые S2S-нотификации сторов (Apple ASSN v2 / Google RTDN) ──────────────
+model StoreNotification {
+  id            String   @id @default(uuid())
+  platform      String   // "apple" | "google"
+  messageId     String?  @map("message_id") // Pub/Sub messageId (Google) — идемпотентность
+  type          String?  // notificationType
+  transactionId String?  @map("transaction_id")
+  payload       Json     // сырой payload как получен
+  processed     Boolean  @default(false)
+  error         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([platform, messageId])
+  @@map("store_notifications")
 }

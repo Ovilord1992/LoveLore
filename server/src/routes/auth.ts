@@ -4,7 +4,8 @@ import { OAuth2Client } from 'google-auth-library';
 import appleSignin from 'apple-signin-auth';
 import prisma from '../db';
 import { AuthRequest, generateToken, authMiddleware } from '../middleware/auth';
-import { loginLimiter, registerLimiter, socialAuthLimiter } from '../middleware/rate-limit';
+import { issueRefreshToken, rotateRefreshToken, revokeRefreshTokenFamily } from '../auth/refresh';
+import { loginLimiter, registerLimiter, socialAuthLimiter, refreshLimiter } from '../middleware/rate-limit';
 
 export const authRouter = Router();
 
@@ -12,6 +13,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || '';
+
+export const MIN_PASSWORD_LENGTH = 8;
 
 // ─── POST /v1/auth/register ── Регистрация ──────────────────────────────────
 authRouter.post('/register', registerLimiter, async (req: AuthRequest, res: Response) => {
@@ -23,8 +26,8 @@ authRouter.post('/register', registerLimiter, async (req: AuthRequest, res: Resp
       return;
     }
 
-    if (password.length < 6) {
-      res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
       return;
     }
 
@@ -49,9 +52,10 @@ authRouter.post('/register', registerLimiter, async (req: AuthRequest, res: Resp
       select: { id: true, email: true, displayName: true },
     });
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, 'user', 0);
+    const refreshToken = await issueRefreshToken(user.id);
 
-    res.status(201).json({ user: { ...user, role: 'user' }, token });
+    res.status(201).json({ user: { ...user, role: 'user' }, token, refreshToken });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -80,14 +84,66 @@ authRouter.post('/login', loginLimiter, async (req: AuthRequest, res: Response) 
       return;
     }
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role, user.tokenVersion);
+    const refreshToken = await issueRefreshToken(user.id);
 
     res.json({
       user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role },
       token,
+      refreshToken,
     });
   } catch (err) {
     console.error('Login error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/auth/refresh ── Ротация refresh-токена ────────────────────────
+authRouter.post('/refresh', refreshLimiter, async (req: AuthRequest, res: Response) => {
+  try {
+    const { refreshToken } = req.body ?? {};
+    if (typeof refreshToken !== 'string' || refreshToken.length === 0) {
+      res.status(400).json({ error: 'refreshToken is required' });
+      return;
+    }
+
+    const result = await rotateRefreshToken(refreshToken);
+    if (!result.ok) {
+      res.status(401).json({ error: 'Invalid refresh token' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: result.userId },
+      select: { id: true, role: true, tokenVersion: true },
+    });
+    if (!user) {
+      res.status(401).json({ error: 'Invalid refresh token' });
+      return;
+    }
+
+    const token = generateToken(user.id, user.role, user.tokenVersion);
+    res.json({ token, refreshToken: result.refreshToken });
+  } catch (err) {
+    console.error('Refresh error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/auth/logout ── Отзыв refresh-токена (и его семьи) ─────────────
+authRouter.post('/logout', async (req: AuthRequest, res: Response) => {
+  try {
+    const { refreshToken } = req.body ?? {};
+    if (typeof refreshToken !== 'string' || refreshToken.length === 0) {
+      res.status(400).json({ error: 'refreshToken is required' });
+      return;
+    }
+
+    await revokeRefreshTokenFamily(refreshToken);
+    // Идемпотентно: неизвестный/уже отозванный токен — тоже 200.
+    res.json({ message: 'Logged out' });
+  } catch (err) {
+    console.error('Logout error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -209,11 +265,13 @@ authRouter.post('/social', socialAuthLimiter, async (req: AuthRequest, res: Resp
       });
     }
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role, user.tokenVersion);
+    const refreshToken = await issueRefreshToken(user.id);
 
     res.json({
       user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role },
       token,
+      refreshToken,
     });
   } catch (err) {
     console.error('Social auth error:', err);

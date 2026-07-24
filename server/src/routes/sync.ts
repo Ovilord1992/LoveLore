@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../db';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { logger } from '../utils/logger';
 
 export const syncRouter = Router();
 
@@ -331,7 +332,10 @@ syncRouter.get('/currency', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// ─── PUT /v1/sync/currency ── Обновить валюту ───────────────────────────────
+// ─── PUT /v1/sync/currency ── Принять запрос, вернуть серверные значения ────
+// Источник истины по балансам — CurrencyLedger (POST /v1/economy/transactions).
+// PUT больше НЕ меняет балансы: попытка поднять баланс логируется как warning,
+// понижение тоже игнорируется. Ответ — авторитетные серверные значения.
 syncRouter.put('/currency', async (req: AuthRequest, res: Response) => {
   try {
     const data = req.body;
@@ -342,40 +346,24 @@ syncRouter.put('/currency', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const existing = await prisma.currencyData.findUnique({
-      where: { userId: req.userId },
-    });
-
-    // Нельзя обнулять с клиента — берём max
-    const mergedDiamonds =
-      data.diamonds !== undefined
-        ? Math.max(existing?.diamonds ?? 50, data.diamonds)
-        : existing?.diamonds ?? 50;
-    const mergedTickets =
-      data.tickets !== undefined
-        ? Math.max(existing?.tickets ?? 5, data.tickets)
-        : existing?.tickets ?? 5;
-    const mergedLastRefill =
-      data.lastTicketRefill !== undefined
-        ? data.lastTicketRefill
-          ? new Date(data.lastTicketRefill)
-          : null
-        : existing?.lastTicketRefill ?? null;
-
     const currency = await prisma.currencyData.upsert({
       where: { userId: req.userId },
-      update: {
-        diamonds: mergedDiamonds,
-        tickets: mergedTickets,
-        lastTicketRefill: mergedLastRefill,
-      },
-      create: {
-        userId: req.userId!,
-        diamonds: mergedDiamonds,
-        tickets: mergedTickets,
-        lastTicketRefill: mergedLastRefill,
-      },
+      update: {},
+      create: { userId: req.userId! },
     });
+
+    if (typeof data.diamonds === 'number' && data.diamonds > currency.diamonds) {
+      logger.warn(
+        { userId: req.userId, clientDiamonds: data.diamonds, serverDiamonds: currency.diamonds },
+        '[sync] client attempted to raise diamonds via PUT /currency — ignored (ledger is authoritative)'
+      );
+    }
+    if (typeof data.tickets === 'number' && data.tickets > currency.tickets) {
+      logger.warn(
+        { userId: req.userId, clientTickets: data.tickets, serverTickets: currency.tickets },
+        '[sync] client attempted to raise tickets via PUT /currency — ignored (ledger is authoritative)'
+      );
+    }
 
     res.json({ currency });
   } catch (err) {

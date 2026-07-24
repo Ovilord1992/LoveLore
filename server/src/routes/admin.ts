@@ -1,9 +1,19 @@
 import { Router, Response } from 'express';
+import path from 'path';
+import fs from 'fs';
 import prisma from '../db';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { adminMiddleware } from '../middleware/admin';
+import { adminSetCurrency } from '../economy/ledger';
+import { validateGameConfigInput } from '../config/schema';
+import { saveConfigWithHistory, rollbackConfig } from '../config/service';
+import { upsertChapterInZip } from '../utils/zip';
+import { invalidateNovelZipCache } from '../utils/zip-cache';
+import { logger } from '../utils/logger';
 
 export const adminRouter = Router();
+
+const uploadDir = process.env.UPLOAD_DIR || './uploads';
 
 // Все роуты защищены JWT + admin role
 adminRouter.use(authMiddleware);
@@ -23,10 +33,11 @@ adminRouter.get('/stats', async (_req: AuthRequest, res: Response) => {
     const week = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const month = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+    // Активность — по lastActiveAt (троттлится в authMiddleware), не по updatedAt.
     const [activeDay, activeWeek, activeMonth] = await Promise.all([
-      prisma.user.count({ where: { updatedAt: { gte: day } } }),
-      prisma.user.count({ where: { updatedAt: { gte: week } } }),
-      prisma.user.count({ where: { updatedAt: { gte: month } } }),
+      prisma.user.count({ where: { lastActiveAt: { gte: day } } }),
+      prisma.user.count({ where: { lastActiveAt: { gte: week } } }),
+      prisma.user.count({ where: { lastActiveAt: { gte: month } } }),
     ]);
 
     res.json({
@@ -37,6 +48,75 @@ adminRouter.get('/stats', async (_req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error('Admin stats error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/admin/analytics/summary ── Сводка аналитики (спека 2.4) ─────────
+adminRouter.get('/analytics/summary', async (req: AuthRequest, res: Response) => {
+  try {
+    const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+    const now = new Date();
+    const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const week = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const month = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [dau, wauRows, mauRows, newUsers, revenueAgg, revenueByDay, topRows] = await Promise.all([
+      prisma.$queryRaw<{ date: string; count: number }[]>`
+        SELECT to_char(date_trunc('day', ts), 'YYYY-MM-DD') AS date,
+               COUNT(DISTINCT COALESCE(user_id, device_id))::int AS count
+        FROM analytics_events
+        WHERE ts >= ${since}
+        GROUP BY 1 ORDER BY 1`,
+      prisma.$queryRaw<{ count: number }[]>`
+        SELECT COUNT(DISTINCT COALESCE(user_id, device_id))::int AS count
+        FROM analytics_events WHERE ts >= ${week}`,
+      prisma.$queryRaw<{ count: number }[]>`
+        SELECT COUNT(DISTINCT COALESCE(user_id, device_id))::int AS count
+        FROM analytics_events WHERE ts >= ${month}`,
+      prisma.$queryRaw<{ date: string; count: number }[]>`
+        SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS date, COUNT(*)::int AS count
+        FROM users
+        WHERE created_at >= ${since}
+        GROUP BY 1 ORDER BY 1`,
+      prisma.iapTransaction.aggregate({
+        _sum: { usdCents: true },
+        where: { verified: true, revokedAt: null, createdAt: { gte: since } },
+      }),
+      prisma.$queryRaw<{ date: string; usdCents: number }[]>`
+        SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS date,
+               COALESCE(SUM(usd_cents), 0)::int AS "usdCents"
+        FROM iap_transactions
+        WHERE verified = true AND revoked_at IS NULL AND usd_cents IS NOT NULL AND created_at >= ${since}
+        GROUP BY 1 ORDER BY 1`,
+      prisma.$queryRaw<{ id: string; chapterCompletes: number }[]>`
+        SELECT params->>'novelId' AS id, COUNT(*)::int AS "chapterCompletes"
+        FROM analytics_events
+        WHERE name = 'chapter_complete' AND ts >= ${since} AND params->>'novelId' IS NOT NULL
+        GROUP BY 1 ORDER BY 2 DESC LIMIT 10`,
+    ]);
+
+    const topIds = topRows.map((r) => r.id);
+    const titleRows = topIds.length
+      ? await prisma.novel.findMany({ where: { id: { in: topIds } }, select: { id: true, title: true } })
+      : [];
+    const titles = new Map(titleRows.map((n) => [n.id, n.title]));
+
+    res.json({
+      dau,
+      wau: wauRows[0]?.count ?? 0,
+      mau: mauRows[0]?.count ?? 0,
+      newUsers,
+      revenueEstimateUsdCents: revenueAgg._sum.usdCents ?? 0,
+      revenueByDay,
+      topNovels: topRows.map((r) => ({
+        id: r.id,
+        title: titles.get(r.id) ?? r.id,
+        chapterCompletes: r.chapterCompletes,
+      })),
+    });
+  } catch (err) {
+    console.error('Admin analytics summary error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -138,17 +218,26 @@ adminRouter.patch('/users/:id', async (req: AuthRequest, res: Response) => {
       await prisma.user.update({ where: { id: req.params.id }, data: updateData });
     }
 
-    // Обновляем валюту если передана
+    // Обновляем валюту через леджер (admin_grant/admin_deduct) — не прямым set.
     if (diamonds !== undefined || tickets !== undefined) {
-      const currencyData: Record<string, unknown> = {};
-      if (diamonds !== undefined) currencyData.diamonds = Number(diamonds);
-      if (tickets !== undefined) currencyData.tickets = Number(tickets);
-
-      await prisma.currencyData.upsert({
-        where: { userId: req.params.id },
-        update: currencyData,
-        create: { userId: req.params.id, ...currencyData },
-      });
+      const target: { diamonds?: number; tickets?: number } = {};
+      if (diamonds !== undefined) {
+        const d = Number(diamonds);
+        if (!Number.isFinite(d)) {
+          res.status(400).json({ error: 'diamonds must be a number' });
+          return;
+        }
+        target.diamonds = d;
+      }
+      if (tickets !== undefined) {
+        const t = Number(tickets);
+        if (!Number.isFinite(t)) {
+          res.status(400).json({ error: 'tickets must be a number' });
+          return;
+        }
+        target.tickets = t;
+      }
+      await adminSetCurrency(req.params.id, target, req.userId!);
     }
 
     // Возвращаем обновлённого пользователя
@@ -163,6 +252,41 @@ adminRouter.patch('/users/:id', async (req: AuthRequest, res: Response) => {
     res.json({ user: updated });
   } catch (err) {
     console.error('Admin user update error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/admin/users/:id/ledger ── Последние операции леджера ────────────
+adminRouter.get('/users/:id/ledger', async (req: AuthRequest, res: Response) => {
+  try {
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { id: true },
+    });
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const entries = await prisma.currencyLedger.findMany({
+      where: { userId: req.params.id },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        currency: true,
+        delta: true,
+        reason: true,
+        refId: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ entries, limit });
+  } catch (err) {
+    console.error('Admin user ledger error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -288,14 +412,37 @@ adminRouter.patch(
         return;
       }
 
+      const releasedAtProvided = releasedAt !== undefined;
+      let parsedReleasedAt: Date | null = null;
+      if (releasedAtProvided && releasedAt !== null) {
+        parsedReleasedAt = new Date(releasedAt);
+        if (isNaN(parsedReleasedAt.getTime())) {
+          res.status(400).json({ error: 'Invalid releasedAt' });
+          return;
+        }
+      }
+
       const updateData: Record<string, unknown> = {};
       if (isReleased !== undefined) {
         updateData.isReleased = Boolean(isReleased);
-        if (isReleased && !chapter.releasedAt) {
+        if (isReleased && !chapter.releasedAt && !releasedAtProvided) {
           updateData.releasedAt = new Date();
         }
       }
-      if (releasedAt !== undefined) updateData.releasedAt = new Date(releasedAt);
+      if (releasedAtProvided) updateData.releasedAt = parsedReleasedAt;
+
+      // Скрытая глава с прошедшим releasedAt была бы перевыпущена планировщиком
+      // в течение минуты — при скрытии без нового расписания дата обнуляется.
+      const effectiveReleased =
+        isReleased !== undefined ? Boolean(isReleased) : chapter.isReleased;
+      if (!effectiveReleased) {
+        const effectiveReleasedAt = releasedAtProvided
+          ? parsedReleasedAt
+          : chapter.releasedAt;
+        if (effectiveReleasedAt && effectiveReleasedAt.getTime() <= Date.now()) {
+          updateData.releasedAt = null;
+        }
+      }
       if (title !== undefined) updateData.title = title;
 
       const updated = await prisma.chapter.update({
@@ -312,6 +459,9 @@ adminRouter.patch(
         data: { releasedChapters: releasedCount },
       });
 
+      // Состав выпущенных глав изменился — кеш released-ZIP устарел.
+      invalidateNovelZipCache(req.params.id);
+
       res.json({ chapter: updated });
     } catch (err) {
       console.error('Admin chapter update error:', err);
@@ -319,6 +469,100 @@ adminRouter.patch(
     }
   }
 );
+
+// ─── POST /v1/admin/novels/:id/chapters ── Upsert одной главы в ZIP ──────────
+// Основной сценарий «выпустить новую главу без перезаливки всего архива»:
+// JSON главы вставляется/заменяется внутри ZIP, upsert строки Chapter
+// (сохраняя isReleased существующей), version++, инвалидация кеша.
+adminRouter.post('/novels/:id/chapters', async (req: AuthRequest, res: Response) => {
+  try {
+    const { chapter } = req.body ?? {};
+
+    if (!chapter || typeof chapter !== 'object') {
+      res.status(400).json({ error: 'chapter object is required' });
+      return;
+    }
+    if (typeof chapter.id !== 'string' || chapter.id.length === 0) {
+      res.status(400).json({ error: 'chapter.id is required' });
+      return;
+    }
+    if (typeof chapter.title !== 'string' || chapter.title.length === 0) {
+      res.status(400).json({ error: 'chapter.title is required' });
+      return;
+    }
+    if (typeof chapter.number !== 'number' || !Number.isInteger(chapter.number) || chapter.number < 1) {
+      res.status(400).json({ error: 'chapter.number must be a positive integer' });
+      return;
+    }
+    if (typeof chapter.firstSceneId !== 'string' || chapter.firstSceneId.length === 0) {
+      res.status(400).json({ error: 'chapter.firstSceneId is required' });
+      return;
+    }
+    if (!Array.isArray(chapter.scenes) || chapter.scenes.length === 0) {
+      res.status(400).json({ error: 'chapter.scenes must be a non-empty array' });
+      return;
+    }
+
+    const novel = await prisma.novel.findUnique({ where: { id: req.params.id } });
+    if (!novel || !novel.zipFilename) {
+      res.status(404).json({ error: 'Novel not found or has no uploaded pack' });
+      return;
+    }
+
+    const zipPath = path.resolve(uploadDir, 'packs', novel.zipFilename);
+    if (!fs.existsSync(zipPath)) {
+      res.status(404).json({ error: 'Novel file not found on server' });
+      return;
+    }
+
+    const existingRow = await prisma.chapter.findUnique({
+      where: { novelId_number: { novelId: novel.id, number: chapter.number } },
+    });
+
+    upsertChapterInZip(zipPath, chapter.number, JSON.stringify(chapter, null, 2));
+
+    const row = await prisma.chapter.upsert({
+      where: { novelId_number: { novelId: novel.id, number: chapter.number } },
+      // Существующая глава сохраняет isReleased/releasedAt.
+      update: { title: chapter.title },
+      create: {
+        novelId: novel.id,
+        number: chapter.number,
+        title: chapter.title,
+        isReleased: false,
+        releasedAt: null,
+      },
+    });
+
+    const [chaptersCount, releasedCount] = await Promise.all([
+      prisma.chapter.count({ where: { novelId: novel.id } }),
+      prisma.chapter.count({ where: { novelId: novel.id, isReleased: true } }),
+    ]);
+
+    const updatedNovel = await prisma.novel.update({
+      where: { id: novel.id },
+      data: {
+        version: { increment: 1 },
+        chaptersCount,
+        releasedChapters: releasedCount,
+        fileSize: fs.statSync(zipPath).size,
+      },
+      select: { id: true, version: true, chaptersCount: true, releasedChapters: true },
+    });
+
+    invalidateNovelZipCache(novel.id);
+    logger.info({ novelId: novel.id, number: chapter.number }, '[admin] chapter upserted into zip');
+
+    res.status(existingRow ? 200 : 201).json({
+      message: existingRow ? 'Chapter updated' : 'Chapter created',
+      chapter: row,
+      novel: updatedNovel,
+    });
+  } catch (err) {
+    console.error('Admin chapter upsert error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // ─── GET /v1/admin/config ── Получить конфигурацию ───────────────────────────
 adminRouter.get('/config', async (_req: AuthRequest, res: Response) => {
@@ -336,43 +580,88 @@ adminRouter.get('/config', async (_req: AuthRequest, res: Response) => {
   }
 });
 
-// ─── PUT /v1/admin/config ── Обновить конфигурацию ───────────────────────────
+// ─── PUT /v1/admin/config ── Обновить конфигурацию (zod + история) ───────────
 adminRouter.put('/config', async (req: AuthRequest, res: Response) => {
   try {
+    const validation = validateGameConfigInput(req.body ?? {});
+    if (!validation.ok) {
+      res.status(400).json({ error: 'Invalid config', details: validation.errors });
+      return;
+    }
+
     const { economy, ads, iap, vip, daily, achievements, localization } = req.body;
+    const { version } = await saveConfigWithHistory(
+      { economy, ads, iap, vip, daily, achievements, localization },
+      req.userId!
+    );
 
-    const current = await prisma.gameConfig.findUnique({
-      where: { id: 'singleton' },
-    });
-
-    const config = await prisma.gameConfig.upsert({
-      where: { id: 'singleton' },
-      update: {
-        version: (current?.version ?? 0) + 1,
-        ...(economy !== undefined && { economy }),
-        ...(ads !== undefined && { ads }),
-        ...(iap !== undefined && { iap }),
-        ...(vip !== undefined && { vip }),
-        ...(daily !== undefined && { daily }),
-        ...(achievements !== undefined && { achievements }),
-        ...(localization !== undefined && { localization }),
-      },
-      create: {
-        id: 'singleton',
-        version: 1,
-        economy: economy ?? {},
-        ads: ads ?? {},
-        iap: iap ?? {},
-        vip: vip ?? {},
-        daily: daily ?? [],
-        achievements: achievements ?? [],
-        localization: localization ?? {},
-      },
-    });
-
-    res.json({ message: 'Config updated', version: config.version });
+    res.json({ message: 'Config updated', version, warnings: validation.warnings });
   } catch (err) {
     console.error('Admin config update error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/admin/config/history ── Список версий конфига ───────────────────
+adminRouter.get('/config/history', async (_req: AuthRequest, res: Response) => {
+  try {
+    const history = await prisma.configHistory.findMany({
+      orderBy: { version: 'desc' },
+      take: 100,
+      select: { version: true, changedBy: true, createdAt: true },
+    });
+    res.json({ history });
+  } catch (err) {
+    console.error('Admin config history error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/admin/config/history/:version ── Полный снапшот версии ──────────
+adminRouter.get('/config/history/:version', async (req: AuthRequest, res: Response) => {
+  try {
+    const version = parseInt(req.params.version, 10);
+    if (isNaN(version)) {
+      res.status(400).json({ error: 'Invalid version' });
+      return;
+    }
+
+    const snapshot = await prisma.configHistory.findUnique({ where: { version } });
+    if (!snapshot) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+
+    res.json({
+      version: snapshot.version,
+      changedBy: snapshot.changedBy,
+      createdAt: snapshot.createdAt,
+      data: snapshot.data,
+    });
+  } catch (err) {
+    console.error('Admin config history detail error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/admin/config/rollback ── Откат к версии из истории ─────────────
+adminRouter.post('/config/rollback', async (req: AuthRequest, res: Response) => {
+  try {
+    const { version } = req.body ?? {};
+    if (typeof version !== 'number' || !Number.isInteger(version)) {
+      res.status(400).json({ error: 'version (integer) is required' });
+      return;
+    }
+
+    const result = await rollbackConfig(version, req.userId!);
+    if (!result.ok) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+
+    res.json({ message: 'Config rolled back', version: result.version, rolledBackTo: result.rolledBackTo });
+  } catch (err) {
+    console.error('Admin config rollback error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

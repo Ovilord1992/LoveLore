@@ -1,8 +1,13 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
-import { iapVerifyLimiter } from '../middleware/rate-limit';
+import { iapVerifyLimiter, storeNotificationsLimiter } from '../middleware/rate-limit';
 import { logger } from '../utils/logger';
 import { processIapPurchase } from '../iap/service';
+import {
+  processAppleNotification,
+  processGoogleNotification,
+  verifyGoogleRtdnAuth,
+} from '../iap/notifications';
 import type { IapPlatform } from '../iap/validators/types';
 
 export const iapRouter = Router();
@@ -68,6 +73,52 @@ iapRouter.post(
       });
     } catch (err) {
       logger.error({ err }, '[iap] verify error');
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// ─── POST /v1/iap/notifications/apple ── App Store Server Notifications V2 ──
+// Server-to-server, без auth. Без валидной подписи действия не выполняются —
+// payload сохраняется в StoreNotification, ответ 200.
+iapRouter.post(
+  '/notifications/apple',
+  storeNotificationsLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      const signedPayload = req.body?.signedPayload;
+      if (typeof signedPayload !== 'string' || signedPayload.length === 0) {
+        res.status(400).json({ error: 'signedPayload is required' });
+        return;
+      }
+
+      const result = await processAppleNotification(signedPayload);
+      res.json({ received: true, action: result.action });
+    } catch (err) {
+      logger.error({ err }, '[iap] apple notification error');
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+// ─── POST /v1/iap/notifications/google ── RTDN через Pub/Sub push ────────────
+// Верификация OIDC bearer (audience из env GOOGLE_RTDN_AUDIENCE). Если env не
+// задан — только сохранение payload. Идемпотентность по messageId.
+iapRouter.post(
+  '/notifications/google',
+  storeNotificationsLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      const audience = process.env.GOOGLE_RTDN_AUDIENCE || '';
+      let verified = false;
+      if (audience) {
+        verified = await verifyGoogleRtdnAuth(req.headers.authorization, audience);
+      }
+
+      const result = await processGoogleNotification(req.body ?? {}, verified);
+      res.json({ received: true, action: result.action });
+    } catch (err) {
+      logger.error({ err }, '[iap] google notification error');
       res.status(500).json({ error: 'Internal server error' });
     }
   }

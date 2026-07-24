@@ -29,13 +29,24 @@ const mocks = vi.hoisted(() => {
   };
   type MockCurrency = { userId: string; diamonds: number; tickets: number };
   type MockUser = { id: string; vipExpiresAt: Date | null };
+  type MockLedgerRow = {
+    id: string;
+    userId: string;
+    currency: string;
+    delta: number;
+    reason: string;
+    refId: string | null;
+    idempotencyKey: string;
+    createdAt: Date;
+  };
 
   const state = {
     txs: [] as MockTx[],
     currencies: new Map<string, MockCurrency>(),
     users: new Map<string, MockUser>(),
+    ledger: [] as MockLedgerRow[],
     config: {
-      iap: {} as Record<string, { diamonds?: number; tickets?: number; vipDays?: number }>,
+      iap: {} as Record<string, unknown>,
     },
   };
 
@@ -43,10 +54,15 @@ const mocks = vi.hoisted(() => {
     state.txs = [];
     state.currencies = new Map();
     state.users = new Map();
+    state.ledger = [];
     state.config.iap = {
       diamonds_20: { diamonds: 20 },
       starter_bundle: { diamonds: 100, tickets: 10 },
       vip_monthly: { vipDays: 30 },
+      products: [
+        { id: 'diamonds_20', usdCents: 199 },
+        { id: 'vip_monthly', usdCents: 999 },
+      ],
     };
   }
 
@@ -89,8 +105,11 @@ const mocks = vi.hoisted(() => {
       upsert: async ({ where, update, create }: any) => {
         const existing = state.currencies.get(where.userId);
         if (existing) {
+          // Поддерживаем и { increment }, и прямое присваивание числа.
           if (update.diamonds?.increment != null) existing.diamonds += update.diamonds.increment;
+          else if (typeof update.diamonds === 'number') existing.diamonds = update.diamonds;
           if (update.tickets?.increment != null) existing.tickets += update.tickets.increment;
+          else if (typeof update.tickets === 'number') existing.tickets = update.tickets;
           return existing;
         }
         const created: MockCurrency = {
@@ -100,6 +119,30 @@ const mocks = vi.hoisted(() => {
         };
         state.currencies.set(create.userId, created);
         return created;
+      },
+    },
+    currencyLedger: {
+      create: async ({ data }: any) => {
+        const dup = state.ledger.find(
+          (r) => r.userId === data.userId && r.idempotencyKey === data.idempotencyKey
+        );
+        if (dup) {
+          const err = new Error('Unique constraint failed') as Error & { code: string };
+          err.code = 'P2002';
+          throw err;
+        }
+        const row: MockLedgerRow = {
+          id: randomUuid(),
+          userId: data.userId,
+          currency: data.currency,
+          delta: data.delta,
+          reason: data.reason,
+          refId: data.refId ?? null,
+          idempotencyKey: data.idempotencyKey,
+          createdAt: new Date(),
+        };
+        state.ledger.push(row);
+        return row;
       },
     },
     user: {
@@ -237,6 +280,14 @@ describe('IAP — processIapPurchase', () => {
     expect(state.txs).toHaveLength(1);
     expect(state.txs[0]!.verified).toBe(true);
     expect(state.txs[0]!.rewardClaimed).toBe(true);
+    // usdCents из iap.products[] конфига
+    expect((state.txs[0] as any).usdCents).toBe(199);
+    // Начисление записано в леджер (reason 'iap', refId = transactionId)
+    expect(state.ledger).toHaveLength(1);
+    expect(state.ledger[0]!.reason).toBe('iap');
+    expect(state.ledger[0]!.currency).toBe('diamonds');
+    expect(state.ledger[0]!.delta).toBe(20);
+    expect(state.ledger[0]!.refId).toBe(state.txs[0]!.transactionId);
   });
 
   it('дедуп: повторный verify той же transaction → already_claimed, баланс не дублируется', async () => {

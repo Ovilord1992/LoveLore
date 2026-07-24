@@ -3,7 +3,8 @@ import prisma from '../db';
 import { logger } from '../utils/logger';
 import { getValidator } from './validators/factory';
 import type { VerifyRequest } from './validators/types';
-import { getRewardForProduct, type Reward } from './rewards';
+import { getRewardForProduct, getUsdCentsForProduct, type Reward } from './rewards';
+import { clampDelta } from '../economy/ledger';
 
 export type ProcessStatus = 'success' | 'already_claimed' | 'invalid';
 
@@ -82,13 +83,14 @@ export async function processIapPurchase(req: VerifyRequest): Promise<ProcessRes
     };
   }
 
-  // ─── Получаем reward ─────────────────────────────────────────────────────
+  // ─── Получаем reward + оценку суммы ──────────────────────────────────────
   const reward = await getRewardForProduct(productId);
+  const usdCents = await getUsdCentsForProduct(productId);
 
   // ─── Атомарное начисление ────────────────────────────────────────────────
   let tx: { newCurrency: { diamonds: number; tickets: number } | undefined; newVipExpiresAt: Date | null };
   try {
-    tx = await _runAwardTransaction(req.userId, platform, transactionId, productId, receiptHash, result.raw, reward);
+    tx = await _runAwardTransaction(req.userId, platform, transactionId, productId, receiptHash, result.raw, reward, usdCents);
   } catch (err: unknown) {
     // Race condition: другая параллельная verify создала запись с тем же
     // (platform, transactionId) → P2002 unique constraint violation.
@@ -124,6 +126,7 @@ async function _runAwardTransaction(
   receiptHash: string,
   rawResponse: unknown,
   reward: Reward,
+  usdCents: number | null,
 ): Promise<{ newCurrency: { diamonds: number; tickets: number } | undefined; newVipExpiresAt: Date | null }> {
   return prisma.$transaction(async (db) => {
     // 1. upsert транзакции
@@ -135,6 +138,7 @@ async function _runAwardTransaction(
       update: {
         verified: true,
         rewardClaimed: true,
+        ...(usdCents != null && { usdCents }),
       },
       create: {
         userId,
@@ -144,26 +148,54 @@ async function _runAwardTransaction(
         receiptHash,
         verified: true,
         rewardClaimed: true,
+        usdCents,
       },
     });
 
-    // 2. Currency (consumables)
+    // 2. Currency (consumables): начисление + записи в леджер (reason 'iap').
     let newCurrency: { diamonds: number; tickets: number } | undefined;
     if (reward.diamonds || reward.tickets) {
-      const updated = await db.currencyData.upsert({
+      const cur = await db.currencyData.findUnique({
         where: { userId },
-        update: {
-          diamonds: { increment: reward.diamonds ?? 0 },
-          tickets: { increment: reward.tickets ?? 0 },
-        },
-        create: {
-          userId,
-          diamonds: 50 + (reward.diamonds ?? 0),
-          tickets: 5 + (reward.tickets ?? 0),
-        },
         select: { diamonds: true, tickets: true },
       });
-      newCurrency = { diamonds: updated.diamonds, tickets: updated.tickets };
+      const baseDiamonds = cur?.diamonds ?? 50;
+      const baseTickets = cur?.tickets ?? 5;
+      const effDiamonds = clampDelta(baseDiamonds, reward.diamonds ?? 0);
+      const effTickets = clampDelta(baseTickets, reward.tickets ?? 0);
+      const newDiamonds = baseDiamonds + effDiamonds;
+      const newTickets = baseTickets + effTickets;
+
+      await db.currencyData.upsert({
+        where: { userId },
+        update: { diamonds: newDiamonds, tickets: newTickets },
+        create: { userId, diamonds: newDiamonds, tickets: newTickets },
+      });
+      if (effDiamonds !== 0) {
+        await db.currencyLedger.create({
+          data: {
+            userId,
+            currency: 'diamonds',
+            delta: effDiamonds,
+            reason: 'iap',
+            refId: transactionId,
+            idempotencyKey: `iap:${platform}:${transactionId}:diamonds`,
+          },
+        });
+      }
+      if (effTickets !== 0) {
+        await db.currencyLedger.create({
+          data: {
+            userId,
+            currency: 'tickets',
+            delta: effTickets,
+            reason: 'iap',
+            refId: transactionId,
+            idempotencyKey: `iap:${platform}:${transactionId}:tickets`,
+          },
+        });
+      }
+      newCurrency = { diamonds: newDiamonds, tickets: newTickets };
     } else {
       const cur = await db.currencyData.findUnique({
         where: { userId },

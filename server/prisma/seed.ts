@@ -1,16 +1,24 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seeding database...');
 
-  // Создаём админа
+  // Создаём админа. Пароль — из SEED_ADMIN_PASSWORD (легаси ADMIN_PASSWORD),
+  // иначе crypto-случайный с однократным выводом в stdout. Хардкода нет.
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@amoria.app';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  let adminPassword = process.env.SEED_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || '';
+  let passwordGenerated = false;
+  if (!adminPassword) {
+    adminPassword = crypto.randomBytes(18).toString('base64url');
+    passwordGenerated = true;
+  }
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 
+  const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
   await prisma.user.upsert({
     where: { email: adminEmail },
     update: { role: 'admin' },
@@ -23,7 +31,14 @@ async function main() {
       currency: { create: {} },
     },
   });
-  console.log(`Admin user: ${adminEmail}`);
+  if (existingAdmin) {
+    console.log(`Admin user: ${adminEmail} (already exists, password unchanged)`);
+  } else if (passwordGenerated) {
+    console.log(`Admin user: ${adminEmail}`);
+    console.log(`Generated admin password (save it now, it will not be shown again): ${adminPassword}`);
+  } else {
+    console.log(`Admin user: ${adminEmail} (password from env)`);
+  }
 
   await prisma.novel.upsert({
     where: { id: 'demo_novel' },
@@ -68,11 +83,15 @@ async function main() {
         startDiamonds: 50,
         startTickets: 5,
         diamondCostPerTicket: 10,
+        legacySyncCap: 1000,
       },
       ads: {
         maxAdsPerDay: 5,
         diamondReward: 3,
         ticketReward: 1,
+        rewardAmount: 3,
+        rewardedAdUnitIdAndroid: '',
+        rewardedAdUnitIdIos: '',
       },
       iap: {
         diamonds_20:  { diamonds: 20 },
@@ -81,6 +100,16 @@ async function main() {
         diamonds_500: { diamonds: 500 },
         tickets_5:    { tickets: 5 },
         starter_bundle: { diamonds: 100, tickets: 10 },
+        vip_monthly: { vipDays: 30 },
+        products: [
+          { id: 'diamonds_20',  usdCents: 199 },
+          { id: 'diamonds_60',  usdCents: 499 },
+          { id: 'diamonds_150', usdCents: 999 },
+          { id: 'diamonds_500', usdCents: 2999 },
+          { id: 'tickets_5',    usdCents: 299 },
+          { id: 'starter_bundle', usdCents: 599 },
+          { id: 'vip_monthly',  usdCents: 999 },
+        ],
       },
       vip: {
         dailyDiamonds: 5,

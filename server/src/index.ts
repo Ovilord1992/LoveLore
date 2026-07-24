@@ -10,13 +10,22 @@ import { syncRouter } from './routes/sync';
 import { adminRouter } from './routes/admin';
 import { configRouter } from './routes/config';
 import { iapRouter } from './routes/iap';
+import { economyRouter } from './routes/economy';
+import { analyticsRouter } from './routes/analytics';
+import { startChapterReleaseScheduler } from './scheduler';
 import { logger } from './utils/logger';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:5174')
+// CORS_ORIGINS — каноничное имя (спека 2.7); ALLOWED_ORIGINS поддерживается
+// для обратной совместимости.
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  process.env.ALLOWED_ORIGINS ||
+  'http://localhost:5173,http://localhost:5174'
+)
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
@@ -60,6 +69,8 @@ app.use('/v1/sync', syncRouter);
 app.use('/v1/admin', adminRouter);
 app.use('/v1/config', configRouter);
 app.use('/v1/iap', iapRouter);
+app.use('/v1/economy', economyRouter);
+app.use('/v1/analytics', analyticsRouter);
 
 // Health check
 app.get('/health', (_req, res) => {
@@ -104,5 +115,10 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(PORT, '0.0.0.0', () => {
   logger.info(`🚀 Amoria Server running on http://0.0.0.0:${PORT}`);
 });
+
+// Планировщик авторелиза глав (не в тестах).
+if (process.env.NODE_ENV !== 'test') {
+  startChapterReleaseScheduler();
+}
 
 export default app;
