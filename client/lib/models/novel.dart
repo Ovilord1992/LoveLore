@@ -153,6 +153,18 @@ class NovelMeta extends Equatable {
   /// v2: запрос имени игрока при первом старте
   final PlayerNamePrompt? playerNamePrompt;
 
+  /// v2.1: версия формата новеллы; при отсутствии в meta.json считается 1
+  /// (спека 4.1). Клиент поддерживает до `supportedFormatVersion`.
+  final int formatVersion;
+
+  /// v2.1: минимальная версия приложения (semver-строка), опционально
+  final String? minAppVersion;
+
+  /// v2.1 (спека 4.9): опубликована ли новелла. Сервер отдаёт false только
+  /// админам (тест-режим контента); в обычном каталоге поле отсутствует →
+  /// считаем true. Черновики помечаются бейджем «Черновик».
+  final bool isPublished;
+
   const NovelMeta({
     required this.id,
     required this.title,
@@ -172,6 +184,9 @@ class NovelMeta extends Equatable {
     this.endings = const [],
     this.statsDisplay = const [],
     this.playerNamePrompt,
+    this.formatVersion = 1,
+    this.minAppVersion,
+    this.isPublished = true,
   });
 
   factory NovelMeta.fromJson(Map<String, dynamic> json) =>
@@ -231,11 +246,14 @@ class NovelMeta extends Equatable {
       endings: endings,
       statsDisplay: statsDisplay,
       playerNamePrompt: playerNamePrompt,
+      formatVersion: formatVersion,
+      minAppVersion: minAppVersion,
+      isPublished: isPublished,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, chaptersCount, releasedChapters, dialogueTheme, dialogueFrameColor, dialogueBgColor, dialogueStyle, localizedTitle, localizedDescription, endings, statsDisplay, playerNamePrompt];
+  List<Object?> get props => [id, title, description, author, coverImage, coverUrl, tags, chaptersCount, releasedChapters, dialogueTheme, dialogueFrameColor, dialogueBgColor, dialogueStyle, localizedTitle, localizedDescription, endings, statsDisplay, playerNamePrompt, formatVersion, minAppVersion, isPublished];
 }
 
 /// Читает количество глав из JSON, поддерживая legacy-ключ "totalChapters".

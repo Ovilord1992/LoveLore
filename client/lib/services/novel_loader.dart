@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../models/models.dart';
 import 'api_config.dart';
+import 'auth_service.dart';
 import 'locale_service.dart';
 
 final novelLoaderProvider = Provider<NovelLoader>((ref) {
@@ -18,6 +19,16 @@ class NovelLoader {
   final Ref _ref;
 
   NovelLoader(this._ref);
+
+  /// Текущий access-токен (или null) — для опционального Bearer (спека 4.9)
+  String? get _authToken {
+    try {
+      return _ref.read(authServiceProvider).token;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Загрузить метаданные новеллы
   Future<NovelMeta> loadNovelMeta(String novelId) async {
     final json = await _loadJson(novelId, 'meta.json');
@@ -98,11 +109,18 @@ class NovelLoader {
       debugPrint('[NovelLoader] Failed to scan downloaded novels: $e');
     }
 
-    // 3. Каталог с сервера (новеллы, которых нет локально)
+    // 3. Каталог с сервера (новеллы, которых нет локально).
+    // Спека 4.9: если пользователь залогинен — шлём Bearer, чтобы админ
+    // видел черновики (для остальных сервер поведение не меняет).
     try {
+      final token = _authToken;
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/novels'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
+        },
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;

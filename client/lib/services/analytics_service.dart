@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'consent_service.dart';
 import 'http_client.dart';
 
 /// Провайдер сервиса аналитики (спека 2.3)
@@ -60,8 +61,13 @@ class AnalyticsService {
     }
   }
 
+  /// Разрешена ли аналитика (спека 4.10): при выключенном согласии события
+  /// не логируются и не отправляются — очередь не пополняется.
+  bool get _consentGranted => ConsentService.analyticsAllowed();
+
   /// Записать событие в очередь
   void log(String name, [Map<String, dynamic>? params]) {
+    if (!_consentGranted) return;
     try {
       final box = _box;
       if (box.length >= maxQueueLength) {
@@ -97,6 +103,7 @@ class AnalyticsService {
   }
 
   Future<void> _doFlush() async {
+    if (!_consentGranted) return;
     List<String> keys;
     List<Map<String, dynamic>> events;
     try {

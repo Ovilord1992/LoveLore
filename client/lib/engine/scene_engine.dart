@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../services/analytics_service.dart';
+import '../services/app_version.dart';
 import '../services/novel_loader.dart';
 import '../services/novel_api_service.dart';
 import '../services/reading_progress_service.dart';
@@ -24,6 +25,8 @@ enum ChapterTransition {
   error,
   // v2: достигнута концовка — показать экран концовки
   ending,
+  // v2.1: формат новеллы новее поддерживаемого — экран «Обновите приложение»
+  unsupportedFormat,
 }
 
 /// Основной провайдер движка игры
@@ -59,6 +62,10 @@ class StatChangeNotice {
 /// Последний батч изменений статов (game_screen показывает toast и очищает)
 final statChangesProvider =
     StateProvider<List<StatChangeNotice>>((ref) => const []);
+
+/// v2.1 (спека 4.2): уведомление о восстановлении битого сейва после
+/// обновления контента. GameScreen показывает snackbar и сбрасывает в null.
+final saveRestoreNoticeProvider = StateProvider<String?>((ref) => null);
 
 /// Движок проигрывания сцен
 class SceneEngine extends StateNotifier<GameState?> {
@@ -224,6 +231,19 @@ class SceneEngine extends StateNotifier<GameState?> {
 
     final loader = _ref.read(novelLoaderProvider);
     _novelMeta = await loader.loadNovelMeta(novelId);
+
+    // v2.1 (спека 4.1): формат новеллы новее поддерживаемого — вход
+    // заблокирован, GameScreen показывает экран «Обновите приложение».
+    if (_novelMeta != null && !isNovelFormatSupported(_novelMeta!)) {
+      debugPrint(
+          '[SceneEngine] Novel "$novelId" requires formatVersion '
+          '${_novelMeta!.formatVersion} (supported: $supportedFormatVersion) '
+          'or app >= ${_novelMeta!.minAppVersion} (current: $appVersion)');
+      _ref.read(chapterTransitionProvider.notifier).state =
+          ChapterTransition.unsupportedFormat;
+      return;
+    }
+
     _characters = await loader.loadCharacters(novelId);
 
     // Загрузить перевод по текущему языку
@@ -236,35 +256,12 @@ class SceneEngine extends StateNotifier<GameState?> {
     final savedState = forceNew ? null : saveService.loadLatest(novelId);
 
     if (savedState != null) {
-      // Восстановить главу и сцену из сохранения
-      _currentChapter = await loader.loadChapter(novelId, savedState.currentChapterId);
-      if (_currentChapter != null) {
-        _currentScene = _currentChapter!.getScene(savedState.currentSceneId);
-        if (_currentScene == null) {
-          debugPrint(
-              '[SceneEngine] Saved scene "${savedState.currentSceneId}" not found '
-              'in chapter ${_currentChapter!.id}, falling back to firstSceneId');
-          _currentScene = _currentChapter!.getScene(_currentChapter!.firstSceneId);
-          if (_currentScene == null) {
-            debugPrint(
-                '[SceneEngine] firstSceneId "${_currentChapter!.firstSceneId}" '
-                'also missing in chapter ${_currentChapter!.id}; staying at null');
-          }
-        }
-        // Если использовался fallback — синхронизируем currentSceneId/currentEventIndex
-        // в state, иначе автосейв перепишет save со старой невалидной sceneId.
-        if (_currentScene != null && _currentScene!.id != savedState.currentSceneId) {
-          state = savedState.copyWith(
-            currentSceneId: _currentScene!.id,
-            currentEventIndex: 0,
-          );
-        } else {
-          state = savedState;
-        }
-        _maybeSetRecap();
-        _logCurrent();
-        return;
-      }
+      // v2.1 (спека 4.2): восстановление обязано переживать любое
+      // изменение контента — глава/сцена/индекс валидируются с откатами.
+      final restored = await _restoreSavedState(loader, novelId, savedState);
+      if (restored) return;
+      // Восстановить не удалось совсем (нет даже главы 1) —
+      // падаем в поток новой игры ниже.
     }
 
     // Новая игра
@@ -302,25 +299,40 @@ class SceneEngine extends StateNotifier<GameState?> {
   }
 
   /// Восстановить игру из произвольного сохранения (ручные слоты).
-  /// Загружает главу/сцену, соответствующие [savedState].
+  /// Загружает главу/сцену, соответствующие [savedState], с откатами
+  /// по спеке 4.2 (глава → последняя доступная, сцена → firstSceneId,
+  /// индекс → кламп).
   Future<bool> restoreFromState(GameState savedState) async {
     final loader = _ref.read(novelLoaderProvider);
-    final chapter =
-        await loader.loadChapter(savedState.novelId, savedState.currentChapterId);
-    if (chapter == null) return false;
-    var scene = chapter.getScene(savedState.currentSceneId);
+    var chapter = await loader.loadChapter(
+        savedState.novelId, savedState.currentChapterId);
     var restored = savedState;
+    var recovered = false;
+    if (chapter == null) {
+      chapter = await _findLastAvailableChapter(
+          loader, savedState.novelId, savedState.currentChapterId);
+      if (chapter == null) return false;
+      recovered = true;
+      restored = restored.copyWith(
+        currentChapterId: chapter.id,
+        currentSceneId: chapter.firstSceneId,
+        currentEventIndex: 0,
+      );
+    }
+    var scene = chapter.getScene(restored.currentSceneId);
     if (scene == null) {
       scene = chapter.getScene(chapter.firstSceneId);
       if (scene == null) return false;
-      restored = savedState.copyWith(
+      recovered = true;
+      restored = restored.copyWith(
         currentSceneId: scene.id,
         currentEventIndex: 0,
       );
     }
-    // Индекс события за пределами сцены (битый сейв) — сбрасываем на 0
-    if (restored.currentEventIndex >= scene.events.length &&
-        scene.events.isNotEmpty) {
+    // Индекс события за пределами сцены (битый сейв) — кламп к началу сцены
+    if (restored.currentEventIndex != 0 &&
+        (restored.currentEventIndex < 0 ||
+            restored.currentEventIndex >= scene.events.length)) {
       restored = restored.copyWith(currentEventIndex: 0);
     }
     _transitioning = false;
@@ -330,9 +342,104 @@ class SceneEngine extends StateNotifier<GameState?> {
     _currentChapter = chapter;
     _currentScene = scene;
     state = restored.copyWith(lastPlayed: DateTime.now());
+    if (recovered) {
+      _notifySaveRestored();
+    }
     _lastLoggedKey = null;
     _logCurrent();
     return true;
+  }
+
+  /// v2.1 (спека 4.2): восстановление сейва при старте новеллы с откатами.
+  /// Возвращает true, если состояние восстановлено (возможно, с откатом);
+  /// false — восстановить нечего (нет ни главы сейва, ни доступных глав) —
+  /// вызывающий падает в поток новой игры.
+  Future<bool> _restoreSavedState(
+    NovelLoader loader,
+    String novelId,
+    GameState savedState,
+  ) async {
+    var restored = savedState;
+    var recovered = false; // был ли откат (показать snackbar)
+
+    var chapter =
+        await loader.loadChapter(novelId, savedState.currentChapterId);
+    if (chapter == null) {
+      // 4.2.2: глава отсутствует/не выпущена → последняя доступная (или 1)
+      chapter = await _findLastAvailableChapter(
+          loader, novelId, savedState.currentChapterId);
+      if (chapter == null) return false;
+      debugPrint(
+          '[SceneEngine] Saved chapter "${savedState.currentChapterId}" not '
+          'found, falling back to "${chapter.id}"');
+      recovered = true;
+      restored = restored.copyWith(
+        currentChapterId: chapter.id,
+        currentSceneId: chapter.firstSceneId,
+        currentEventIndex: 0,
+      );
+    }
+
+    _currentChapter = chapter;
+    _currentScene = chapter.getScene(restored.currentSceneId);
+    if (_currentScene == null) {
+      // 4.2.1: сцена из сейва не найдена → firstSceneId главы
+      debugPrint(
+          '[SceneEngine] Saved scene "${restored.currentSceneId}" not found '
+          'in chapter ${chapter.id}, falling back to firstSceneId');
+      recovered = true;
+      _currentScene = chapter.getScene(chapter.firstSceneId);
+      if (_currentScene != null) {
+        restored = restored.copyWith(
+          currentSceneId: _currentScene!.id,
+          currentEventIndex: 0,
+        );
+      } else {
+        debugPrint(
+            '[SceneEngine] firstSceneId "${chapter.firstSceneId}" also '
+            'missing in chapter ${chapter.id}; staying at null');
+      }
+    }
+
+    // 4.2.3: eventIndex вне диапазона → кламп к началу сцены
+    final scene = _currentScene;
+    if (scene != null &&
+        restored.currentEventIndex != 0 &&
+        (restored.currentEventIndex < 0 ||
+            restored.currentEventIndex >= scene.events.length)) {
+      restored = restored.copyWith(currentEventIndex: 0);
+    }
+
+    state = restored;
+    if (recovered) {
+      _notifySaveRestored();
+    }
+    _maybeSetRecap();
+    _logCurrent();
+    return true;
+  }
+
+  /// Найти последнюю доступную главу ниже сохранённой (или главу 1).
+  Future<Chapter?> _findLastAvailableChapter(
+    NovelLoader loader,
+    String novelId,
+    String savedChapterId,
+  ) async {
+    final match = RegExp(r'(\d+)\s*$').firstMatch(savedChapterId);
+    final savedNumber = int.tryParse(match?.group(1) ?? '') ?? 1;
+    for (var n = savedNumber - 1; n >= 1; n--) {
+      final chapter = await loader.loadChapter(novelId, 'chapter_$n');
+      if (chapter != null) return chapter;
+    }
+    // Нестандартный id или ничего не нашли — пробуем главу 1 напрямую
+    return loader.loadChapter(novelId, 'chapter_1');
+  }
+
+  /// Snackbar «История была обновлена…» (спека 4.2) — через существующий
+  /// механизм уведомлений (провайдер + listener в GameScreen).
+  void _notifySaveRestored() {
+    _ref.read(saveRestoreNoticeProvider.notifier).state =
+        'История была обновлена — прогресс возвращён к началу главы';
   }
 
   /// Перейти к следующему событию
@@ -364,8 +471,14 @@ class SceneEngine extends StateNotifier<GameState?> {
     }
 
     // Конец главы — переход к следующей.
-    // Guard от повторного входа: без него быстрые тапы на последнем событии
-    // многократно накручивают статистику и запускают гонку сетевых запросов.
+    _completeChapter();
+  }
+
+  /// Стандартный поток конца главы: аналитика, статистика, ачивки, переход.
+  /// Guard от повторного входа: без него быстрые тапы на последнем событии
+  /// многократно накручивают статистику и запускают гонку сетевых запросов.
+  void _completeChapter() {
+    if (state == null) return;
     if (_transitioning) return;
     _transitioning = true;
     _ref.read(analyticsServiceProvider).log('chapter_complete', {
@@ -616,7 +729,16 @@ class SceneEngine extends StateNotifier<GameState?> {
     if (_currentChapter == null) return;
 
     final scene = _currentChapter!.getScene(sceneId);
-    if (scene == null) return;
+    if (scene == null) {
+      // v2.1 (спека 4.2.4): рантайм-переход в несуществующую сцену
+      // (nextSceneId/branch указывает в никуда) → лог + стандартный поток
+      // конца главы. Не крэш и не мёртвый экран.
+      debugPrint(
+          '[SceneEngine] Scene "$sceneId" not found in chapter '
+          '${_currentChapter!.id} — treating as end of chapter');
+      _completeChapter();
+      return;
+    }
 
     _currentScene = scene;
     state = state!.copyWith(

@@ -2,20 +2,25 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../services/locale_service.dart';
 import '../services/settings_service.dart';
 import 'package:path_provider/path_provider.dart';
 import '../engine/scene_engine.dart';
 import '../models/scene.dart';
 import '../models/game_state.dart';
+import '../services/app_version.dart';
 import '../services/audio_service.dart';
+import '../services/novel_loader.dart';
 import '../services/save_service.dart';
 import '../services/currency_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/achievement_service.dart';
 import '../services/ad_service.dart';
+import '../services/review_prompt_service.dart';
 import '../services/vip_service.dart';
 import '../services/wardrobe_service.dart';
+import '../widgets/rating_dialog.dart';
 import '../widgets/dialogue_box.dart';
 import '../widgets/dialogue_overlay.dart';
 import '../widgets/choice_buttons.dart';
@@ -76,6 +81,8 @@ class _GameScreenState extends ConsumerState<GameScreen>
   Timer? _ffTimer;
   // Показан ли запрос имени игрока
   bool _namePromptShown = false;
+  // v2.1: формат новеллы новее поддерживаемого — вход заблокирован (спека 4.1)
+  bool _formatBlocked = false;
   // Путь Documents (резолв картинок концовки)
   String? _docsPath;
   // Immersive mode: top UI auto-hide
@@ -103,6 +110,26 @@ class _GameScreenState extends ConsumerState<GameScreen>
 
   Future<void> _loadNovel() async {
     _audio = ref.read(audioServiceProvider);
+
+    // v2.1 (спека 4.1): гейт версии формата ДО траты билета — иначе игрок
+    // потеряет билет на новелле, которую всё равно нельзя открыть.
+    try {
+      final meta =
+          await ref.read(novelLoaderProvider).loadNovelMeta(widget.novelId);
+      if (!isNovelFormatSupported(meta)) {
+        if (mounted) {
+          setState(() {
+            _formatBlocked = true;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+    } catch (_) {
+      // Мета не загрузилась — обычный поток покажет свою ошибку
+    }
+    if (!mounted) return;
+
     // VIP — безлимитные билеты
     final vip = ref.read(vipServiceProvider);
     if (!vip.isActive) {
@@ -395,6 +422,38 @@ class _GameScreenState extends ConsumerState<GameScreen>
         engine.reloadTranslation();
       }
     });
+
+    // Волна 3 (чеклист 5): in-app review после завершения главы —
+    // триггер «5 завершённых глав» проверяется внутри сервиса.
+    ref.listen<ChapterTransition>(chapterTransitionProvider, (prev, next) {
+      if (prev == next) return;
+      if (next == ChapterTransition.completed ||
+          next == ChapterTransition.needsDownload ||
+          next == ChapterTransition.notReleased) {
+        // ignore: discarded_futures
+        ref.read(reviewPromptServiceProvider).maybePrompt();
+      }
+    });
+
+    // v2.1 (спека 4.2): snackbar «История была обновлена…» при откате
+    // битого сейва — через существующий механизм уведомлений.
+    ref.listen<String?>(saveRestoreNoticeProvider, (prev, next) {
+      if (next == null || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(next),
+          duration: const Duration(seconds: 4),
+          backgroundColor: AppTheme.surfaceDark,
+        ),
+      );
+      ref.read(saveRestoreNoticeProvider.notifier).state = null;
+    });
+
+    // v2.1 (спека 4.1): несовместимый формат — экран «Обновите приложение»
+    if (_formatBlocked ||
+        chapterTransition == ChapterTransition.unsupportedFormat) {
+      return _buildUpdateRequiredScreen();
+    }
 
     if (_isLoading || gameState == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -1169,6 +1228,53 @@ class _GameScreenState extends ConsumerState<GameScreen>
     return _parseColor(hex);
   }
 
+  /// Выход с экрана концовки: одноразовый (per novel) промпт «Оцените
+  /// историю» (чеклист 4) + системный in-app review (чеклист 5).
+  Future<void> _exitAfterEnding() async {
+    try {
+      final box = Hive.box<String>('app_settings');
+      final flagKey = 'rate_prompt_shown_${widget.novelId}';
+      if (box.get(flagKey) == null) {
+        await box.put(flagKey, 'true');
+        if (!mounted) return;
+        final wantsRate = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppTheme.surfaceColor(ctx),
+            title: const Text('Оцените историю',
+                style: TextStyle(color: Colors.white)),
+            content: const Text(
+              'Понравилась история? Ваша оценка поможет другим читателям '
+              'найти её.',
+              style: TextStyle(color: Colors.white70, height: 1.5),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Позже',
+                    style: TextStyle(color: Colors.white54)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Оценить',
+                    style: TextStyle(color: AppTheme.primary)),
+              ),
+            ],
+          ),
+        );
+        if (wantsRate == true && mounted) {
+          await showRatingDialog(context, ref, widget.novelId);
+        }
+      }
+    } catch (_) {}
+    // In-app review: концовка достигнута — условие «первая концовка»
+    // и 30-дневный троттлинг проверяются в сервисе.
+    try {
+      await ref.read(reviewPromptServiceProvider).maybePrompt();
+    } catch (_) {}
+    if (mounted) Navigator.of(context).pop();
+  }
+
   /// v2: экран концовки (спека 1.3)
   Widget _buildEndingScreen(SceneEngine engine) {
     final ending = engine.currentEnding;
@@ -1262,7 +1368,7 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   ],
                   const SizedBox(height: 32),
                   ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _exitAfterEnding,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
@@ -1278,6 +1384,73 @@ class _GameScreenState extends ConsumerState<GameScreen>
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// v2.1 (спека 4.1): экран «Обновите приложение» для новелл
+  /// с formatVersion выше поддерживаемого или minAppVersion выше текущей.
+  Widget _buildUpdateRequiredScreen() {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0F3460), AppTheme.bgDark],
+          ),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.system_update,
+                  size: 64,
+                  color: AppTheme.primary,
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Обновите приложение',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Эта история создана для новой версии Amoria.\n'
+                  'Обновите приложение, чтобы продолжить чтение.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child: const Text('Вернуться в библиотеку'),
+                ),
+              ],
             ),
           ),
         ),

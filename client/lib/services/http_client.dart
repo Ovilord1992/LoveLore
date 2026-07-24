@@ -70,6 +70,16 @@ class ApiHttpClient {
         body: body, auth: auth, optionalAuth: optionalAuth);
   }
 
+  Future<http.Response> delete(
+    String path, {
+    Object? body,
+    bool auth = true,
+    bool optionalAuth = false,
+  }) {
+    return _send('DELETE', path,
+        body: body, auth: auth, optionalAuth: optionalAuth);
+  }
+
   Future<http.Response> _send(
     String method,
     String path, {

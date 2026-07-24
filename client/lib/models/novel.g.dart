@@ -103,6 +103,9 @@ NovelMeta _$NovelMetaFromJson(Map<String, dynamic> json) => NovelMeta(
       : PlayerNamePrompt.fromJson(
           json['playerNamePrompt'] as Map<String, dynamic>,
         ),
+  formatVersion: (json['formatVersion'] as num?)?.toInt() ?? 1,
+  minAppVersion: json['minAppVersion'] as String?,
+  isPublished: json['isPublished'] as bool? ?? true,
 );
 
 Map<String, dynamic> _$NovelMetaToJson(NovelMeta instance) => <String, dynamic>{
@@ -122,4 +125,7 @@ Map<String, dynamic> _$NovelMetaToJson(NovelMeta instance) => <String, dynamic>{
   'endings': instance.endings,
   'statsDisplay': instance.statsDisplay,
   'playerNamePrompt': instance.playerNamePrompt,
+  'formatVersion': instance.formatVersion,
+  'minAppVersion': instance.minAppVersion,
+  'isPublished': instance.isPublished,
 };

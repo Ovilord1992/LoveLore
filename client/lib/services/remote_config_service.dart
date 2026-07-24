@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 import 'api_config.dart';
+import 'config_overrides.dart';
 
 final remoteConfigProvider =
     StateNotifierProvider<RemoteConfigService, RemoteConfig>((ref) {
@@ -20,6 +23,7 @@ class RemoteConfig {
   final List<DailyRewardConfig> daily;
   final List<AchievementConfig> achievements;
   final Map<String, Map<String, String>> localization;
+  final LinksConfig links;
 
   const RemoteConfig({
     this.version = 0,
@@ -30,6 +34,7 @@ class RemoteConfig {
     this.daily = const [],
     this.achievements = const [],
     this.localization = const {},
+    this.links = const LinksConfig(),
   });
 
   factory RemoteConfig.fromJson(Map<String, dynamic> json) {
@@ -51,6 +56,8 @@ class RemoteConfig {
               .toList() ??
           [],
       localization: _parseLocalization(json['localization']),
+      links:
+          LinksConfig.fromJson(json['links'] as Map<String, dynamic>? ?? {}),
     );
   }
 
@@ -63,6 +70,7 @@ class RemoteConfig {
         'daily': daily.map((e) => e.toJson()).toList(),
         'achievements': achievements.map((e) => e.toJson()).toList(),
         'localization': localization,
+        'links': links.toJson(),
       };
 
   static Map<String, Map<String, String>> _parseLocalization(dynamic raw) {
@@ -230,6 +238,28 @@ class DailyRewardConfig {
       };
 }
 
+/// v2.1 (спека 4.10): ссылки на политику конфиденциальности и условия
+/// использования — показываются на экране согласий и в настройках.
+class LinksConfig {
+  final String privacyPolicyUrl;
+  final String termsUrl;
+
+  const LinksConfig({
+    this.privacyPolicyUrl = '',
+    this.termsUrl = '',
+  });
+
+  factory LinksConfig.fromJson(Map<String, dynamic> json) => LinksConfig(
+        privacyPolicyUrl: json['privacyPolicyUrl'] as String? ?? '',
+        termsUrl: json['termsUrl'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'privacyPolicyUrl': privacyPolicyUrl,
+        'termsUrl': termsUrl,
+      };
+}
+
 class AchievementConfig {
   final String id;
   final String title;
@@ -291,12 +321,61 @@ const _defaultConfig = RemoteConfig(
 class RemoteConfigService extends StateNotifier<RemoteConfig> {
   static const _boxName = 'app_settings';
   static const _cacheKey = 'remote_config';
+  static const _deviceIdKey = 'device_id';
+
+  /// Ключ даты первого запуска (для условий installedAfter/Before, спека 4.6)
+  static const firstLaunchKey = 'first_launch_ts';
 
   /// Текущий конфиг (для чтения из main.dart)
   RemoteConfig get config => state;
 
-  RemoteConfigService() : super(_defaultConfig) {
+  /// Контекст для сегментов/экспериментов (инъекция в тестах)
+  final OverrideContext Function() _contextProvider;
+
+  /// Сырой конфиг (base, без overrides) — именно он кешируется, чтобы
+  /// секции experiments/segments переживали рестарт, а overrides
+  /// пересчитывались на актуальном контексте.
+  Map<String, dynamic>? _rawConfig;
+
+  /// Эксперименты, применённые к этому устройству: expId → variant
+  final Map<String, String> _appliedExperiments = {};
+
+  /// Эксперименты, по которым exposure уже отправлен в этой сессии
+  final Set<String> _exposuresSent = {};
+
+  void Function(String name, [Map<String, dynamic>? params])? _exposureLogger;
+
+  RemoteConfigService({OverrideContext Function()? contextProvider})
+      : _contextProvider = contextProvider ?? defaultOverrideContext,
+        super(_defaultConfig) {
+    _ensureFirstLaunchTs();
     _loadCached();
+  }
+
+  /// Применённые эксперименты (expId → variant) — для отладки/тестов
+  Map<String, String> get appliedExperiments =>
+      Map.unmodifiable(_appliedExperiments);
+
+  /// Подключить логгер аналитики для событий `experiment_exposure`
+  /// (вызывается один раз при старте приложения из app.dart).
+  /// Каждый применённый эксперимент логируется не чаще раза за сессию.
+  void attachExposureLogger(
+    void Function(String name, [Map<String, dynamic>? params]) logger,
+  ) {
+    _exposureLogger = logger;
+    _drainExposures();
+  }
+
+  void _drainExposures() {
+    final logger = _exposureLogger;
+    if (logger == null) return;
+    for (final entry in _appliedExperiments.entries) {
+      if (!_exposuresSent.add(entry.key)) continue;
+      logger('experiment_exposure', {
+        'experimentId': entry.key,
+        'variant': entry.value,
+      });
+    }
   }
 
   /// Загрузить конфиг с сервера (вызывается из main.dart)
@@ -319,7 +398,7 @@ class RemoteConfigService extends StateNotifier<RemoteConfig> {
       }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
-      state = RemoteConfig.fromJson(json);
+      _applyRaw(json);
       debugPrint('[RemoteConfig] Loaded v${state.version} from server');
       _saveCache();
     } catch (e) {
@@ -327,13 +406,101 @@ class RemoteConfigService extends StateNotifier<RemoteConfig> {
     }
   }
 
+  /// Применить сырой конфиг: overrides сегментов/экспериментов (спека 4.6)
+  /// накладываются ДО того, как конфиг становится доступен типизированным
+  /// геттерам (state).
+  void _applyRaw(Map<String, dynamic> raw) {
+    _rawConfig = raw;
+    final applied = <AppliedExperiment>[];
+    Map<String, dynamic> effective;
+    try {
+      effective = applyConfigOverrides(
+        raw,
+        context: _contextProvider(),
+        appliedExperiments: applied,
+      );
+    } catch (e) {
+      debugPrint('[RemoteConfig] Overrides failed: $e (using base config)');
+      effective = raw;
+    }
+    state = RemoteConfig.fromJson(effective);
+    for (final exp in applied) {
+      _appliedExperiments[exp.experimentId] = exp.variant;
+    }
+    _drainExposures();
+  }
+
+  /// Дата первого запуска: проставляется один раз при первом старте
+  void _ensureFirstLaunchTs() {
+    try {
+      final box = Hive.box<String>(_boxName);
+      if (box.get(firstLaunchKey) == null) {
+        box.put(
+          firstLaunchKey,
+          DateTime.now().millisecondsSinceEpoch.toString(),
+        );
+      }
+    } catch (_) {}
+  }
+
+  /// Контекст по умолчанию: deviceId/vip/first_launch — из Hive,
+  /// платформа — из dart:io.
+  static OverrideContext defaultOverrideContext() {
+    var deviceId = 'unknown';
+    var isVip = false;
+    DateTime? firstLaunch;
+    try {
+      final box = Hive.box<String>(_boxName);
+      var id = box.get(_deviceIdKey);
+      if (id == null || id.isEmpty) {
+        id = const Uuid().v4();
+        box.put(_deviceIdKey, id);
+      }
+      deviceId = id;
+
+      final vipRaw = box.get('vip_state');
+      if (vipRaw != null) {
+        final vipJson = jsonDecode(vipRaw) as Map<String, dynamic>;
+        if (vipJson['isActive'] == true) {
+          final expiresAt = vipJson['expiresAt'];
+          final expiry =
+              expiresAt is String ? DateTime.tryParse(expiresAt) : null;
+          isVip = expiry == null || expiry.isAfter(DateTime.now());
+        }
+      }
+
+      final launchRaw = box.get(firstLaunchKey);
+      final launchMs = launchRaw != null ? int.tryParse(launchRaw) : null;
+      if (launchMs != null) {
+        firstLaunch = DateTime.fromMillisecondsSinceEpoch(launchMs);
+      }
+    } catch (_) {}
+
+    String platform;
+    try {
+      platform = Platform.isIOS
+          ? 'ios'
+          : Platform.isAndroid
+              ? 'android'
+              : Platform.operatingSystem;
+    } catch (_) {
+      platform = 'unknown';
+    }
+
+    return OverrideContext(
+      deviceId: deviceId,
+      platform: platform,
+      isVip: isVip,
+      firstLaunchAt: firstLaunch,
+    );
+  }
+
   void _loadCached() {
     try {
       final box = Hive.box<String>(_boxName);
       final data = box.get(_cacheKey);
       if (data != null) {
-        state = RemoteConfig.fromJson(
-            jsonDecode(data) as Map<String, dynamic>);
+        _applyRaw(jsonDecode(data) as Map<String, dynamic>);
       }
     } catch (_) {}
   }
@@ -341,7 +508,9 @@ class RemoteConfigService extends StateNotifier<RemoteConfig> {
   Future<void> _saveCache() async {
     try {
       final box = Hive.box<String>(_boxName);
-      await box.put(_cacheKey, jsonEncode(state.toJson()));
+      final raw = _rawConfig;
+      if (raw == null) return;
+      await box.put(_cacheKey, jsonEncode(raw));
     } catch (_) {}
   }
 }

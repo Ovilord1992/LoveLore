@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app/theme.dart';
+import '../services/account_service.dart';
+import '../services/auth_service.dart';
+import '../services/consent_service.dart';
+import '../services/notification_service.dart';
+import '../services/remote_config_service.dart';
 import '../services/settings_service.dart';
 import '../services/locale_service.dart';
+import 'auth_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -11,6 +17,13 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsServiceProvider);
     final settingsNotifier = ref.read(settingsServiceProvider.notifier);
+    final authState = ref.watch(authServiceProvider);
+    final consent = ref.watch(consentServiceProvider);
+    final consentNotifier = ref.read(consentServiceProvider.notifier);
+    final notificationPrefs = ref.watch(notificationServiceProvider);
+    final notificationNotifier =
+        ref.read(notificationServiceProvider.notifier);
+    final links = ref.watch(remoteConfigProvider).links;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -180,6 +193,26 @@ class SettingsScreen extends ConsumerWidget {
             onChanged: (_) => settingsNotifier.toggleNotifications(),
           ),
           const SizedBox(height: 8),
+          // Волна 3 (4.10): локальные напоминания (default off,
+          // при включении — запрос разрешений Android 13+ / iOS)
+          _SwitchTile(
+            icon: Icons.bolt_outlined,
+            label: 'Напоминать о билетах',
+            subtitle: 'Уведомление, когда билеты восстановятся',
+            value: notificationPrefs.ticketRefill,
+            onChanged: (v) =>
+                notificationNotifier.setTicketRefillEnabled(v),
+          ),
+          const SizedBox(height: 8),
+          _SwitchTile(
+            icon: Icons.card_giftcard_outlined,
+            label: 'Напоминать о ежедневной награде',
+            subtitle: 'Вечернее напоминание, если награда не забрана',
+            value: notificationPrefs.dailyReward,
+            onChanged: (v) =>
+                notificationNotifier.setDailyRewardEnabled(v),
+          ),
+          const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -235,6 +268,47 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 24),
 
+          // Волна 3 (спека 4.10): приватность — согласия и ссылки
+          const _SectionTitle('🔒 Приватность'),
+          _SwitchTile(
+            icon: Icons.analytics_outlined,
+            label: 'Анонимная аналитика',
+            subtitle: 'Помогает улучшать истории и приложение',
+            value: consent.analytics,
+            onChanged: (v) => consentNotifier.setAnalytics(v),
+          ),
+          const SizedBox(height: 8),
+          _SwitchTile(
+            icon: Icons.ads_click_outlined,
+            label: 'Персонализированная реклама',
+            subtitle: 'При выключении реклама показывается без подбора',
+            value: consent.adsPersonalized,
+            onChanged: (v) => consentNotifier.setAdsPersonalized(v),
+          ),
+          const SizedBox(height: 8),
+          _LinkTile(
+            icon: Icons.privacy_tip_outlined,
+            label: 'Политика конфиденциальности',
+            url: links.privacyPolicyUrl,
+          ),
+          const SizedBox(height: 8),
+          _LinkTile(
+            icon: Icons.description_outlined,
+            label: 'Условия использования',
+            url: links.termsUrl,
+          ),
+
+          // v2.1 (спека 4.7): аккаунт — экспорт данных и удаление
+          if (authState.isLoggedIn) ...[
+            const SizedBox(height: 24),
+            const _SectionTitle('👤 Аккаунт'),
+            const _ExportDataTile(),
+            const SizedBox(height: 8),
+            const _DeleteAccountTile(),
+          ],
+
+          const SizedBox(height: 24),
+
           // О приложении
           _SectionTitle(ref.tr('about')),
           _InfoTile(
@@ -243,6 +317,272 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: ref.tr('version'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// v2.1 (спека 4.7): «Скачать мои данные» — GET /v1/auth/export →
+/// JSON-файл в Documents + snackbar с путём.
+class _ExportDataTile extends ConsumerStatefulWidget {
+  const _ExportDataTile();
+
+  @override
+  ConsumerState<_ExportDataTile> createState() => _ExportDataTileState();
+}
+
+class _ExportDataTileState extends ConsumerState<_ExportDataTile> {
+  bool _busy = false;
+
+  Future<void> _export() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    String message;
+    try {
+      final path = await ref.read(accountServiceProvider).exportData();
+      message = 'Данные сохранены: $path';
+    } on AccountServiceException catch (e) {
+      message = e.message;
+    } catch (_) {
+      message = 'Не удалось скачать данные. Попробуйте позже';
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 5)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: _export,
+        child: Row(
+          children: [
+            const Icon(Icons.download_outlined,
+                color: Colors.white54, size: 20),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Скачать мои данные',
+                      style: TextStyle(color: Colors.white)),
+                  Text('Экспорт в JSON-файл (GDPR)',
+                      style: TextStyle(fontSize: 12, color: Colors.white38)),
+                ],
+              ),
+            ),
+            if (_busy)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: AppTheme.primary),
+              )
+            else
+              const Icon(Icons.chevron_right, color: Colors.white24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// v2.1 (спека 4.7): «Удалить аккаунт» — двойное подтверждение →
+/// DELETE /v1/auth/account → полный локальный wipe → экран входа.
+class _DeleteAccountTile extends ConsumerStatefulWidget {
+  const _DeleteAccountTile();
+
+  @override
+  ConsumerState<_DeleteAccountTile> createState() =>
+      _DeleteAccountTileState();
+}
+
+class _DeleteAccountTileState extends ConsumerState<_DeleteAccountTile> {
+  bool _busy = false;
+
+  Future<void> _confirmAndDelete() async {
+    if (_busy) return;
+
+    // Подтверждение №1
+    final first = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(ctx),
+        title: const Text('Удалить аккаунт?',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Аккаунт будет удалён навсегда: прогресс, покупки и валюта '
+          'восстановить будет нельзя.',
+          style: TextStyle(color: Colors.white70, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Продолжить',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (first != true || !mounted) return;
+
+    // Подтверждение №2 (двойное, спека 4.7)
+    final second = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(ctx),
+        title: const Text('Точно удалить?',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Это действие необратимо. Все данные аккаунта будут удалены '
+          'с сервера, а локальные — очищены.',
+          style: TextStyle(color: Colors.white70, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить навсегда',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (second != true || !mounted) return;
+
+    setState(() => _busy = true);
+    final success = await ref.read(accountServiceProvider).deleteAccount();
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (success) {
+      // Полный wipe выполнен — на экран входа, стек очищаем
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (_) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось удалить аккаунт. Попробуйте позже'),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+      ),
+      child: InkWell(
+        onTap: _confirmAndDelete,
+        child: Row(
+          children: [
+            const Icon(Icons.delete_forever_outlined,
+                color: Colors.redAccent, size: 20),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Удалить аккаунт',
+                      style: TextStyle(color: Colors.redAccent)),
+                  Text('Безвозвратно, с удалением данных',
+                      style: TextStyle(fontSize: 12, color: Colors.white38)),
+                ],
+              ),
+            ),
+            if (_busy)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.redAccent),
+              )
+            else
+              const Icon(Icons.chevron_right, color: Colors.white24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Волна 3 (4.10): пункт-ссылка (privacy/terms). url_launcher в зависимостях
+/// не используем — URL показывается в диалоге для копирования.
+class _LinkTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String url;
+
+  const _LinkTile({
+    required this.icon,
+    required this.label,
+    required this.url,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppTheme.surfaceColor(ctx),
+              title: Text(label, style: const TextStyle(color: Colors.white)),
+              content: SelectableText(
+                url.isNotEmpty ? url : 'Ссылка появится позже',
+                style: const TextStyle(color: Colors.white70, height: 1.5),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Закрыть',
+                      style: TextStyle(color: AppTheme.primary)),
+                ),
+              ],
+            ),
+          );
+        },
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white54, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child:
+                  Text(label, style: const TextStyle(color: Colors.white)),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white24),
+          ],
+        ),
       ),
     );
   }

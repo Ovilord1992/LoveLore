@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../app/theme.dart';
 import '../models/novel.dart';
+import '../services/app_version.dart';
 import 'novel_cover_image.dart';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -63,6 +64,14 @@ class _NovelCardState extends State<NovelCard>
   }
 
   Widget? _buildBadge() {
+    // v2.1 (спека 4.9): черновик — виден только админу в тест-режиме
+    if (!widget.novel.isPublished) {
+      return const _Badge(label: '✏ Черновик', color: Colors.blueGrey);
+    }
+    // v2.1 (спека 4.1): формат новеллы новее поддерживаемого клиентом
+    if (!widget.novel.isFormatSupported) {
+      return _Badge(label: '⬆ Требуется обновление', color: AppTheme.warning);
+    }
     final tags = widget.novel.tags.map((t) => t.toLowerCase()).toSet();
     if (tags.contains('new')) {
       return _Badge(label: 'NEW', color: AppTheme.success);
@@ -372,15 +381,27 @@ class NovelListCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      novel.displayTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            novel.displayTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        // v2.1 (спека 4.9): бейдж черновика (тест-режим)
+                        if (!novel.isPublished) ...[
+                          const SizedBox(width: 6),
+                          const _Badge(
+                              label: '✏ Черновик', color: Colors.blueGrey),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(

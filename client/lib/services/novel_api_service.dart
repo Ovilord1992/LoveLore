@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/novel.dart';
 import 'analytics_service.dart';
 import 'api_config.dart';
+import 'auth_service.dart';
 
 /// Таймаут для обычных GET-запросов (каталог, главы, переводы).
 const Duration _kRequestTimeout = Duration(seconds: 10);
@@ -55,12 +56,29 @@ final downloadStateProvider = StateNotifierProvider.family<
   return DownloadNotifier(ref, novelId);
 });
 
-final novelApiServiceProvider =
-    Provider<NovelApiService>((ref) => NovelApiService());
+final novelApiServiceProvider = Provider<NovelApiService>((ref) =>
+    NovelApiService(tokenProvider: () => ref.read(authServiceProvider).token));
 
 /// Сервис для работы с API каталога новелл
 class NovelApiService {
   static const _baseUrl = ApiConfig.baseUrl;
+
+  /// Текущий access-токен (или null). Спека 4.9: на GET-ручках каталога,
+  /// глав и скачивания шлём Bearer, если пользователь залогинен — админ
+  /// получает черновики и невыпущенные главы, для остальных поведение
+  /// сервера не меняется.
+  final String? Function() _tokenProvider;
+
+  NovelApiService({String? Function()? tokenProvider})
+      : _tokenProvider = tokenProvider ?? (() => null);
+
+  Map<String, String> get _headers {
+    final token = _tokenProvider();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
 
   /// Получить каталог доступных новелл
   Future<List<NovelMeta>> fetchCatalog() async {
@@ -68,7 +86,7 @@ class NovelApiService {
       final response = await http
           .get(
             Uri.parse('$_baseUrl/novels'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _headers,
           )
           .timeout(_kRequestTimeout);
 
@@ -99,7 +117,7 @@ class NovelApiService {
       final response = await http
           .get(
             Uri.parse('$_baseUrl/novels/$novelId/chapters'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _headers,
           )
           .timeout(_kRequestTimeout);
 
@@ -122,7 +140,7 @@ class NovelApiService {
       final response = await http
           .get(
             Uri.parse('$_baseUrl/novels/$novelId/chapters/$chapterNumber/download'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _headers,
           )
           .timeout(_kRequestTimeout);
 
@@ -156,6 +174,7 @@ class NovelApiService {
           'GET',
           Uri.parse('$_baseUrl/novels/$novelId/download'),
         );
+        request.headers.addAll(_headers);
         final streamedResponse = await request.send().timeout(_kDownloadTimeout);
 
         if (streamedResponse.statusCode != 200) return null;

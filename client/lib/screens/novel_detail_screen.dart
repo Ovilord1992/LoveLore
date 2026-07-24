@@ -4,11 +4,14 @@ import '../app/theme.dart';
 import '../services/locale_service.dart';
 import '../models/novel.dart';
 import '../models/character.dart';
+import '../services/app_version.dart';
 import '../services/save_service.dart';
 import '../services/novel_loader.dart';
 import '../services/novel_api_service.dart';
+import '../services/rating_service.dart';
 import '../services/user_profile_service.dart';
 import '../widgets/novel_cover_image.dart';
+import '../widgets/rating_dialog.dart';
 import 'game_screen.dart';
 import 'wardrobe_screen.dart';
 
@@ -26,6 +29,8 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
   bool _checking = true;
   List<Character> _characters = [];
   List<ChapterInfo> _chapterInfos = [];
+  RatingSummary? _ratingSummary;
+  List<NovelReview> _reviews = [];
 
   @override
   void initState() {
@@ -45,6 +50,31 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
       final chapters = await api.fetchChaptersList(widget.novel.id);
       if (mounted && chapters != null) setState(() => _chapterInfos = chapters);
     } catch (_) {}
+    // Рейтинг и отзывы (волна 3): сеть недоступна → секции просто скрыты
+    try {
+      final rating = ref.read(ratingServiceProvider);
+      final summary = await rating.fetchSummary(widget.novel.id);
+      if (mounted && summary != null) {
+        setState(() => _ratingSummary = summary);
+      }
+      final reviews = await rating.fetchReviews(widget.novel.id);
+      if (mounted && reviews.isNotEmpty) {
+        setState(() => _reviews = reviews);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _openRatingDialog() async {
+    final summary = await showRatingDialog(context, ref, widget.novel.id);
+    if (summary != null && mounted) {
+      setState(() => _ratingSummary = summary);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Спасибо за оценку!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _checkAvailability() async {
@@ -159,9 +189,104 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                           color: AppTheme.primary,
                         ),
                       ),
+                      // v2.1 (спека 4.9): бейдж черновика (тест-режим админа)
+                      if (!novel.isPublished) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.blueGrey,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            '✏ Черновик',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Рейтинг: средняя оценка + количество + кнопка «Оценить»
+                  Row(
+                    children: [
+                      if (_ratingSummary != null &&
+                          _ratingSummary!.ratingCount > 0) ...[
+                        const Icon(Icons.star,
+                            size: 18, color: AppTheme.gold),
+                        const SizedBox(width: 4),
+                        Text(
+                          _ratingSummary!.averageRating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '(${_ratingSummary!.ratingCount})',
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.white38),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      OutlinedButton.icon(
+                        onPressed: _openRatingDialog,
+                        icon: const Icon(Icons.star_border, size: 16),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.gold,
+                          side: const BorderSide(color: AppTheme.gold),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        label: const Text('Оценить',
+                            style: TextStyle(fontSize: 13)),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
+
+                  // v2.1 (спека 4.1): новелла требует более новую версию
+                  if (!novel.isFormatSupported) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.warning),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.system_update,
+                              size: 18, color: AppTheme.warning),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Требуется обновление приложения',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.warning,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Теги
                   Wrap(
@@ -296,6 +421,19 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
                     }),
                   ],
 
+                  // Отзывы (волна 3, чеклист 4)
+                  if (_reviews.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16, bottom: 8),
+                      child: Text('Отзывы',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
+                    ),
+                    ..._reviews.map(_buildReviewCard),
+                  ],
+
                   const SizedBox(height: 32),
 
                   // Кнопки
@@ -375,6 +513,11 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
   }
 
   Future<void> _handlePlay(BuildContext context, bool hasSave) async {
+    // v2.1 (спека 4.1): вход в несовместимую новеллу заблокирован
+    if (!widget.novel.isFormatSupported) {
+      _showUpdateRequiredDialog(context);
+      return;
+    }
     if (!_isAvailableLocally) {
       // Скачиваем и ждём завершения
       await ref.read(downloadStateProvider(widget.novel.id).notifier).download();
@@ -383,6 +526,30 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
       setState(() => _isAvailableLocally = true);
     }
     if (context.mounted) _startGame(context, hasSave);
+  }
+
+  /// v2.1 (спека 4.1): диалог «Обновите приложение»
+  void _showUpdateRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceColor(context),
+        title: const Text('Обновите приложение',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Эта история создана для новой версии Amoria.\n'
+          'Обновите приложение, чтобы начать чтение.',
+          style: TextStyle(color: Colors.white70, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Понятно',
+                style: TextStyle(color: AppTheme.primary)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _startGame(BuildContext context, bool hasSave) {
@@ -461,6 +628,57 @@ class _NovelDetailScreenState extends ConsumerState<NovelDetailScreen> {
           }).toList(),
         ),
       ],
+    );
+  }
+
+  /// Карточка отзыва: имя автора, дата, текст
+  Widget _buildReviewCard(NovelReview review) {
+    final date = review.createdAt;
+    final dateText = date != null
+        ? '${date.day.toString().padLeft(2, '0')}.'
+            '${date.month.toString().padLeft(2, '0')}.${date.year}'
+        : '';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_circle,
+                  size: 18, color: AppTheme.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  review.authorName,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              if (dateText.isNotEmpty)
+                Text(dateText,
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.white38)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            review.text,
+            style: const TextStyle(
+                fontSize: 13, color: Colors.white70, height: 1.4),
+          ),
+        ],
+      ),
     );
   }
 

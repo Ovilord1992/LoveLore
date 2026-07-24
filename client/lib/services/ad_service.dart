@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'analytics_service.dart';
+import 'consent_service.dart';
 import 'remote_config_service.dart';
 import 'user_profile_service.dart';
 
@@ -75,15 +77,64 @@ class AdService {
     return maxAdsPerDay - _adsWatchedToday;
   }
 
+  /// ATT-статус этой сессии (null — ещё не запрашивали). iOS-only.
+  bool? _attAuthorized;
+
+  /// Собрать AdRequest с учётом согласия (спека 4.10): при выключенной
+  /// персонализации — non-personalized запрос (`npa=1` через extras);
+  /// на iOS перед первой персонализированной загрузкой — запрос ATT,
+  /// отказ → тоже npa. На Android ATT-плагин не дёргается.
+  Future<AdRequest> _buildAdRequest() async {
+    var personalized = ConsentService.adsPersonalizationAllowed();
+    if (personalized && Platform.isIOS) {
+      personalized = await _ensureAttAuthorized();
+    }
+    return personalized
+        ? const AdRequest()
+        : const AdRequest(extras: {'npa': '1'});
+  }
+
+  /// iOS: убедиться, что трекинг разрешён (ATT). Диалог показывается один
+  /// раз системой; недоступность плагина трактуем как отказ (npa).
+  Future<bool> _ensureAttAuthorized() async {
+    final cached = _attAuthorized;
+    if (cached != null) return cached;
+    try {
+      var status = await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (status == TrackingStatus.notDetermined) {
+        status =
+            await AppTrackingTransparency.requestTrackingAuthorization();
+      }
+      final ok = status == TrackingStatus.authorized;
+      _attAuthorized = ok;
+      return ok;
+    } catch (e) {
+      debugPrint('[Ads] ATT request failed: $e');
+      return false;
+    }
+  }
+
   /// Загрузить rewarded ad заранее
   void preloadAd() {
     final adUnitId = _rewardedAdUnitId;
     if (adUnitId == null || _rewardedAd != null || _isLoading) return;
     _isLoading = true;
+    // ignore: discarded_futures
+    _loadAd(adUnitId);
+  }
+
+  Future<void> _loadAd(String adUnitId) async {
+    AdRequest request;
+    try {
+      request = await _buildAdRequest();
+    } catch (e) {
+      debugPrint('[Ads] Failed to build ad request: $e');
+      request = const AdRequest(extras: {'npa': '1'});
+    }
 
     RewardedAd.load(
       adUnitId: adUnitId,
-      request: const AdRequest(),
+      request: request,
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           _rewardedAd = ad;

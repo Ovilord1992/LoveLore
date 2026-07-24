@@ -4,6 +4,7 @@ import '../services/locale_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/currency_service.dart';
 import '../services/auth_service.dart';
+import '../services/promo_service.dart';
 import '../services/sync_service.dart';
 import '../services/ad_service.dart';
 import '../services/remote_config_service.dart';
@@ -169,6 +170,11 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // ═══ Промокод (спека 4.5) ═══
+                const _SectionTitle('🎁 Промокод'),
+                const _PromoCodeSection(),
                 const SizedBox(height: 24),
 
                 // ═══ Статистика (emoji) ═══
@@ -1129,6 +1135,125 @@ class _AccountSection extends ConsumerWidget {
                 child: const Text('Выйти'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══ Промокод (спека 4.5) ═══
+
+class _PromoCodeSection extends ConsumerStatefulWidget {
+  const _PromoCodeSection();
+
+  @override
+  ConsumerState<_PromoCodeSection> createState() => _PromoCodeSectionState();
+}
+
+class _PromoCodeSectionState extends ConsumerState<_PromoCodeSection> {
+  final _controller = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _redeem() async {
+    if (_busy) return;
+    final code = _controller.text.trim();
+    if (code.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _busy = true);
+
+    final result = await ref.read(promoServiceProvider).redeem(code);
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (result.success) {
+      _controller.clear();
+      final reward = result.reward ?? const PromoReward();
+      final parts = <String>[
+        if (reward.diamonds > 0) '+${reward.diamonds} 💎',
+        if (reward.tickets > 0) '+${reward.tickets} ⚡',
+        if (reward.vipDays > 0) '+${reward.vipDays} дн. VIP',
+      ];
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            parts.isEmpty
+                ? 'Промокод активирован!'
+                : 'Промокод активирован! ${parts.join('  ')}',
+          ),
+          backgroundColor: const Color(0xFF4CAF50),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: const Color(0xFF16213E),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16213E),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              enabled: !_busy,
+              textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(color: Colors.white, letterSpacing: 1.2),
+              onSubmitted: (_) => _redeem(),
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'Введите промокод',
+                hintStyle: TextStyle(color: Colors.white38, letterSpacing: 0),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFFE91E63)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            height: 38,
+            child: ElevatedButton(
+              onPressed: _busy ? null : _redeem,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE91E63),
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white12,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Активировать'),
+            ),
           ),
         ],
       ),

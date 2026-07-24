@@ -26,6 +26,21 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Диплинки amoria://novel/<id> (спека 4.10, app_links) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.navell.navell.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>amoria</string>
+			</array>
+		</dict>
+	</array>
+	<!-- ATT (спека 4.10): запрос перед персонализированной рекламой -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Идентификатор используется, чтобы показывать более подходящую рекламу. При отказе реклама останется, но без персонализации.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
