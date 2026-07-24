@@ -68,9 +68,11 @@ npm run lint                         # eslint .
 
 Типы событий (`dialogue`, `narration`, `choice`, `changeBackground`, `playSound`, `changeSprite`, `effect`, `showCg`, `cameraMove`, `showEmotion`) определены в `client/lib/models/scene.dart`. Модели сериализуются через `json_serializable` → при изменении моделей нужен `dart run build_runner build`.
 
+**Формат v2** (см. `guides/format-v2.md` — единый контракт клиент/сервер/редактор): составные условия (`conditions[]` + `and`/`or`), ветвление сцен по переменным (`scene.branches[]`), концовки (`scene.ending`, `meta.endings`), интерполяция `{name}`/`{var:key}` (после перевода!), гардероб (`characters.outfits[]`), озвучка (`voice`), рекап глав, панель статов (`meta.statsDisplay`). Правило: **новые типы событий добавлять нельзя** (старые клиенты падают на неизвестном enum) — только опциональные поля.
+
 ### Локальное состояние (Hive)
-Шесть Hive-боксов открываются в `client/lib/main.dart` ДО `runApp()`:
-`game_saves`, `app_settings`, `app_locale`, `user_profile`, `currency`, `wardrobe`. Любая фича, читающая локальное состояние, должна полагаться на то, что эти боксы уже открыты. JWT-токен и VIP-статус хранятся как ключи внутри `app_settings`.
+Девять Hive-боксов открываются в `client/lib/main.dart` ДО `runApp()`:
+`game_saves`, `app_settings`, `app_locale`, `user_profile`, `currency`, `wardrobe`, `economy_queue`, `analytics_queue`, `reading_progress`. Любая фича, читающая локальное состояние, должна полагаться на то, что эти боксы уже открыты. JWT- и refresh-токены, VIP-статус, deviceId хранятся как ключи внутри `app_settings`. Сейв-слоты: автосейв под ключом `<novelId>`, ручные — `<novelId>#slot<N>`.
 
 ### Remote Config
 `client/lib/services/remote_config_service.dart` подтягивает `GET /v1/config?v=<version>` (сервер возвращает `304`, если не изменилось), кеширует в Hive и используется с fallback'ом при офлайне. Fetch происходит ДО `runApp` в `main.dart` с таймаутом 5с. Экономика/реклама/VIP/IAP/daily/achievements/локализация — всё живёт в Postgres-таблице `GameConfig` (singleton-строка). Админка правит конфиг через `PUT /v1/admin/config`.
@@ -79,7 +81,9 @@ npm run lint                         # eslint .
 Оригинал пишется на `sourceLanguage` из `meta.json`; переводы хранятся отдельно в `translations/<lang>.json`. Маппинг — по оригинальному тексту (ключ = исходная строка). `SceneEngine.tr()` прозрачно подставляет перевод; при его отсутствии fallback на оригинал. Таблица переводов загружается при старте новеллы через `NovelTranslation` (см. `client/lib/models/novel_translation.dart`). API: `GET|POST /v1/novels/:id/translations/:lang`, `GET /v1/novels/:id/languages`.
 
 ### Сервер: структура
-`server/src/index.ts` монтирует пять роутеров под `/v1/*`: `auth`, `novels`, `sync`, `admin`, `config`. Middleware — `auth.ts` (JWT), `admin.ts` (проверка роли), `upload.ts` (Multer до 500 МБ). `utils/zip.ts` извлекает `meta.json`, обложку и главы из загруженного ZIP-файла. Обложки раздаются статически из `uploads/covers/`. Миграции и seed — в `server/prisma/`. Синхронизация (`routes/sync.ts`) использует стратегию "max для счётчиков, union для коллекций".
+`server/src/index.ts` монтирует роутеры под `/v1/*`: `auth` (JWT 12ч + refresh-токены с ротацией), `novels`, `sync`, `admin`, `config`, `economy` (леджер валюты), `analytics`, `iap` (верификация чеков + S2S-нотификации сторов). Middleware — `auth.ts` (JWT), `admin.ts` (проверка роли), `upload.ts` (Multer до 500 МБ). `utils/zip.ts` извлекает `meta.json`, обложку и главы из загруженного ZIP-файла. Обложки раздаются статически из `uploads/covers/`. Миграции и seed — в `server/prisma/`.
+
+**Экономика серверно-авторитетна**: алмазы/билеты меняются только через `POST /v1/economy/transactions` (валидация причин по `server/src/economy/ledger.ts`, идемпотентность по ключу); `PUT /v1/sync/currency` балансы больше не меняет. Синхронизация профиля (`routes/sync.ts`) — по-прежнему "max для счётчиков, union для коллекций". Конфиг валидируется zod (`src/config/schema.ts`), каждое изменение — снапшот в `ConfigHistory` с возможностью отката. Планировщик (`src/scheduler.ts`) авторелизит главы по `releasedAt`. Новые env-переменные — в `server/.env.example`.
 
 ### Сеть: конфигурация адреса сервера
 `client/lib/services/api_config.dart` определяет `baseUrl` через `String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:3000/v1')`. Дефолт `10.0.2.2` — это IP хост-машины с эмулятора Android, поэтому в типичном дев-сценарии (Android-эмулятор + локальный сервер на :3000) ничего настраивать не нужно. Для физических устройств, iOS-симулятора (`localhost`) или другого окружения адрес передаётся при запуске:
