@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 
 export const analyticsRouter = Router();
 
-/** Фиксированный словарь имён событий клиента (спека 2.3). */
+/** Фиксированный словарь имён событий клиента (спека 2.3 + 4.6). */
 export const ANALYTICS_EVENT_NAMES: ReadonlySet<string> = new Set([
   'session_start',
   'novel_start',
@@ -17,6 +17,7 @@ export const ANALYTICS_EVENT_NAMES: ReadonlySet<string> = new Set([
   'iap_success',
   'ending_reached',
   'novel_download',
+  'experiment_exposure',
 ]);
 
 const MAX_BATCH = 50;

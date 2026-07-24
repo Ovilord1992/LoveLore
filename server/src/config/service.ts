@@ -13,6 +13,9 @@ export interface ConfigSections {
   daily?: unknown;
   achievements?: unknown;
   localization?: unknown;
+  experiments?: unknown;
+  segments?: unknown;
+  links?: unknown;
 }
 
 type ConfigRow = {
@@ -24,6 +27,9 @@ type ConfigRow = {
   daily: unknown;
   achievements: unknown;
   localization: unknown;
+  experiments: unknown;
+  segments: unknown;
+  links: unknown;
 };
 
 function snapshotOf(config: ConfigRow): Record<string, unknown> {
@@ -35,6 +41,9 @@ function snapshotOf(config: ConfigRow): Record<string, unknown> {
     daily: config.daily,
     achievements: config.achievements,
     localization: config.localization,
+    experiments: config.experiments,
+    segments: config.segments,
+    links: config.links,
   };
 }
 
@@ -43,7 +52,7 @@ export async function saveConfigWithHistory(
   sections: ConfigSections,
   changedBy: string
 ): Promise<{ version: number }> {
-  const { economy, ads, iap, vip, daily, achievements, localization } = sections;
+  const { economy, ads, iap, vip, daily, achievements, localization, experiments, segments, links } = sections;
 
   return prisma.$transaction(async (db) => {
     const current = await db.gameConfig.findUnique({ where: { id: 'singleton' } });
@@ -60,6 +69,9 @@ export async function saveConfigWithHistory(
         ...(daily !== undefined && { daily: daily as object }),
         ...(achievements !== undefined && { achievements: achievements as object }),
         ...(localization !== undefined && { localization: localization as object }),
+        ...(experiments !== undefined && { experiments: experiments as object }),
+        ...(segments !== undefined && { segments: segments as object }),
+        ...(links !== undefined && { links: links as object }),
       },
       create: {
         id: 'singleton',
@@ -71,6 +83,9 @@ export async function saveConfigWithHistory(
         daily: (daily ?? []) as object,
         achievements: (achievements ?? []) as object,
         localization: (localization ?? {}) as object,
+        experiments: (experiments ?? []) as object,
+        segments: (segments ?? []) as object,
+        links: (links ?? {}) as object,
       },
     });
 
@@ -105,6 +120,9 @@ export async function rollbackConfig(version: number, changedBy: string): Promis
       daily: data.daily ?? [],
       achievements: data.achievements ?? [],
       localization: data.localization ?? {},
+      experiments: data.experiments ?? [],
+      segments: data.segments ?? [],
+      links: data.links ?? {},
     },
     changedBy
   );

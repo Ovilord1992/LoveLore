@@ -9,6 +9,9 @@ import { validateGameConfigInput } from '../config/schema';
 import { saveConfigWithHistory, rollbackConfig } from '../config/service';
 import { upsertChapterInZip } from '../utils/zip';
 import { invalidateNovelZipCache } from '../utils/zip-cache';
+import { archiveCurrentZip } from '../novels/archive';
+import { rollbackNovelToVersion } from '../novels/rollback';
+import { getRetentionCohorts, getNovelFunnel } from '../analytics/queries';
 import { logger } from '../utils/logger';
 
 export const adminRouter = Router();
@@ -117,6 +120,33 @@ adminRouter.get('/analytics/summary', async (req: AuthRequest, res: Response) =>
     });
   } catch (err) {
     console.error('Admin analytics summary error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/admin/analytics/retention ── Когорты ретеншна (спека 4.4) ───────
+adminRouter.get('/analytics/retention', async (req: AuthRequest, res: Response) => {
+  try {
+    const days = Math.min(90, Math.max(1, Number(req.query.days) || 30));
+    const cohorts = await getRetentionCohorts(days);
+    res.json({ cohorts });
+  } catch (err) {
+    console.error('Admin analytics retention error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/admin/analytics/funnel ── Воронка новеллы (спека 4.4) ───────────
+adminRouter.get('/analytics/funnel', async (req: AuthRequest, res: Response) => {
+  try {
+    const novelId = req.query.novelId;
+    if (typeof novelId !== 'string' || novelId.length === 0) {
+      res.status(400).json({ error: 'novelId query parameter is required' });
+      return;
+    }
+    res.json(await getNovelFunnel(novelId));
+  } catch (err) {
+    console.error('Admin analytics funnel error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -378,6 +408,52 @@ adminRouter.patch('/novels/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// ─── GET /v1/admin/novels/:id/versions ── История версий ZIP (спека 4.3) ─────
+adminRouter.get('/novels/:id/versions', async (req: AuthRequest, res: Response) => {
+  try {
+    const novel = await prisma.novel.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!novel) {
+      res.status(404).json({ error: 'Novel not found' });
+      return;
+    }
+
+    const versions = await prisma.novelArchive.findMany({
+      where: { novelId: req.params.id },
+      orderBy: { version: 'desc' },
+      select: { version: true, sizeBytes: true, createdAt: true },
+    });
+
+    res.json({ versions });
+  } catch (err) {
+    console.error('Admin novel versions error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/admin/novels/:id/rollback ── Откат к версии (спека 4.3) ────────
+adminRouter.post('/novels/:id/rollback', async (req: AuthRequest, res: Response) => {
+  try {
+    const { version } = req.body ?? {};
+    if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
+      res.status(400).json({ error: 'version (positive integer) is required' });
+      return;
+    }
+
+    const result = await rollbackNovelToVersion(req.params.id, version);
+    if (!result.ok) {
+      res.status(404).json({
+        error: result.error === 'novel_not_found' ? 'Novel not found' : 'Version not found',
+      });
+      return;
+    }
+
+    res.json({ message: 'Novel rolled back', rolledBackTo: result.rolledBackTo, novel: result.novel });
+  } catch (err) {
+    console.error('Admin novel rollback error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ─── GET /v1/admin/novels/:id/chapters ── Список глав (admin) ────────────────
 adminRouter.get('/novels/:id/chapters', async (req: AuthRequest, res: Response) => {
   try {
@@ -519,6 +595,13 @@ adminRouter.post('/novels/:id/chapters', async (req: AuthRequest, res: Response)
       where: { novelId_number: { novelId: novel.id, number: chapter.number } },
     });
 
+    // Спека 4.3: перед перезаписью ZIP текущий архив уходит в историю версий.
+    try {
+      await archiveCurrentZip(novel.id, novel.version, zipPath);
+    } catch (archiveErr) {
+      logger.warn({ err: archiveErr, novelId: novel.id }, '[admin] failed to archive current zip before chapter upsert');
+    }
+
     upsertChapterInZip(zipPath, chapter.number, JSON.stringify(chapter, null, 2));
 
     const row = await prisma.chapter.upsert({
@@ -589,9 +672,9 @@ adminRouter.put('/config', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const { economy, ads, iap, vip, daily, achievements, localization } = req.body;
+    const { economy, ads, iap, vip, daily, achievements, localization, experiments, segments, links } = req.body;
     const { version } = await saveConfigWithHistory(
-      { economy, ads, iap, vip, daily, achievements, localization },
+      { economy, ads, iap, vip, daily, achievements, localization, experiments, segments, links },
       req.userId!
     );
 
@@ -736,6 +819,143 @@ adminRouter.delete('/reviews/:id', async (req: AuthRequest, res: Response) => {
     res.json({ message: 'Review deleted' });
   } catch (err) {
     console.error('Admin review delete error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── Промокоды: админ-CRUD (спека 4.5) ───────────────────────────────────────
+
+const PROMO_CODE_RE = /^[A-Z0-9_-]{3,64}$/;
+
+function parsePromoInt(value: unknown, field: string): { ok: true; value: number } | { ok: false; error: string } {
+  if (value === undefined) return { ok: true, value: 0 };
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    return { ok: false, error: `${field} must be a non-negative integer` };
+  }
+  return { ok: true, value };
+}
+
+function parsePromoExpiresAt(value: unknown): { ok: true; value: Date | null } | { ok: false } {
+  if (value === undefined || value === null) return { ok: true, value: null };
+  if (typeof value !== 'string') return { ok: false };
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return { ok: false };
+  return { ok: true, value: d };
+}
+
+// ─── GET /v1/admin/promo ── Список промокодов ────────────────────────────────
+adminRouter.get('/promo', async (_req: AuthRequest, res: Response) => {
+  try {
+    const codes = await prisma.promoCode.findMany({ orderBy: { createdAt: 'desc' } });
+    res.json({ codes });
+  } catch (err) {
+    console.error('Admin promo list error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── POST /v1/admin/promo ── Создать промокод ────────────────────────────────
+adminRouter.post('/promo', async (req: AuthRequest, res: Response) => {
+  try {
+    const { code, diamonds, tickets, vipDays, maxRedemptions, expiresAt, isActive } = req.body ?? {};
+
+    if (typeof code !== 'string' || code.trim().length === 0) {
+      res.status(400).json({ error: 'code is required' });
+      return;
+    }
+    // Регистронезависимость: храним upper-case.
+    const normalized = code.trim().toUpperCase();
+    if (!PROMO_CODE_RE.test(normalized)) {
+      res.status(400).json({ error: 'code must be 3..64 chars of A-Z, 0-9, "-", "_"' });
+      return;
+    }
+
+    const fields: Record<string, number> = {};
+    for (const [field, raw] of [
+      ['diamonds', diamonds],
+      ['tickets', tickets],
+      ['vipDays', vipDays],
+      ['maxRedemptions', maxRedemptions],
+    ] as const) {
+      const parsed = parsePromoInt(raw, field);
+      if (!parsed.ok) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      fields[field] = parsed.value;
+    }
+
+    const parsedExpires = parsePromoExpiresAt(expiresAt);
+    if (!parsedExpires.ok) {
+      res.status(400).json({ error: 'expiresAt must be an ISO date string or null' });
+      return;
+    }
+
+    const existing = await prisma.promoCode.findUnique({ where: { code: normalized } });
+    if (existing) {
+      res.status(409).json({ error: 'Promo code already exists' });
+      return;
+    }
+
+    const promo = await prisma.promoCode.create({
+      data: {
+        code: normalized,
+        diamonds: fields.diamonds,
+        tickets: fields.tickets,
+        vipDays: fields.vipDays,
+        maxRedemptions: fields.maxRedemptions,
+        expiresAt: parsedExpires.value,
+        isActive: isActive === undefined ? true : Boolean(isActive),
+      },
+    });
+
+    res.status(201).json({ code: promo });
+  } catch (err) {
+    console.error('Admin promo create error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── PATCH /v1/admin/promo/:id ── Изменить промокод ──────────────────────────
+adminRouter.patch('/promo/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const promo = await prisma.promoCode.findUnique({ where: { id: req.params.id } });
+    if (!promo) {
+      res.status(404).json({ error: 'Promo code not found' });
+      return;
+    }
+
+    const { isActive, expiresAt, maxRedemptions } = req.body ?? {};
+    const updateData: Record<string, unknown> = {};
+
+    if (isActive !== undefined) updateData.isActive = Boolean(isActive);
+
+    if (expiresAt !== undefined) {
+      const parsed = parsePromoExpiresAt(expiresAt);
+      if (!parsed.ok) {
+        res.status(400).json({ error: 'expiresAt must be an ISO date string or null' });
+        return;
+      }
+      updateData.expiresAt = parsed.value;
+    }
+
+    if (maxRedemptions !== undefined) {
+      const parsed = parsePromoInt(maxRedemptions, 'maxRedemptions');
+      if (!parsed.ok) {
+        res.status(400).json({ error: parsed.error });
+        return;
+      }
+      updateData.maxRedemptions = parsed.value;
+    }
+
+    const updated = await prisma.promoCode.update({
+      where: { id: req.params.id },
+      data: updateData,
+    });
+
+    res.json({ code: updated });
+  } catch (err) {
+    console.error('Admin promo update error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

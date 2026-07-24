@@ -105,7 +105,100 @@ const achievementsSchema = z.array(
 
 const localizationSchema = z.record(z.record(z.string()));
 
-export const CONFIG_SECTIONS = ['economy', 'ads', 'iap', 'vip', 'daily', 'achievements', 'localization'] as const;
+// ─── Эксперименты (A/B) и сегменты — спека 4.6 ───────────────────────────────
+
+/** Overrides — плоские dot-пути внутри секций: record строка → любое значение. */
+const overridesSchema = z.record(z.unknown());
+
+const experimentVariantSchema = z
+  .object({
+    key: z.string().min(1),
+    weight: z.number().int().positive(),
+    overrides: overridesSchema.optional(),
+  })
+  .passthrough();
+
+const experimentsSchema = z
+  .array(
+    z
+      .object({
+        id: z.string().min(1),
+        enabled: z.boolean().optional(),
+        variants: z.array(experimentVariantSchema).min(1),
+      })
+      .passthrough()
+  )
+  .superRefine((experiments, ctx) => {
+    const ids = new Set<string>();
+    experiments.forEach((exp, i) => {
+      if (ids.has(exp.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [i, 'id'],
+          message: `duplicate experiment id '${exp.id}'`,
+        });
+      }
+      ids.add(exp.id);
+
+      const keys = new Set<string>();
+      exp.variants.forEach((v, j) => {
+        if (keys.has(v.key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [i, 'variants', j, 'key'],
+            message: `duplicate variant key '${v.key}'`,
+          });
+        }
+        keys.add(v.key);
+      });
+    });
+  });
+
+const isoDateString = z
+  .string()
+  .refine((s) => !Number.isNaN(Date.parse(s)), { message: 'must be an ISO date string' });
+
+const segmentConditionsSchema = z
+  .object({
+    platform: z.enum(['android', 'ios']).optional(),
+    vip: z.boolean().optional(),
+    installedAfter: isoDateString.optional(),
+    installedBefore: isoDateString.optional(),
+  })
+  .passthrough();
+
+const segmentsSchema = z
+  .array(
+    z
+      .object({
+        id: z.string().min(1),
+        conditions: segmentConditionsSchema.optional(),
+        overrides: overridesSchema.optional(),
+      })
+      .passthrough()
+  )
+  .superRefine((segments, ctx) => {
+    const ids = new Set<string>();
+    segments.forEach((seg, i) => {
+      if (ids.has(seg.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [i, 'id'],
+          message: `duplicate segment id '${seg.id}'`,
+        });
+      }
+      ids.add(seg.id);
+    });
+  });
+
+const linksSchema = z
+  .object({
+    privacyPolicyUrl: z.string().url().or(z.literal('')).optional(),
+    termsUrl: z.string().url().or(z.literal('')).optional(),
+  })
+  .passthrough();
+
+export const CONFIG_SECTIONS = ['economy', 'ads', 'iap', 'vip', 'daily', 'achievements', 'localization', 'experiments', 'segments', 'links'] as const;
 export type ConfigSection = (typeof CONFIG_SECTIONS)[number];
 
 const sectionSchemas: Record<ConfigSection, z.ZodTypeAny> = {
@@ -116,6 +209,9 @@ const sectionSchemas: Record<ConfigSection, z.ZodTypeAny> = {
   daily: dailySchema,
   achievements: achievementsSchema,
   localization: localizationSchema,
+  experiments: experimentsSchema,
+  segments: segmentsSchema,
+  links: linksSchema,
 };
 
 /** Известные ключи объектных секций — для warning о неизвестных (не отклоняем). */

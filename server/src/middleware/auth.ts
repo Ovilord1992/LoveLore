@@ -42,6 +42,8 @@ const LAST_ACTIVE_THROTTLE_MS = 60 * 60 * 1000;
 
 export interface AuthRequest extends Request {
   userId?: string;
+  /** Роль из БД (optionalAuthMiddleware) — для тест-режима контента (спека 4.9). */
+  role?: string;
 }
 
 interface TokenPayload {
@@ -130,10 +132,13 @@ export async function optionalAuthMiddleware(req: AuthRequest, _res: Response, n
   try {
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { tokenVersion: true, lastActiveAt: true },
+      select: { tokenVersion: true, lastActiveAt: true, role: true },
     });
     if (user && (payload.tv ?? 0) === user.tokenVersion) {
       req.userId = payload.userId;
+      // Роль — из БД, не из клейма: тест-режим контента (спека 4.9) должен
+      // отключаться сразу при снятии роли, не дожидаясь истечения токена.
+      req.role = user.role;
       touchLastActive(payload.userId, user.lastActiveAt);
     }
   } catch (err) {

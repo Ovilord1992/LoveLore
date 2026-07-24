@@ -35,6 +35,9 @@ configRouter.get('/', async (req: Request, res: Response) => {
       daily: config.daily,
       achievements: config.achievements,
       localization: config.localization,
+      experiments: config.experiments,
+      segments: config.segments,
+      links: config.links,
     });
   } catch (err) {
     console.error('Config fetch error:', err);

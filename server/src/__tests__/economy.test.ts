@@ -407,6 +407,16 @@ describe('Economy — запрещённые/неизвестные reasons и �
     expect(result.status).toBe('rejected');
   });
 
+  it('отклоняет promo от клиента (server-only reason, спека 4.5)', async () => {
+    setCurrency(50, 5);
+    const { result } = await applyOne(
+      op({ currency: 'diamonds', delta: 100, reason: 'promo', refId: 'WELCOME10' })
+    );
+    expect(result.status).toBe('rejected');
+    expect(result.error).toMatch(/not allowed/);
+    expect(state.ledger).toHaveLength(0);
+  });
+
   it('отклоняет битую форму (нет key / кривые delta и currency)', async () => {
     setCurrency(50, 5);
     const { results } = await applyClientOperations(

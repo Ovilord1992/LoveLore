@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => {
     daily: unknown;
     achievements: unknown;
     localization: unknown;
+    experiments: unknown;
+    segments: unknown;
   };
   type HistoryRow = { id: string; version: number; data: unknown; changedBy: string; createdAt: Date };
 
@@ -36,7 +38,7 @@ const mocks = vi.hoisted(() => {
       findUnique: async () => state.config,
       upsert: async ({ update, create }: any) => {
         if (state.config) {
-          for (const key of ['version', 'economy', 'ads', 'iap', 'vip', 'daily', 'achievements', 'localization']) {
+          for (const key of ['version', 'economy', 'ads', 'iap', 'vip', 'daily', 'achievements', 'localization', 'experiments', 'segments']) {
             if (update[key] !== undefined) (state.config as any)[key] = update[key];
           }
           return state.config;
@@ -142,6 +144,118 @@ describe('Config — zod-валидация', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.warnings.some((w) => w.includes('notASection'))).toBe(true);
+  });
+});
+
+describe('Config — experiments/segments (спека 4.6)', () => {
+  const validExperiments = [
+    {
+      id: 'price_test_1',
+      enabled: true,
+      variants: [
+        { key: 'control', weight: 50, overrides: {} },
+        { key: 'cheap', weight: 50, overrides: { 'economy.premiumChoiceBaseCost': 10 } },
+      ],
+    },
+  ];
+  const validSegments = [
+    {
+      id: 'ios_vip',
+      conditions: { platform: 'ios', vip: true },
+      overrides: { 'ads.maxAdsPerDay': 0 },
+    },
+  ];
+
+  it('принимает валидные experiments и segments', () => {
+    const r = validateGameConfigInput({ experiments: validExperiments, segments: validSegments });
+    expect(r.ok).toBe(true);
+  });
+
+  it('принимает installedAfter/installedBefore как ISO-строки', () => {
+    const r = validateGameConfigInput({
+      segments: [
+        {
+          id: 'newcomers',
+          conditions: { installedAfter: '2026-07-01T00:00:00Z', installedBefore: '2026-08-01T00:00:00Z' },
+          overrides: {},
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it('отклоняет вес варианта <= 0 и нецелый вес', () => {
+    const withWeight = (weight: number) => [
+      { id: 'e1', enabled: true, variants: [{ key: 'a', weight, overrides: {} }] },
+    ];
+    expect(validateGameConfigInput({ experiments: withWeight(0) }).ok).toBe(false);
+    expect(validateGameConfigInput({ experiments: withWeight(-5) }).ok).toBe(false);
+    expect(validateGameConfigInput({ experiments: withWeight(1.5) }).ok).toBe(false);
+  });
+
+  it('отклоняет дубликаты id экспериментов', () => {
+    const r = validateGameConfigInput({
+      experiments: [
+        { id: 'dup', variants: [{ key: 'a', weight: 1 }] },
+        { id: 'dup', variants: [{ key: 'a', weight: 1 }] },
+      ],
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.some((e) => e.message.includes('duplicate experiment id'))).toBe(true);
+  });
+
+  it('отклоняет дубликаты key вариантов внутри эксперимента', () => {
+    const r = validateGameConfigInput({
+      experiments: [
+        {
+          id: 'e1',
+          variants: [
+            { key: 'same', weight: 50 },
+            { key: 'same', weight: 50 },
+          ],
+        },
+      ],
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.errors.some((e) => e.message.includes('duplicate variant key'))).toBe(true);
+  });
+
+  it('отклоняет эксперимент без вариантов и без id', () => {
+    expect(validateGameConfigInput({ experiments: [{ id: 'e1', variants: [] }] }).ok).toBe(false);
+    expect(validateGameConfigInput({ experiments: [{ variants: [{ key: 'a', weight: 1 }] }] }).ok).toBe(false);
+  });
+
+  it('отклоняет неизвестную платформу, не-bool vip и битую дату сегмента', () => {
+    expect(
+      validateGameConfigInput({ segments: [{ id: 's1', conditions: { platform: 'windows' } }] }).ok
+    ).toBe(false);
+    expect(
+      validateGameConfigInput({ segments: [{ id: 's1', conditions: { vip: 'yes' } }] }).ok
+    ).toBe(false);
+    expect(
+      validateGameConfigInput({ segments: [{ id: 's1', conditions: { installedAfter: 'not-a-date' } }] }).ok
+    ).toBe(false);
+  });
+
+  it('отклоняет дубликаты id сегментов', () => {
+    const r = validateGameConfigInput({
+      segments: [
+        { id: 'dup', overrides: {} },
+        { id: 'dup', overrides: {} },
+      ],
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it('experiments/segments сохраняются и попадают в снапшот истории', async () => {
+    resetState();
+    await saveConfigWithHistory({ experiments: validExperiments, segments: validSegments }, 'admin-1');
+    expect(state.config!.experiments).toEqual(validExperiments);
+    expect(state.config!.segments).toEqual(validSegments);
+    expect((state.history[0]!.data as any).experiments).toEqual(validExperiments);
+    expect((state.history[0]!.data as any).segments).toEqual(validSegments);
   });
 });
 

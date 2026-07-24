@@ -12,6 +12,7 @@ import { configRouter } from './routes/config';
 import { iapRouter } from './routes/iap';
 import { economyRouter } from './routes/economy';
 import { analyticsRouter } from './routes/analytics';
+import { promoRouter } from './routes/promo';
 import { startChapterReleaseScheduler } from './scheduler';
 import { logger } from './utils/logger';
 
@@ -71,6 +72,7 @@ app.use('/v1/config', configRouter);
 app.use('/v1/iap', iapRouter);
 app.use('/v1/economy', economyRouter);
 app.use('/v1/analytics', analyticsRouter);
+app.use('/v1/promo', promoRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

@@ -3,17 +3,22 @@ import path from 'path';
 import fs from 'fs';
 import prisma from '../db';
 import { upload } from '../middleware/upload';
-import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { AuthRequest, authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import { adminMiddleware } from '../middleware/admin';
+import { isContentAdmin as isAdminRole, novelVisible, chapterAccessible } from '../utils/content-access';
 import { extractMetaFromZip, extractCoverFromZip, extractChaptersFromZip, extractChapterJsonFromZip, extractTranslationLanguagesFromZip, extractTranslationFromZip, addTranslationToZip, extractAllTranslationsFromZip, zipHasUnreleasedChapters } from '../utils/zip';
 import { getOrBuildReleasedZip, invalidateNovelZipCache } from '../utils/zip-cache';
 import { mergeChapterReleaseState } from '../utils/chapters';
 import { parseCatalogPaging } from '../utils/pagination';
+import { archiveCurrentZip, removeArchiveDir } from '../novels/archive';
 import { logger } from '../utils/logger';
 
 export const novelsRouter = Router();
 
 const uploadDir = process.env.UPLOAD_DIR || './uploads';
+
+// Тест-режим контента (спека 4.9): роль заполняется optionalAuthMiddleware из БД.
+const isContentAdmin = (req: AuthRequest): boolean => isAdminRole(req.role);
 
 // Разрешённый формат id новеллы: строчные буквы/цифры/дефис/подчёркивание, 1..64.
 // Закрывает path traversal через meta.id (запись обложки, имена файлов, пути).
@@ -24,10 +29,11 @@ const LANG_RE = /^[a-z]{2}(-[A-Z]{2})?$/;
 // ─── GET /v1/novels ── Каталог опубликованных новелл (спека 2.5) ────────────
 // С параметром ?page → envelope { items, total, page, limit };
 // без параметров → легаси-ответ { novels } с капом 200.
-novelsRouter.get('/', async (req: Request, res: Response) => {
+novelsRouter.get('/', optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const catalogSelect = {
       id: true,
+      isPublished: true,
       title: true,
       description: true,
       author: true,
@@ -43,17 +49,18 @@ novelsRouter.get('/', async (req: Request, res: Response) => {
     } as const;
 
     const paging = parseCatalogPaging(req.query);
+    const catalogWhere = isContentAdmin(req) ? {} : { isPublished: true };
 
     if (paging.paginated) {
       const [items, total] = await Promise.all([
         prisma.novel.findMany({
-          where: { isPublished: true },
+          where: catalogWhere,
           orderBy: { updatedAt: 'desc' },
           skip: paging.skip,
           take: paging.take,
           select: catalogSelect,
         }),
-        prisma.novel.count({ where: { isPublished: true } }),
+        prisma.novel.count({ where: catalogWhere }),
       ]);
 
       res.json({ items, total, page: paging.page, limit: paging.limit });
@@ -61,7 +68,7 @@ novelsRouter.get('/', async (req: Request, res: Response) => {
     }
 
     const novels = await prisma.novel.findMany({
-      where: { isPublished: true },
+      where: catalogWhere,
       orderBy: { updatedAt: 'desc' },
       take: paging.take,
       select: catalogSelect,
@@ -136,13 +143,13 @@ novelsRouter.get('/new-chapters', async (_req: Request, res: Response) => {
 });
 
 // ─── GET /v1/novels/:id ── Детали одной новеллы ─────────────────────────────
-novelsRouter.get('/:id', async (req: Request, res: Response) => {
+novelsRouter.get('/:id', optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const novel = await prisma.novel.findUnique({
       where: { id: req.params.id },
     });
 
-    if (!novel || !novel.isPublished) {
+    if (!novel || !novelVisible(novel, req.role)) {
       res.status(404).json({ error: 'Novel not found' });
       return;
     }
@@ -155,13 +162,14 @@ novelsRouter.get('/:id', async (req: Request, res: Response) => {
 });
 
 // ─── GET /v1/novels/:id/download ── Скачать ZIP-пак ─────────────────────────
-novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
+novelsRouter.get('/:id/download', optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const novel = await prisma.novel.findUnique({
       where: { id: req.params.id },
     });
 
-    if (!novel || !novel.isPublished || !novel.zipFilename) {
+    const admin = isContentAdmin(req);
+    if (!novel || !novelVisible(novel, req.role) || !novel.zipFilename) {
       res.status(404).json({ error: 'Novel not found or no file available' });
       return;
     }
@@ -181,11 +189,13 @@ novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
     });
     const releasedNumbers = new Set(releasedRows.map((c) => c.number));
 
-    // Инкремент счётчика загрузок
-    await prisma.novel.update({
-      where: { id: req.params.id },
-      data: { downloads: { increment: 1 } },
-    });
+    // Тестовые загрузки админа не инкрементируют публичный счётчик.
+    if (!admin) {
+      await prisma.novel.update({
+        where: { id: req.params.id },
+        data: { downloads: { increment: 1 } },
+      });
+    }
 
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
@@ -195,7 +205,8 @@ novelsRouter.get('/:id/download', async (req: Request, res: Response) => {
 
     // Если архив содержит невыпущенные главы — отдаём пересобранный ZIP из
     // файлового кеша (uploads/cache/), собрав его при первом запросе.
-    if (zipHasUnreleasedChapters(filePath, releasedNumbers)) {
+    // Админ в тест-режиме получает полный архив (спека 4.9), мимо кеша.
+    if (!admin && zipHasUnreleasedChapters(filePath, releasedNumbers)) {
       const cachePath = getOrBuildReleasedZip(filePath, novel.id, novel.version, releasedNumbers);
       const cacheStat = fs.statSync(cachePath);
       res.setHeader('Content-Length', cacheStat.size);
@@ -303,6 +314,12 @@ novelsRouter.post(
         if (!oldPath.startsWith(uploadDirResolved)) {
           logger.warn({ oldPath }, 'Skipping old zip deletion: path traversal detected');
         } else if (fs.existsSync(oldPath)) {
+          // Спека 4.3: перед перезаписью текущий архив уходит в историю версий.
+          try {
+            await archiveCurrentZip(novelId, existing!.version, oldPath);
+          } catch (e) {
+            logger.warn({ err: e, novelId }, '[upload] Failed to archive current zip version');
+          }
           // Переносим переводы (translations/*.json), добавленные через
           // POST /translations, из старого архива в новый — иначе re-upload
           // молча теряет их. Новые переводы (если есть в загруженном ZIP) имеют
@@ -432,6 +449,8 @@ novelsRouter.delete('/:id', authMiddleware, adminMiddleware, async (req: Request
     await prisma.novel.delete({ where: { id: req.params.id } });
 
     invalidateNovelZipCache(req.params.id);
+    // Файлы истории версий (строки NovelArchive каскадятся с Novel).
+    removeArchiveDir(req.params.id);
 
     res.json({ message: 'Novel deleted' });
   } catch (err) {
@@ -441,13 +460,13 @@ novelsRouter.delete('/:id', authMiddleware, adminMiddleware, async (req: Request
 });
 
 // ─── GET /v1/novels/:id/chapters ── Список глав ─────────────────────────────
-novelsRouter.get('/:id/chapters', async (req: Request, res: Response) => {
+novelsRouter.get('/:id/chapters', optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const novel = await prisma.novel.findUnique({
       where: { id: req.params.id },
     });
 
-    if (!novel || !novel.isPublished) {
+    if (!novel || !novelVisible(novel, req.role)) {
       res.status(404).json({ error: 'Novel not found' });
       return;
     }
@@ -478,7 +497,8 @@ novelsRouter.get('/:id/chapters', async (req: Request, res: Response) => {
 // ─── GET /v1/novels/:id/chapters/:number/download ── Скачать JSON главы ─────
 novelsRouter.get(
   '/:id/chapters/:number/download',
-  async (req: Request, res: Response) => {
+  optionalAuthMiddleware,
+  async (req: AuthRequest, res: Response) => {
     try {
       const chapterNumber = parseInt(req.params.number);
       if (isNaN(chapterNumber)) {
@@ -490,19 +510,20 @@ novelsRouter.get(
         where: { id: req.params.id },
       });
 
-      if (!novel || !novel.isPublished || !novel.zipFilename) {
+      const admin = isContentAdmin(req);
+      if (!novel || !novelVisible(novel, req.role) || !novel.zipFilename) {
         res.status(404).json({ error: 'Novel not found' });
         return;
       }
 
-      // Проверяем что глава выпущена
+      // Проверяем что глава выпущена (админ в тест-режиме видит и невыпущенные)
       const chapter = await prisma.chapter.findUnique({
         where: {
           novelId_number: { novelId: req.params.id, number: chapterNumber },
         },
       });
 
-      if (!chapter || !chapter.isReleased) {
+      if (!chapterAccessible(chapter, req.role)) {
         res.status(404).json({ error: 'Chapter not available' });
         return;
       }

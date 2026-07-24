@@ -33,6 +33,7 @@ model User {
   iapTransactions IapTransaction[]
   refreshTokens   RefreshToken[]
   ledgerEntries   CurrencyLedger[]
+  promoRedemptions PromoRedemption[]
 
   @@map("users")
 }
@@ -105,6 +106,7 @@ model Novel {
   ratings   Rating[]
   reviews   Review[]
   favorites Favorite[]
+  archives  NovelArchive[]
 
   @@index([isPublished, updatedAt])
   @@map("novels")
@@ -137,6 +139,9 @@ model GameConfig {
   daily     Json     @default("[]")
   achievements Json  @default("[]")
   localization Json  @default("{}")
+  experiments  Json  @default("[]")
+  segments     Json  @default("[]")
+  links        Json  @default("{}")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("game_config")
@@ -263,6 +268,53 @@ model ConfigHistory {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("config_history")
+}
+
+// ─── Промокоды (спека 4.5) ───────────────────────────────────────────────────
+model PromoCode {
+  id               String    @id @default(uuid())
+  code             String    @unique // хранится upper-case, ввод регистронезависим
+  diamonds         Int       @default(0)
+  tickets          Int       @default(0)
+  vipDays          Int       @default(0) @map("vip_days")
+  maxRedemptions   Int       @default(0) @map("max_redemptions") // 0 = безлимит
+  redemptionsCount Int       @default(0) @map("redemptions_count")
+  expiresAt        DateTime? @map("expires_at")
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  redemptions PromoRedemption[]
+
+  @@map("promo_codes")
+}
+
+model PromoRedemption {
+  id        String   @id @default(uuid())
+  codeId    String   @map("code_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  code PromoCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([codeId, userId])
+  @@index([userId])
+  @@map("promo_redemptions")
+}
+
+// ─── История версий ZIP-архивов новелл (спека 4.3) ───────────────────────────
+model NovelArchive {
+  id        String   @id @default(uuid())
+  novelId   String   @map("novel_id")
+  version   Int
+  filePath  String   @map("file_path") // относительно UPLOAD_DIR: history/<novelId>/v<version>.zip
+  sizeBytes Int      @map("size_bytes")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  novel Novel @relation(fields: [novelId], references: [id], onDelete: Cascade)
+
+  @@unique([novelId, version])
+  @@map("novel_archives")
 }
 
 // ─── Сырые S2S-нотификации сторов (Apple ASSN v2 / Google RTDN) ──────────────

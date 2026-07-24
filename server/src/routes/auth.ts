@@ -5,7 +5,8 @@ import appleSignin from 'apple-signin-auth';
 import prisma from '../db';
 import { AuthRequest, generateToken, authMiddleware } from '../middleware/auth';
 import { issueRefreshToken, rotateRefreshToken, revokeRefreshTokenFamily } from '../auth/refresh';
-import { loginLimiter, registerLimiter, socialAuthLimiter, refreshLimiter } from '../middleware/rate-limit';
+import { deleteAccount, exportUserData } from '../auth/account';
+import { loginLimiter, registerLimiter, socialAuthLimiter, refreshLimiter, accountLimiter } from '../middleware/rate-limit';
 
 export const authRouter = Router();
 
@@ -164,6 +165,36 @@ authRouter.get('/me', authMiddleware, async (req: AuthRequest, res: Response) =>
     res.json({ user });
   } catch (err) {
     console.error('Me error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── DELETE /v1/auth/account ── Удаление аккаунта (анонимизация, спека 4.7) ──
+authRouter.delete('/account', authMiddleware, accountLimiter, async (req: AuthRequest, res: Response) => {
+  try {
+    const ok = await deleteAccount(req.userId!);
+    if (!ok) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('Account delete error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─── GET /v1/auth/export ── Экспорт данных пользователя (GDPR, спека 4.7) ────
+authRouter.get('/export', authMiddleware, accountLimiter, async (req: AuthRequest, res: Response) => {
+  try {
+    const data = await exportUserData(req.userId!);
+    if (!data) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    res.json(data);
+  } catch (err) {
+    console.error('Account export error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

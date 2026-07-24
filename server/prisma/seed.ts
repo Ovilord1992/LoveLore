@@ -171,6 +171,10 @@ async function main() {
           version: 'Version 1.0.0',
         },
       },
+      // A/B-эксперименты и сегменты (спека 4.6) — по умолчанию пусто.
+      experiments: [],
+      segments: [],
+      links: { privacyPolicyUrl: '', termsUrl: '' },
     },
   });
   console.log('Game config seeded.');

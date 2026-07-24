@@ -175,6 +175,45 @@ export const analyticsLimiter = rateLimit({
 });
 
 /**
+ * Лимитер погашения промокодов: 10 запросов в минуту на пользователя —
+ * защита от перебора кодов. Ключ — userId из JWT (роут стоит после
+ * authMiddleware), fallback на IP.
+ */
+export const promoRedeemLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  message: { error: 'Too many promo attempts, try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  store: makeStore('rl:promo:'),
+  keyGenerator: (req: Request) => {
+    const uid = (req as Request & { userId?: string }).userId;
+    if (uid) return `promo:${uid}`;
+    return `promo-ip:${ipKeyGenerator(req.ip ?? '')}`;
+  },
+});
+
+/**
+ * Лимитер операций с аккаунтом (удаление / экспорт данных): редкие действия,
+ * 10 запросов в час на пользователя. Ключ — userId (после authMiddleware).
+ */
+export const accountLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  message: { error: 'Too many account requests, try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  store: makeStore('rl:account:'),
+  keyGenerator: (req: Request) => {
+    const uid = (req as Request & { userId?: string }).userId;
+    if (uid) return `acc:${uid}`;
+    return `acc-ip:${ipKeyGenerator(req.ip ?? '')}`;
+  },
+});
+
+/**
  * Лимитер S2S-нотификаций сторов: защита от флуда StoreNotification.
  * 120 запросов в минуту с IP — Apple/Google шлют пачками, но не тысячами.
  */
