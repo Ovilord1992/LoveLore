@@ -7,6 +7,8 @@ import IapEditor, { type IapSection } from '../components/config/IapEditor';
 import DailyEditor from '../components/config/DailyEditor';
 import AchievementsEditor from '../components/config/AchievementsEditor';
 import LocalizationEditor, { type LocalizationSection } from '../components/config/LocalizationEditor';
+import ExperimentsEditor from '../components/config/ExperimentsEditor';
+import SegmentsEditor from '../components/config/SegmentsEditor';
 import ConfigHistoryDrawer from '../components/config/ConfigHistoryDrawer';
 
 const { Title, Text } = Typography;
@@ -20,6 +22,9 @@ interface GameConfig {
   daily: unknown[];
   achievements: unknown[];
   localization: LocalizationSection;
+  experiments: unknown[];
+  segments: unknown[];
+  links?: Record<string, unknown>;
 }
 
 /** Данные секций с типизированными (не Form) редакторами */
@@ -28,6 +33,8 @@ interface EditorSections {
   daily: unknown[];
   achievements: unknown[];
   localization: LocalizationSection;
+  experiments: unknown[];
+  segments: unknown[];
 }
 
 type EditorSectionKey = keyof EditorSections;
@@ -42,7 +49,10 @@ export default function ConfigPage() {
   const [economyForm] = Form.useForm();
   const [adsForm] = Form.useForm();
   const [vipForm] = Form.useForm();
-  const [sections, setSections] = useState<EditorSections>({ iap: {}, daily: [], achievements: [], localization: {} });
+  const [linksForm] = Form.useForm();
+  const [sections, setSections] = useState<EditorSections>({
+    iap: {}, daily: [], achievements: [], localization: {}, experiments: [], segments: [],
+  });
   // Инкремент → remount типизированных редакторов (их локальное состояние переинициализируется)
   const [revision, setRevision] = useState(0);
   const [dirtyTabs, setDirtyTabs] = useState<Record<string, boolean>>({});
@@ -58,11 +68,14 @@ export default function ConfigPage() {
       economyForm.setFieldsValue(data.economy);
       adsForm.setFieldsValue(data.ads);
       vipForm.setFieldsValue(data.vip);
+      linksForm.setFieldsValue(data.links ?? {});
       setSections({
         iap: isPlainObject(data.iap) ? data.iap : {},
         daily: Array.isArray(data.daily) ? data.daily : [],
         achievements: Array.isArray(data.achievements) ? data.achievements : [],
         localization: isPlainObject(data.localization) ? (data.localization as LocalizationSection) : {},
+        experiments: Array.isArray(data.experiments) ? data.experiments : [],
+        segments: Array.isArray(data.segments) ? data.segments : [],
       });
       setRevision((r) => r + 1);
       setDirtyTabs({});
@@ -73,7 +86,7 @@ export default function ConfigPage() {
     } finally {
       setLoading(false);
     }
-  }, [economyForm, adsForm, vipForm, message]);
+  }, [economyForm, adsForm, vipForm, linksForm, message]);
 
   const fetchConfig = (skipDirtyCheck = false) => {
     const dirtyList = Object.entries(dirtyTabs)
@@ -144,7 +157,7 @@ export default function ConfigPage() {
       message.error(`Секция "${section}" должна быть объектом`);
       return false;
     }
-    if ((section === 'daily' || section === 'achievements') && !Array.isArray(next)) {
+    if ((section === 'daily' || section === 'achievements' || section === 'experiments' || section === 'segments') && !Array.isArray(next)) {
       message.error(`Секция "${section}" должна быть массивом`);
       return false;
     }
@@ -362,6 +375,56 @@ export default function ConfigPage() {
       label: '🌍 Локализация',
       children: editorTab('localization', (
         <LocalizationEditor key={`loc-${revision}`} value={sections.localization} onChange={(n) => updateSection('localization', n)} />
+      )),
+    },
+    {
+      key: 'experiments',
+      label: '🧪 Эксперименты',
+      children: editorTab('experiments', (
+        <ExperimentsEditor key={`exp-${revision}`} value={sections.experiments} onChange={(n) => updateSection('experiments', n)} />
+      )),
+    },
+    {
+      key: 'links',
+      label: '🔗 Ссылки',
+      children: (
+        <>
+          {sectionErrorAlert('links')}
+          <Form
+            form={linksForm}
+            layout="vertical"
+            onFinish={(v) => saveSection('links', { ...config?.links, ...v })}
+            onValuesChange={() => markDirty('links')}
+          >
+            <Form.Item
+              name="privacyPolicyUrl"
+              label="Privacy Policy URL"
+              tooltip="Показывается в экране согласий клиента; пусто — ссылка скрыта"
+              rules={[{ type: 'url', message: 'Некорректный URL' }]}
+            >
+              <Input placeholder="https://amoria.app/privacy" allowClear />
+            </Form.Item>
+            <Form.Item
+              name="termsUrl"
+              label="Terms of Service URL"
+              rules={[{ type: 'url', message: 'Некорректный URL' }]}
+            >
+              <Input placeholder="https://amoria.app/terms" allowClear />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" icon={<SaveOutlined />} loading={saving} htmlType="submit">
+                Сохранить
+              </Button>
+            </Form.Item>
+          </Form>
+        </>
+      ),
+    },
+    {
+      key: 'segments',
+      label: '🎯 Сегменты',
+      children: editorTab('segments', (
+        <SegmentsEditor key={`seg-${revision}`} value={sections.segments} onChange={(n) => updateSection('segments', n)} />
       )),
     },
   ];

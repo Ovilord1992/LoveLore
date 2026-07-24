@@ -7,6 +7,7 @@ import UsersPage from './pages/UsersPage';
 import NovelsPage from './pages/NovelsPage';
 import ConfigPage from './pages/ConfigPage';
 import ReviewsPage from './pages/ReviewsPage';
+import PromoPage from './pages/PromoPage';
 import AdminLayout from './components/AdminLayout';
 import { logoutAdmin } from './services/api';
 
@@ -51,6 +52,7 @@ function AppContent() {
       case 'users': return <UsersPage />;
       case 'novels': return <NovelsPage />;
       case 'reviews': return <ReviewsPage />;
+      case 'promo': return <PromoPage />;
       case 'config': return <ConfigPage />;
       default: return <DashboardPage />;
     }

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Card, Col, Row, Segmented, Statistic, Table, Typography, App as AntApp, Spin, Empty } from 'antd';
+import { Card, Col, Row, Segmented, Select, Statistic, Table, Tooltip, Typography, App as AntApp, Spin, Empty } from 'antd';
 import { UserOutlined, BookOutlined, DownloadOutlined, DollarOutlined, TeamOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import api from '../services/api';
@@ -31,11 +31,32 @@ interface Summary {
   topNovels: TopNovel[];
 }
 
+interface RetentionCohort {
+  date: string;
+  installs: number;
+  d1: number | null;
+  d7: number | null;
+  d30: number | null;
+}
+
+interface FunnelChapter { chapter: number; starts: number; completes: number }
+
+interface FunnelData {
+  novelId: string;
+  novelStarts: number;
+  chapters: FunnelChapter[];
+}
+
+interface NovelOption { id: string; title: string }
+
 // Палитра (валидирована на белой поверхности): одна серия — один цвет
 const COLOR_DAU = '#2a78d6';
 const COLOR_NEW_USERS = '#4a3aa7';
 const COLOR_REVENUE = '#008300';
 const INK_MUTED = '#898781';
+// Пара для воронки (starts vs completes) — проверена валидатором: CVD ΔE 104, контраст ≥ 3:1
+const COLOR_FUNNEL_STARTS = '#2a78d6';
+const COLOR_FUNNEL_COMPLETES = '#008300';
 
 /** Дни без событий в ответе отсутствуют — дополняем нулями весь период */
 const fillDays = <T,>(rows: { date: string }[], days: number, pick: (r?: { date: string }) => T): (T & { date: string })[] => {
@@ -60,6 +81,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [days, setDays] = useState(30);
+  const [retentionDays, setRetentionDays] = useState(30);
+  const [retention, setRetention] = useState<RetentionCohort[]>([]);
+  const [retentionLoading, setRetentionLoading] = useState(true);
+  const [novelOptions, setNovelOptions] = useState<NovelOption[]>([]);
+  const [funnelNovelId, setFunnelNovelId] = useState<string | null>(null);
+  const [funnel, setFunnel] = useState<FunnelData | null>(null);
+  const [funnelLoading, setFunnelLoading] = useState(false);
   const { message } = AntApp.useApp();
 
   useEffect(() => {
@@ -99,6 +127,66 @@ export default function DashboardPage() {
     return () => { active = false; };
   }, [days, message]);
 
+  // Ретеншн — свой период, независимый от периода сводки
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      setRetentionLoading(true);
+      try {
+        const { data } = await api.get('/admin/analytics/retention', { params: { days: retentionDays } });
+        if (active) setRetention(data.cohorts);
+      } catch (err: unknown) {
+        if (!active) return;
+        const e = err as { response?: { data?: { error?: string } } };
+        message.error(e.response?.data?.error || 'Не удалось загрузить ретеншн');
+      } finally {
+        if (active) setRetentionLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, [retentionDays, message]);
+
+  // Список новелл для селектора воронки (однократно)
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const { data } = await api.get('/admin/novels', { params: { page: 1, limit: 100 } });
+        if (active) setNovelOptions((data.novels as NovelOption[]).map(({ id, title }) => ({ id, title })));
+      } catch {
+        // Селектор останется пустым — воронка недоступна, остальной дашборд работает
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, []);
+
+  // Воронка выбранной новеллы
+  useEffect(() => {
+    if (!funnelNovelId) {
+      setFunnel(null);
+      return;
+    }
+    let active = true;
+    const load = async () => {
+      setFunnelLoading(true);
+      try {
+        const { data } = await api.get('/admin/analytics/funnel', { params: { novelId: funnelNovelId } });
+        if (active) setFunnel(data);
+      } catch (err: unknown) {
+        if (!active) return;
+        const e = err as { response?: { data?: { error?: string } } };
+        message.error(e.response?.data?.error || 'Не удалось загрузить воронку');
+        setFunnel(null);
+      } finally {
+        if (active) setFunnelLoading(false);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, [funnelNovelId, message]);
+
   if (loading) {
     return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
   }
@@ -130,6 +218,49 @@ export default function DashboardPage() {
       defaultSortOrder: 'descend' as const,
     },
   ];
+
+  // ─── Ретеншн: таблица когорт (свежие сверху), % с абсолютом в тултипе ──────
+  const retentionRows = [...retention].reverse();
+
+  const pctCell = (field: 'd1' | 'd7' | 'd30') =>
+    function PctCell(_: unknown, r: RetentionCohort) {
+      const v = r[field];
+      if (v === null || v === undefined) {
+        return (
+          <Tooltip title="Окно ещё не завершилось — значение появится, когда пройдёт соответствующий день">
+            <span style={{ color: INK_MUTED }}>—</span>
+          </Tooltip>
+        );
+      }
+      const pct = r.installs > 0 ? (v / r.installs) * 100 : 0;
+      return (
+        <Tooltip title={`${v} из ${r.installs} устройств вернулись`}>
+          <span>{pct.toFixed(1)}%</span>
+        </Tooltip>
+      );
+    };
+
+  const retentionColumns: ColumnsType<RetentionCohort> = [
+    {
+      title: 'Дата когорты', dataIndex: 'date', key: 'date', width: 130,
+      render: (d: string) => shortDate(d),
+      sorter: (a, b) => a.date.localeCompare(b.date),
+    },
+    { title: 'Установок', dataIndex: 'installs', key: 'installs', width: 110, align: 'right' as const },
+    { title: 'D1', key: 'd1', width: 90, align: 'right' as const, render: pctCell('d1') },
+    { title: 'D7', key: 'd7', width: 90, align: 'right' as const, render: pctCell('d7') },
+    { title: 'D30', key: 'd30', width: 90, align: 'right' as const, render: pctCell('d30') },
+  ];
+
+  // ─── Воронка: две серии (начали/завершили) по главам ──────────────────────
+  const funnelChartData = funnel
+    ? [...funnel.chapters]
+        .sort((a, b) => a.chapter - b.chapter)
+        .flatMap((c) => [
+          { chapter: `Гл. ${c.chapter}`, type: 'Начали', value: c.starts },
+          { chapter: `Гл. ${c.chapter}`, type: 'Завершили', value: c.completes },
+        ])
+    : [];
 
   return (
     <div>
@@ -264,6 +395,91 @@ export default function DashboardPage() {
           </Col>
         </Row>
       </Spin>
+
+      {/* ─── Ретеншн (спека 4.4) ─────────────────────────────────────────── */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <Card
+            title="Ретеншн — когорты по дате первого запуска"
+            extra={
+              <Segmented
+                value={retentionDays}
+                onChange={(v) => setRetentionDays(v as number)}
+                options={[
+                  { label: '7 дней', value: 7 },
+                  { label: '30 дней', value: 30 },
+                  { label: '90 дней', value: 90 },
+                ]}
+              />
+            }
+          >
+            <Table
+              columns={retentionColumns}
+              dataSource={retentionRows}
+              rowKey="date"
+              size="small"
+              loading={retentionLoading}
+              pagination={{ pageSize: 15, hideOnSinglePage: true, size: 'small' }}
+              locale={{ emptyText: 'Нет когорт за период — события session_start ещё не поступали' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* ─── Воронка по главам (спека 4.4) ───────────────────────────────── */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <Card
+            title="Воронка новеллы — начали и завершили главу"
+            extra={
+              <Select
+                showSearch
+                allowClear
+                placeholder="Выберите новеллу"
+                style={{ width: 300 }}
+                value={funnelNovelId}
+                onChange={(v) => setFunnelNovelId(v ?? null)}
+                optionFilterProp="label"
+                options={novelOptions.map((n) => ({ value: n.id, label: n.title }))}
+              />
+            }
+          >
+            {!funnelNovelId ? (
+              <Empty description="Выберите новеллу, чтобы построить воронку по главам" />
+            ) : funnelLoading ? (
+              <Spin style={{ display: 'block', margin: '48px auto' }} />
+            ) : funnel ? (
+              <>
+                <Statistic
+                  title="Начали новеллу (уникальных устройств, novel_start)"
+                  value={funnel.novelStarts}
+                  style={{ marginBottom: 16 }}
+                />
+                {funnel.chapters.length > 0 ? (
+                  <Suspense fallback={<Spin style={{ display: 'block', margin: '48px auto' }} />}>
+                    <Column
+                      data={funnelChartData}
+                      xField="chapter"
+                      yField="value"
+                      colorField="type"
+                      group
+                      height={280}
+                      style={{ radiusTopLeft: 4, radiusTopRight: 4 }}
+                      scale={{ color: { range: [COLOR_FUNNEL_STARTS, COLOR_FUNNEL_COMPLETES] } }}
+                      axis={{ x: { labelFill: INK_MUTED, line: false, tickLength: 0 }, y: axisY }}
+                      tooltip={{ title: (d: { chapter: string }) => d.chapter }}
+                    />
+                  </Suspense>
+                ) : (
+                  <Empty description="По главам этой новеллы пока нет событий chapter_start / chapter_complete" />
+                )}
+              </>
+            ) : (
+              <Empty description="Нет данных" />
+            )}
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 }

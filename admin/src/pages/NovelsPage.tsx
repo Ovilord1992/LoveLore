@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Table, Input, Button, Space, Switch, Typography, App as AntApp, Popconfirm, Upload, Modal, Tag, Tooltip, DatePicker } from 'antd';
-import { SearchOutlined, UploadOutlined, DeleteOutlined, GlobalOutlined, ProfileOutlined } from '@ant-design/icons';
+import { SearchOutlined, UploadOutlined, DeleteOutlined, GlobalOutlined, HistoryOutlined, ProfileOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { UploadProps } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -28,6 +28,12 @@ interface ChapterRow {
   releasedAt: string | null;
 }
 
+interface VersionRow {
+  version: number;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export default function NovelsPage() {
   const [novels, setNovels] = useState<NovelRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -45,6 +51,10 @@ export default function NovelsPage() {
   const [chaptersLoading, setChaptersLoading] = useState(false);
   const [chaptersSaving, setChaptersSaving] = useState<number | null>(null);
   const [chapterUploading, setChapterUploading] = useState(false);
+  const [versionsModal, setVersionsModal] = useState<{ novelId: string; title: string } | null>(null);
+  const [versions, setVersions] = useState<VersionRow[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [rollingBack, setRollingBack] = useState<number | null>(null);
   const reqId = useRef(0);
   const { message } = AntApp.useApp();
 
@@ -201,6 +211,53 @@ export default function NovelsPage() {
     patchChapter(chapter.number, { releasedAt: d.toISOString() }, 'Дата выпуска обновлена');
   };
 
+  // ─── Версии контента и откат (спека 4.3) ─────────────────────────────────
+  const loadVersions = async (novelId: string) => {
+    setVersionsLoading(true);
+    try {
+      const { data } = await api.get(`/admin/novels/${novelId}/versions`);
+      setVersions(data.versions);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки версий');
+    } finally {
+      setVersionsLoading(false);
+    }
+  };
+
+  const openVersions = (novelId: string, title: string) => {
+    setVersionsModal({ novelId, title });
+    setVersions([]);
+    loadVersions(novelId);
+  };
+
+  const rollbackNovel = async (version: number) => {
+    if (!versionsModal) return;
+    setRollingBack(version);
+    try {
+      const { data } = await api.post(`/admin/novels/${versionsModal.novelId}/rollback`, { version });
+      message.success(
+        `Откат к v${data.rolledBackTo} выполнен. Текущая версия: v${data.novel.version}, ` +
+        `глав: ${data.novel.chaptersCount}, выпущено: ${data.novel.releasedChapters}`,
+      );
+      loadVersions(versionsModal.novelId); // история линейна — появилась новая запись
+      fetchNovels(); // версия/размер в основной таблице изменились
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { error?: string } } };
+      if (e.response?.status === 404) {
+        message.error(
+          `Версия v${version} недоступна: архив не найден или уже удалён (хранятся последние 5 версий). Список обновлён.`,
+          6,
+        );
+        loadVersions(versionsModal.novelId);
+      } else {
+        message.error(e.response?.data?.error || 'Ошибка отката версии');
+      }
+    } finally {
+      setRollingBack(null);
+    }
+  };
+
   // Загрузка одной главы JSON-файлом → POST /admin/novels/:id/chapters
   const uploadChapterJson = async (file: File) => {
     if (!chaptersModal) return;
@@ -299,7 +356,7 @@ export default function NovelsPage() {
       render: (d: string) => new Date(d).toLocaleDateString('ru'),
     },
     {
-      title: '', key: 'actions', width: 140,
+      title: '', key: 'actions', width: 175,
       render: (_: unknown, r: NovelRow) => (
         <Space>
           <Tooltip title="Главы">
@@ -307,6 +364,9 @@ export default function NovelsPage() {
           </Tooltip>
           <Tooltip title="Переводы">
             <Button icon={<GlobalOutlined />} size="small" onClick={() => openTranslations(r.id, r.title)} />
+          </Tooltip>
+          <Tooltip title="Версии и откат">
+            <Button icon={<HistoryOutlined />} size="small" onClick={() => openVersions(r.id, r.title)} />
           </Tooltip>
           <Popconfirm title="Удалить новеллу?" onConfirm={() => deleteNovel(r.id)}>
             <Button icon={<DeleteOutlined />} size="small" danger />
@@ -342,21 +402,58 @@ export default function NovelsPage() {
       ),
     },
     {
-      title: 'Дата выпуска / расписание', key: 'releasedAt', width: 215,
+      title: 'Дата выпуска / расписание', key: 'releasedAt', width: 250,
       render: (_: unknown, r: ChapterRow) => (
-        <Tooltip title={r.isReleased ? 'Дата фактического выпуска' : 'Будущая дата — сервер выпустит главу автоматически (интервал ~60 с)'}>
-          <DatePicker
-            value={r.releasedAt ? dayjs(r.releasedAt) : null}
-            onChange={(d) => updateChapterDate(r, d)}
-            showTime
-            format="DD.MM.YYYY HH:mm"
-            allowClear={false}
-            size="small"
-            disabled={chaptersSaving === r.number}
-            disabledDate={r.isReleased ? undefined : (d) => d.isBefore(dayjs().startOf('day'))}
-            placeholder={r.isReleased ? '—' : 'Запланировать…'}
-          />
-        </Tooltip>
+        <Space size={4}>
+          <Tooltip title={r.isReleased ? 'Дата фактического выпуска' : 'Будущая дата — сервер выпустит главу автоматически (интервал ~60 с)'}>
+            <DatePicker
+              value={r.releasedAt ? dayjs(r.releasedAt) : null}
+              onChange={(d) => updateChapterDate(r, d)}
+              showTime
+              format="DD.MM.YYYY HH:mm"
+              allowClear={false}
+              size="small"
+              disabled={chaptersSaving === r.number}
+              disabledDate={r.isReleased ? undefined : (d) => d.isBefore(dayjs().startOf('day'))}
+              placeholder={r.isReleased ? '—' : 'Запланировать…'}
+            />
+          </Tooltip>
+          {!r.isReleased && r.releasedAt && (
+            <Tooltip title="Убрать из расписания — глава останется невыпущенной без даты">
+              <Button
+                icon={<CloseCircleOutlined />}
+                size="small"
+                disabled={chaptersSaving === r.number}
+                onClick={() => patchChapter(r.number, { releasedAt: null }, `Глава ${r.number} убрана из расписания`)}
+              />
+            </Tooltip>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
+  const versionColumns: ColumnsType<VersionRow> = [
+    { title: 'Версия', dataIndex: 'version', key: 'version', width: 90, render: (v: number) => `v${v}` },
+    { title: 'Размер', dataIndex: 'sizeBytes', key: 'sizeBytes', width: 100, render: (s: number) => formatSize(s) },
+    {
+      title: 'Дата архивации', dataIndex: 'createdAt', key: 'createdAt',
+      render: (d: string) => dayjs(d).format('DD.MM.YYYY HH:mm'),
+    },
+    {
+      title: '', key: 'rollback', width: 130,
+      render: (_: unknown, r: VersionRow) => (
+        <Popconfirm
+          title={`Откатиться к v${r.version}?`}
+          description="ZIP будет восстановлен из архива, главы перечитаны (release-статусы сохранятся), версия увеличится."
+          okText="Откатиться"
+          cancelText="Отмена"
+          onConfirm={() => rollbackNovel(r.version)}
+        >
+          <Button icon={<HistoryOutlined />} size="small" danger loading={rollingBack === r.version}>
+            Откатиться
+          </Button>
+        </Popconfirm>
       ),
     },
   ];
@@ -468,6 +565,33 @@ export default function NovelsPage() {
               pagination={false}
               size="small"
               locale={{ emptyText: 'Нет глав' }}
+            />
+          </>
+        )}
+      </Modal>
+
+      {/* Модалка версий контента и отката */}
+      <Modal
+        title={`🕘 Версии — ${versionsModal?.title || ''}`}
+        open={!!versionsModal}
+        onCancel={() => { setVersionsModal(null); setVersions([]); }}
+        footer={null}
+        width={640}
+      >
+        {versionsModal && (
+          <>
+            <p style={{ color: '#888', marginTop: 0 }}>
+              Архивы прошлых версий ZIP (хранятся последние 5). Откат восстанавливает контент выбранной
+              версии и создаёт новую запись в истории — история линейна, как у конфига.
+            </p>
+            <Table
+              columns={versionColumns}
+              dataSource={versions}
+              rowKey="version"
+              loading={versionsLoading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Архивных версий пока нет — они появляются при перезаливке ZIP или глав' }}
             />
           </>
         )}
