@@ -1,10 +1,18 @@
+import { useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
-import type { Scene, SceneEvent as SceneEventType, SceneCharacter, Choice, EffectType, CgTransition, EmotionType, BackgroundLayer } from '../../types/novel';
-import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette, Sparkles, Camera, Heart, Layers, ImagePlus, Settings, Volume2, X } from 'lucide-react';
+import type { Scene, SceneEvent as SceneEventType, SceneCharacter, Choice, Condition, ConditionsLogic, SceneBranch, EffectType, CgTransition, EmotionType, BackgroundLayer } from '../../types/novel';
+import { SceneSelect } from '../common/SceneSelect';
+import { AssetPicker } from '../common/AssetPicker';
+import { conditionSummary } from '../../utils/conditions';
+import { Plus, Trash2, GripVertical, MessageSquare, BookOpen, GitBranch, ArrowDown, ArrowUp, Image, Users, Palette, Sparkles, Camera, Heart, Layers, ImagePlus, Settings, Volume2, X, Copy, ClipboardPaste, CopyPlus, Flag, Split } from 'lucide-react';
 import './EventEditor.css';
 
 export function EventEditor() {
-  const { project, selectedChapterIndex, selectedSceneId, addEvent, updateEvent, removeEvent, moveEvent, selectedEventIndex, selectEvent } = useEditorStore();
+  const { project, selectedChapterIndex, selectedSceneId, addEvent, updateEvent, removeEvent, moveEvent, selectedEventIndex, selectEvent, eventClipboard, pasteEvent, duplicateScene } = useEditorStore();
+  const copySelectedEvent = useEditorStore((s) => s.copySelectedEvent);
+  // Индекс карточки, которой разрешён drag (зажат grip-handle) + подсветка цели
+  const [draggableIndex, setDraggableIndex] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<number | null>(null);
 
   const chapter = project.chapters[selectedChapterIndex];
   const scene = chapter?.scenes.find((s) => s.id === selectedSceneId);
@@ -29,28 +37,73 @@ export function EventEditor() {
     addEvent(scene.id, event);
   };
 
+  const handleCopy = (index: number) => {
+    selectEvent(index);
+    copySelectedEvent();
+  };
+
+  const handleDrop = (from: number, to: number) => {
+    if (from !== to) moveEvent(scene.id, from, to);
+    setDraggableIndex(null);
+    setDropTarget(null);
+  };
+
   return (
     <div className="event-editor">
       <div className="event-editor-header">
-        <h3>Сцена: {scene.id}</h3>
+        <div className="scene-title-row">
+          <h3>Сцена: {scene.id}</h3>
+          <button
+            className="scene-duplicate-btn"
+            onClick={() => duplicateScene(scene.id)}
+            title="Дублировать сцену (копия событий с новым id)"
+          >
+            <CopyPlus size={13} /> Дублировать
+          </button>
+        </div>
         <SceneSettings scene={scene} />
         <CharactersOnScene scene={scene} />
+        <BranchesEditor scene={scene} />
+        <EndingEditor scene={scene} />
       </div>
 
       <div className="events-list">
         {scene.events.map((event, index) => (
-          <EventCard
+          <div
             key={index}
-            event={event}
-            index={index}
-            isSelected={selectedEventIndex === index}
-            totalEvents={scene.events.length}
-            onSelect={() => selectEvent(index)}
-            onUpdate={(e) => updateEvent(scene.id, index, e)}
-            onRemove={() => removeEvent(scene.id, index)}
-            onMoveUp={() => index > 0 && moveEvent(scene.id, index, index - 1)}
-            onMoveDown={() => index < scene.events.length - 1 && moveEvent(scene.id, index, index + 1)}
-          />
+            draggable={draggableIndex === index}
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', String(index));
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragEnd={() => { setDraggableIndex(null); setDropTarget(null); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (dropTarget !== index) setDropTarget(index);
+            }}
+            onDragLeave={() => { if (dropTarget === index) setDropTarget(null); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+              if (!isNaN(from)) handleDrop(from, index);
+            }}
+            className={`event-drag-wrap ${dropTarget === index ? 'drop-target' : ''}`}
+          >
+            <EventCard
+              event={event}
+              index={index}
+              isSelected={selectedEventIndex === index}
+              totalEvents={scene.events.length}
+              onSelect={() => selectEvent(index)}
+              onUpdate={(e) => updateEvent(scene.id, index, e)}
+              onRemove={() => removeEvent(scene.id, index)}
+              onMoveUp={() => index > 0 && moveEvent(scene.id, index, index - 1)}
+              onMoveDown={() => index < scene.events.length - 1 && moveEvent(scene.id, index, index + 1)}
+              onCopy={() => handleCopy(index)}
+              onGripDown={() => setDraggableIndex(index)}
+            />
+          </div>
         ))}
       </div>
 
@@ -88,20 +141,25 @@ export function EventEditor() {
         <button onClick={() => handleAddEvent('playSound')} title="Проиграть звук">
           <Volume2 size={16} /> Звук
         </button>
+        {eventClipboard && (
+          <button onClick={() => pasteEvent()} className="paste-btn" title="Вставить скопированное событие (Ctrl/Cmd+V)">
+            <ClipboardPaste size={16} /> Вставить
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
 function SceneSettings({ scene }: { scene: Scene }) {
-  const { project, updateScene, addImage } = useEditorStore();
-  const bgUrl = useEditorStore((s) => scene.background ? s.imageUrls.get(`backgrounds/${scene.background}`) : undefined);
-  const images = useEditorStore((s) => s.images);
+  const { project, updateScene, addAsset } = useEditorStore();
+  const bgUrl = useEditorStore((s) => scene.background ? s.assetUrls.get(`backgrounds/${scene.background}`) : undefined);
+  const assets = useEditorStore((s) => s.assets);
 
   // Собираем список доступных фонов: из загруженных файлов (Map) + уже использованные в сценах
   const availableBackgrounds = (() => {
     const set = new Set<string>();
-    images.forEach((_, path) => {
+    assets.forEach((_, path) => {
       if (path.startsWith('backgrounds/')) set.add(path.replace(/^backgrounds\//, ''));
     });
     for (const ch of project.chapters) {
@@ -127,7 +185,7 @@ function SceneSettings({ scene }: { scene: Scene }) {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const name = file.name.replace(/\s+/g, '_').toLowerCase();
-      addImage(`backgrounds/${name}`, file);
+      addAsset(`backgrounds/${name}`, file);
       updateScene(scene.id, { background: name });
     };
     input.click();
@@ -161,7 +219,7 @@ function SceneSettings({ scene }: { scene: Scene }) {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const name = file.name.replace(/\s+/g, '_').toLowerCase();
-      addImage(`backgrounds/${name}`, file);
+      addAsset(`backgrounds/${name}`, file);
       updateLayer(index, { image: name });
     };
     input.click();
@@ -180,15 +238,21 @@ function SceneSettings({ scene }: { scene: Scene }) {
         <button className="upload-btn" onClick={handleBgUpload} title="Загрузить фон"><Image size={14} /></button>
       </div>
       {bgUrl && !hasLayers && <img src={bgUrl} alt="bg" className="scene-bg-preview" />}
-      <input
-        placeholder="Музыка (track.mp3)"
+      <label className="field-label"><Volume2 size={11} /> Музыка сцены</label>
+      <AssetPicker
         value={scene.music || ''}
-        onChange={(e) => updateScene(scene.id, { music: e.target.value || undefined })}
+        onChange={(v) => updateScene(scene.id, { music: v || undefined })}
+        dirs={['music/']}
+        kind="audio"
+        placeholder="Музыка (music/track.mp3)"
       />
-      <input
-        placeholder="Следующая сцена (ID)"
+      <label className="field-label">Следующая сцена (после последнего события)</label>
+      <SceneSelect
         value={scene.nextSceneId || ''}
-        onChange={(e) => updateScene(scene.id, { nextSceneId: e.target.value || undefined })}
+        onChange={(v) => updateScene(scene.id, { nextSceneId: v || undefined })}
+        allowEmpty
+        emptyLabel="— конец главы —"
+        placeholder="— конец главы —"
       />
       <div className="scene-transition-settings">
         <label>Переход</label>
@@ -306,6 +370,232 @@ function SceneSettings({ scene }: { scene: Scene }) {
   );
 }
 
+/** Билдер списка условий с логикой and/or (формат v2 1.1) —
+ *  общий для вариантов выбора и веток сцены. */
+function ConditionsBuilder({ conditions, logic, onChange, compact }: {
+  conditions: Condition[];
+  logic: ConditionsLogic;
+  onChange: (conditions: Condition[], logic: ConditionsLogic) => void;
+  compact?: boolean;
+}) {
+  const variables = useEditorStore((s) => s.project.variables);
+  const varNames = Object.keys(variables);
+
+  const updateCondition = (i: number, patch: Partial<Condition>) => {
+    onChange(conditions.map((c, ci) => ci === i ? { ...c, ...patch } : c), logic);
+  };
+
+  const parseValue = (raw: string): number | boolean => {
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+    const n = parseFloat(raw);
+    return isNaN(n) ? 0 : n;
+  };
+
+  return (
+    <div className={`conditions-builder ${compact ? 'compact' : ''}`}>
+      {conditions.length > 1 && (
+        <div className="conditions-logic-row">
+          <span className="conditions-logic-label">Логика:</span>
+          <button
+            type="button"
+            className={`logic-btn ${logic === 'and' ? 'active' : ''}`}
+            onClick={() => onChange(conditions, 'and')}
+            title="Все условия должны выполниться"
+          >И (and)</button>
+          <button
+            type="button"
+            className={`logic-btn ${logic === 'or' ? 'active' : ''}`}
+            onClick={() => onChange(conditions, 'or')}
+            title="Достаточно одного условия"
+          >ИЛИ (or)</button>
+        </div>
+      )}
+      {conditions.map((cond, i) => (
+        <div key={i} className="condition-row">
+          <input
+            placeholder="переменная"
+            value={cond.variable}
+            onChange={(e) => updateCondition(i, { variable: e.target.value })}
+            className="cond-var"
+            list="editor-variable-names"
+          />
+          <select
+            value={cond.operator}
+            onChange={(e) => updateCondition(i, { operator: e.target.value as Condition['operator'] })}
+            className="cond-op"
+          >
+            <option value=">=">{'>='}</option>
+            <option value="<=">{'<='}</option>
+            <option value="==">{'=='}</option>
+            <option value="!=">{'!='}</option>
+            <option value=">">{'>'}</option>
+            <option value="<">{'<'}</option>
+          </select>
+          <input
+            placeholder="значение"
+            value={String(cond.value)}
+            onChange={(e) => updateCondition(i, { value: parseValue(e.target.value) })}
+            className="cond-val"
+            title="Число или true/false"
+          />
+          <button
+            type="button"
+            className="delete"
+            onClick={() => onChange(conditions.filter((_, ci) => ci !== i), logic)}
+            title="Удалить условие"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="add-condition-btn"
+        onClick={() => onChange([...conditions, { variable: varNames[0] || '', operator: '>=', value: 0 }], logic)}
+      >
+        <Plus size={11} /> условие
+      </button>
+      <datalist id="editor-variable-names">
+        {varNames.map((v) => <option key={v} value={v} />)}
+      </datalist>
+    </div>
+  );
+}
+
+/** Панель веток сцены (формат v2 1.2): условия → целевая сцена,
+ *  порядок важен — проверяются сверху вниз, первое совпадение побеждает. */
+function BranchesEditor({ scene }: { scene: Scene }) {
+  const updateScene = useEditorStore((s) => s.updateScene);
+  const branches = scene.branches || [];
+
+  const setBranches = (next: SceneBranch[]) => {
+    updateScene(scene.id, { branches: next.length ? next : undefined });
+  };
+
+  const updateBranch = (i: number, patch: Partial<SceneBranch>) => {
+    setBranches(branches.map((b, bi) => bi === i ? { ...b, ...patch } : b));
+  };
+
+  const moveBranch = (from: number, to: number) => {
+    if (to < 0 || to >= branches.length) return;
+    const next = [...branches];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setBranches(next);
+  };
+
+  return (
+    <div className="branches-editor">
+      <div className="subpanel-header">
+        <span className="subpanel-label" title="Проверяются в конце сцены по порядку; первое сработавшее условие определяет переход. Если ни одно — используется «Следующая сцена».">
+          <Split size={12} /> Ветвление по переменным ({branches.length})
+        </span>
+        <button
+          type="button"
+          className="add-btn small"
+          onClick={() => setBranches([...branches, { conditions: [{ variable: '', operator: '>=', value: 0 }], nextSceneId: '' }])}
+          title="Добавить ветку"
+        >
+          <Plus size={12} />
+        </button>
+      </div>
+      {branches.length > 0 && (
+        <div className="branches-hint">Порядок важен: первая сработавшая ветка побеждает</div>
+      )}
+      {branches.map((branch, i) => (
+        <div key={i} className="branch-card">
+          <div className="branch-card-header">
+            <span className="branch-index">#{i + 1}</span>
+            <span className="branch-summary">{conditionSummary(branch.conditions, branch.conditionsLogic)}</span>
+            <div className="branch-actions">
+              {i > 0 && <button type="button" onClick={() => moveBranch(i, i - 1)} title="Выше (проверяется раньше)"><ArrowUp size={12} /></button>}
+              {i < branches.length - 1 && <button type="button" onClick={() => moveBranch(i, i + 1)} title="Ниже (проверяется позже)"><ArrowDown size={12} /></button>}
+              <button type="button" className="delete" onClick={() => setBranches(branches.filter((_, bi) => bi !== i))} title="Удалить ветку"><Trash2 size={12} /></button>
+            </div>
+          </div>
+          <ConditionsBuilder
+            conditions={branch.conditions}
+            logic={branch.conditionsLogic || 'and'}
+            onChange={(conditions, logic) => updateBranch(i, {
+              conditions,
+              conditionsLogic: logic === 'and' ? undefined : logic,
+            })}
+            compact
+          />
+          <div className="branch-target-row">
+            <span className="branch-target-label">→</span>
+            <SceneSelect
+              value={branch.nextSceneId}
+              onChange={(v) => updateBranch(i, { nextSceneId: v })}
+              placeholder="Целевая сцена…"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Панель концовки сцены (формат v2 1.3). */
+function EndingEditor({ scene }: { scene: Scene }) {
+  const updateScene = useEditorStore((s) => s.updateScene);
+  const metaEndings = useEditorStore((s) => s.project.meta.endings);
+  const ending = scene.ending;
+
+  return (
+    <div className="ending-editor">
+      <label className="premium-toggle subpanel-header">
+        <input
+          type="checkbox"
+          checked={!!ending}
+          onChange={(e) => updateScene(scene.id, {
+            ending: e.target.checked
+              ? { id: metaEndings?.[0]?.id || 'ending_1', title: metaEndings?.[0]?.title || '' }
+              : undefined,
+          })}
+        />
+        <span className="subpanel-label"><Flag size={12} /> Концовка (конец сцены = финал истории)</span>
+      </label>
+      {ending && (
+        <div className="ending-fields">
+          <div className="ending-row">
+            <input
+              placeholder="id (good_end)"
+              value={ending.id}
+              onChange={(e) => updateScene(scene.id, { ending: { ...ending, id: e.target.value } })}
+              className="ending-id"
+              list="editor-meta-ending-ids"
+            />
+            <datalist id="editor-meta-ending-ids">
+              {(metaEndings || []).map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}
+            </datalist>
+            <input
+              placeholder="Заголовок («Счастливый финал»)"
+              value={ending.title}
+              onChange={(e) => updateScene(scene.id, { ending: { ...ending, title: e.target.value } })}
+            />
+          </div>
+          <textarea
+            placeholder="Описание концовки…"
+            value={ending.description || ''}
+            onChange={(e) => updateScene(scene.id, { ending: { ...ending, description: e.target.value || undefined } })}
+            rows={2}
+          />
+          <label className="field-label">Изображение (из CG)</label>
+          <AssetPicker
+            value={ending.image || ''}
+            onChange={(v) => updateScene(scene.id, { ending: { ...ending, image: v || undefined } })}
+            dirs={['cg/']}
+            kind="image"
+            placeholder="cg/ending.png"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CharactersOnScene({ scene }: { scene: Scene }) {
   const { project, addCharacterToScene, updateCharacterOnScene, removeCharacterFromScene } = useEditorStore();
 
@@ -377,10 +667,12 @@ interface EventCardProps {
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onCopy: () => void;
+  onGripDown: () => void;
 }
 
-function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, onRemove, onMoveUp, onMoveDown }: EventCardProps) {
-  const { project, addImage } = useEditorStore();
+function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, onRemove, onMoveUp, onMoveDown, onCopy, onGripDown }: EventCardProps) {
+  const { project, addAsset } = useEditorStore();
   const typeLabels: Record<string, string> = {
     dialogue: '💬 Диалог',
     narration: '📖 Нарратив',
@@ -403,7 +695,7 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const name = file.name.replace(/\s+/g, '_').toLowerCase();
-      addImage(`backgrounds/${name}`, file);
+      addAsset(`backgrounds/${name}`, file);
       onUpdate({ ...event, asset: name });
     };
     input.click();
@@ -412,10 +704,13 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
   return (
     <div className={`event-card ${event.type} ${isSelected ? 'selected' : ''}`} onClick={onSelect}>
       <div className="event-card-header">
-        <GripVertical size={14} className="drag-handle" />
+        <span onMouseDown={onGripDown} className="drag-handle-wrap" title="Перетащить для изменения порядка">
+          <GripVertical size={14} className="drag-handle" />
+        </span>
         <span className="event-type">{typeLabels[event.type] || event.type}</span>
         <span className="event-index">#{index + 1}</span>
         <div className="event-actions">
+          <button onClick={(e) => { e.stopPropagation(); onCopy(); }} title="Копировать событие (Ctrl/Cmd+C)"><Copy size={14} /></button>
           {index > 0 && <button onClick={(e) => { e.stopPropagation(); onMoveUp(); }} title="Вверх"><ArrowUp size={14} /></button>}
           {index < totalEvents - 1 && <button onClick={(e) => { e.stopPropagation(); onMoveDown(); }} title="Вниз"><ArrowDown size={14} /></button>}
           <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="delete" title="Удалить"><Trash2 size={14} /></button>
@@ -434,22 +729,24 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
             ))}
           </select>
           <textarea
-            placeholder="Текст диалога..."
+            placeholder="Текст диалога... ({name}, {var:key} — интерполяция)"
             value={event.text || ''}
             onChange={(e) => onUpdate({ ...event, text: e.target.value })}
             rows={2}
           />
+          <VoicePicker event={event} onUpdate={onUpdate} />
         </div>
       )}
 
       {event.type === 'narration' && (
         <div className="event-body">
           <textarea
-            placeholder="Текст нарратива..."
+            placeholder="Текст нарратива... ({name}, {var:key} — интерполяция)"
             value={event.text || ''}
             onChange={(e) => onUpdate({ ...event, text: e.target.value })}
             rows={2}
           />
+          <VoicePicker event={event} onUpdate={onUpdate} />
         </div>
       )}
 
@@ -555,7 +852,7 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
                 const file = (ev.target as HTMLInputElement).files?.[0];
                 if (!file) return;
                 const name = file.name.replace(/\s+/g, '_').toLowerCase();
-                addImage(`cg/${name}`, file);
+                addAsset(`cg/${name}`, file);
                 onUpdate({ ...event, cgImage: `cg/${name}` });
               };
               input.click();
@@ -634,6 +931,14 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
             <option value="musicNote">🎵 Нота</option>
             <option value="zzz">💤 Сон</option>
           </select>
+          <label className="field-label">Картинка вместо emoji (опционально)</label>
+          <AssetPicker
+            value={event.image || ''}
+            onChange={(v) => onUpdate({ ...event, image: v || undefined })}
+            dirs={['emotions/']}
+            kind="image"
+            placeholder="emotions/love.png"
+          />
         </div>
       )}
 
@@ -644,6 +949,7 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
               placeholder="Имя переменной (напр. romance_anna)"
               value={event.variable || ''}
               onChange={(e) => onUpdate({ ...event, variable: e.target.value })}
+              list="editor-variable-names"
             />
             <input
               placeholder="Значение (число / строка / +1 / -2 / toggle)"
@@ -667,13 +973,31 @@ function EventCard({ event, index, isSelected, totalEvents, onSelect, onUpdate, 
 
       {event.type === 'playSound' && (
         <div className="event-body">
-          <input
-            placeholder="Файл звука (sounds/door_open.mp3)"
+          <AssetPicker
             value={event.asset || ''}
-            onChange={(e) => onUpdate({ ...event, asset: e.target.value })}
+            onChange={(v) => onUpdate({ ...event, asset: v })}
+            dirs={['sounds/']}
+            kind="audio"
+            placeholder="Файл звука (sounds/door_open.mp3)"
           />
         </div>
       )}
+    </div>
+  );
+}
+
+/** Пикер озвучки (формат v2 1.6) для dialogue/narration. */
+function VoicePicker({ event, onUpdate }: { event: SceneEventType; onUpdate: (e: SceneEventType) => void }) {
+  return (
+    <div className="voice-picker-row">
+      <span className="field-label" title="Озвучка реплики — файл из voice/ (обрывается при переходе к следующему событию)">🎙 Озвучка</span>
+      <AssetPicker
+        value={event.voice || ''}
+        onChange={(v) => onUpdate({ ...event, voice: v || undefined })}
+        dirs={['voice/']}
+        kind="audio"
+        placeholder="voice/reply.mp3"
+      />
     </div>
   );
 }
@@ -737,10 +1061,10 @@ function ChoiceEditor({ event, onUpdate }: { event: SceneEventType; onUpdate: (e
               value={choice.text}
               onChange={(e) => updateChoice(i, { text: e.target.value })}
             />
-            <input
-              placeholder="→ ID сцены"
+            <SceneSelect
               value={choice.nextSceneId}
-              onChange={(e) => updateChoice(i, { nextSceneId: e.target.value })}
+              onChange={(v) => updateChoice(i, { nextSceneId: v })}
+              placeholder="→ Сцена…"
               className="scene-ref"
             />
             <label className="premium-toggle">
@@ -774,6 +1098,11 @@ function ChoiceEditor({ event, onUpdate }: { event: SceneEventType; onUpdate: (e
             choice={choice}
             onChange={(updates) => updateChoice(i, updates)}
           />
+
+          <ChoiceUnlockOutfitsEditor
+            choice={choice}
+            onChange={(updates) => updateChoice(i, updates)}
+          />
         </div>
       ))}
       <button className="add-choice" onClick={addChoice}>
@@ -783,11 +1112,21 @@ function ChoiceEditor({ event, onUpdate }: { event: SceneEventType; onUpdate: (e
   );
 }
 
-type ConditionOperator = NonNullable<Choice['condition']>['operator'];
-
+/** Условия показа варианта: билдер множественных условий с and/or (v2 1.1).
+ *  Легаси-`condition` конвертируется в массив при первом изменении. */
 function ChoiceConditionEditor({ choice, onChange }: { choice: Choice; onChange: (updates: Partial<Choice>) => void }) {
-  const enabled = !!choice.condition;
-  const cond = choice.condition;
+  const conditions = choice.conditions ?? (choice.condition ? [choice.condition] : []);
+  const enabled = conditions.length > 0;
+
+  const write = (next: Condition[], logic: ConditionsLogic) => {
+    // Записываем в новый формат `conditions`; легаси-поле убираем, чтобы не
+    // было расхождения (клиент отдаёт приоритет `conditions`).
+    onChange({
+      conditions: next.length > 0 ? next : undefined,
+      conditionsLogic: next.length > 1 && logic === 'or' ? 'or' : undefined,
+      condition: undefined,
+    });
+  };
 
   return (
     <div className="choice-subblock">
@@ -795,40 +1134,22 @@ function ChoiceConditionEditor({ choice, onChange }: { choice: Choice; onChange:
         <input
           type="checkbox"
           checked={enabled}
-          onChange={(e) => onChange(e.target.checked
-            ? { condition: { variable: '', operator: '>=', value: 0 } }
-            : { condition: undefined })}
+          onChange={(e) => {
+            if (e.target.checked) {
+              write([{ variable: '', operator: '>=', value: 0 }], 'and');
+            } else {
+              write([], 'and');
+            }
+          }}
         />
-        <span className="subblock-label">Условие показа</span>
+        <span className="subblock-label">Условия показа {conditions.length > 1 ? `(${conditions.length})` : ''}</span>
       </label>
-      {enabled && cond && (
-        <div className="condition-row">
-          <input
-            placeholder="переменная"
-            value={cond.variable}
-            onChange={(e) => onChange({ condition: { ...cond, variable: e.target.value } })}
-            className="cond-var"
-          />
-          <select
-            value={cond.operator}
-            onChange={(e) => onChange({ condition: { ...cond, operator: e.target.value as ConditionOperator } })}
-            className="cond-op"
-          >
-            <option value=">=">{'>='}</option>
-            <option value="<=">{'<='}</option>
-            <option value="==">{'=='}</option>
-            <option value="!=">{'!='}</option>
-            <option value=">">{'>'}</option>
-            <option value="<">{'<'}</option>
-          </select>
-          <input
-            type="number"
-            placeholder="значение"
-            value={cond.value}
-            onChange={(e) => onChange({ condition: { ...cond, value: parseFloat(e.target.value) || 0 } })}
-            className="cond-val"
-          />
-        </div>
+      {enabled && (
+        <ConditionsBuilder
+          conditions={conditions}
+          logic={choice.conditionsLogic || 'and'}
+          onChange={write}
+        />
       )}
     </div>
   );
@@ -906,6 +1227,66 @@ function ChoiceEffectsEditor({ choice, onChange }: { choice: Choice; onChange: (
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** unlockOutfits (v2 1.5): мультиселект «персонаж:аутфит». */
+function ChoiceUnlockOutfitsEditor({ choice, onChange }: { choice: Choice; onChange: (updates: Partial<Choice>) => void }) {
+  const characters = useEditorStore((s) => s.project.characters);
+  const selected = choice.unlockOutfits || [];
+
+  const allOptions: { key: string; label: string }[] = [];
+  for (const ch of characters) {
+    for (const outfit of ch.outfits || []) {
+      allOptions.push({ key: `${ch.id}:${outfit.id}`, label: `${ch.name}: ${outfit.name || outfit.id}` });
+    }
+  }
+
+  if (allOptions.length === 0 && selected.length === 0) return null;
+
+  const available = allOptions.filter((o) => !selected.includes(o.key));
+
+  const write = (next: string[]) => {
+    onChange({ unlockOutfits: next.length > 0 ? next : undefined });
+  };
+
+  return (
+    <div className="choice-subblock">
+      <div className="subblock-header">
+        <span className="subblock-label">👗 Разблокировать аутфиты</span>
+      </div>
+      {selected.length > 0 && (
+        <div className="unlock-outfits-chips">
+          {selected.map((key) => {
+            const opt = allOptions.find((o) => o.key === key);
+            return (
+              <span key={key} className={`outfit-chip ${opt ? '' : 'broken'}`} title={opt ? key : `Аутфит "${key}" не найден`}>
+                {opt?.label || key}
+                <button type="button" onClick={() => write(selected.filter((k) => k !== key))} title="Убрать">
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+      {available.length > 0 && (
+        <select
+          value=""
+          onChange={(e) => {
+            if (!e.target.value) return;
+            write([...selected, e.target.value]);
+            e.target.value = '';
+          }}
+          className="outfit-add-select"
+        >
+          <option value="">+ Добавить аутфит…</option>
+          {available.map((o) => (
+            <option key={o.key} value={o.key}>{o.label}</option>
+          ))}
+        </select>
       )}
     </div>
   );

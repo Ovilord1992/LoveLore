@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useMemo } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge, type OnConnect, type NodeChange, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge, type OnConnect, type NodeChange, type ReactFlowInstance, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEditorStore } from '../../store/editorStore';
+import { conditionSummary } from '../../utils/conditions';
 import './SceneGraph.css';
 
 export function SceneGraph() {
   const { project, selectedChapterIndex, selectedSceneId, selectScene, updateScenePosition, updateScene } = useEditorStore();
+  const focusSceneRequest = useEditorStore((s) => s.focusSceneRequest);
   const chapter = project.chapters[selectedChapterIndex];
+  const instanceRef = useRef<ReactFlowInstance | null>(null);
+  const handledFocusNonce = useRef<number>(0);
 
   // ВАЖНО: все хуки вызываются безусловно ДО любого раннего return (rules-of-hooks).
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -20,9 +24,15 @@ export function SceneGraph() {
       data: {
         label: (
           <div className="scene-node-content">
-            <div className="scene-node-id">{scene.id}</div>
+            <div className="scene-node-id">
+              {scene.id}
+              {scene.ending && (
+                <span className="scene-node-ending-badge" title={`Концовка: ${scene.ending.title || scene.ending.id}`}>🏁</span>
+              )}
+            </div>
             <div className="scene-node-info">
               {scene.events.length} событ. | {scene.charactersOnScreen.length} перс.
+              {(scene.branches?.length || 0) > 0 && ` | ⑃ ${scene.branches!.length}`}
             </div>
             {scene.background && <div className="scene-node-bg">🖼 {scene.background}</div>}
           </div>
@@ -30,7 +40,9 @@ export function SceneGraph() {
       },
       style: {
         background: scene.id === selectedSceneId ? '#2d1854' : '#16213e',
-        border: scene.id === selectedSceneId ? '2px solid #e91e63' : '1px solid #2a2a3e',
+        border: scene.id === selectedSceneId
+          ? '2px solid #e91e63'
+          : scene.ending ? '1px solid #b8860b' : '1px solid #2a2a3e',
         borderRadius: '10px',
         color: '#fff',
         padding: '8px',
@@ -50,6 +62,19 @@ export function SceneGraph() {
           style: { stroke: '#666' },
         });
       }
+      // Ветки (v2 1.2): пунктирные рёбра с подписью условия
+      (scene.branches || []).forEach((branch, bi) => {
+        if (!branch.nextSceneId) return;
+        edges.push({
+          id: `branch:${scene.id}:${bi}->${branch.nextSceneId}`,
+          source: scene.id,
+          target: branch.nextSceneId,
+          label: `ветка ${bi + 1}: ${conditionSummary(branch.conditions, branch.conditionsLogic)}`.slice(0, 40),
+          style: { stroke: '#00bcd4', strokeDasharray: '6 3' },
+          labelStyle: { fill: '#00bcd4', fontSize: 10 },
+          labelBgStyle: { fill: '#0f0f1e', fillOpacity: 0.7 },
+        });
+      });
       // Выборы
       for (const event of scene.events) {
         if (event.type === 'choice' && event.choices) {
@@ -78,27 +103,52 @@ export function SceneGraph() {
   useEffect(() => { setNodes(initialNodes); }, [initialNodes, setNodes]);
   useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
 
+  // Центрирование по запросу (клик по ошибке валидации / результату поиска).
+  useEffect(() => {
+    if (!focusSceneRequest || focusSceneRequest.nonce === handledFocusNonce.current) return;
+    const inst = instanceRef.current;
+    if (!inst) return;
+    const node = nodes.find((n) => n.id === focusSceneRequest.sceneId);
+    if (!node) return;
+    handledFocusNonce.current = focusSceneRequest.nonce;
+    const w = node.measured?.width ?? 180;
+    const h = node.measured?.height ?? 80;
+    void inst.setCenter(node.position.x + w / 2, node.position.y + h / 2, { zoom: 1.1, duration: 400 });
+  }, [focusSceneRequest, nodes]);
+
   // Drag-connect: связь из графа пишем в стор (иначе она теряется).
-  // Если у сцены-источника есть выбор с незаполненным nextSceneId — заполняем
-  // его; иначе устанавливаем scene.nextSceneId. addEdge даёт мгновенный отклик,
-  // а initialEdges пересчитается из стора и заменит рёбра — рассинхрона нет.
+  // Приоритет: незаполненная ветка → незаполненный вариант выбора →
+  // scene.nextSceneId. addEdge даёт мгновенный отклик, а initialEdges
+  // пересчитается из стора и заменит рёбра — рассинхрона нет.
   const onConnect: OnConnect = useCallback((params) => {
     const { source, target } = params;
     if (chapter && source && target) {
       const sourceScene = chapter.scenes.find((s) => s.id === source);
       if (sourceScene) {
         let bound = false;
-        const events = sourceScene.events.map((ev) => {
-          if (bound || ev.type !== 'choice' || !ev.choices || ev.choices.length === 0) return ev;
-          const idx = ev.choices.findIndex((c) => !c.nextSceneId);
-          if (idx === -1) return ev;
+        // 1) ветка без цели
+        const emptyBranchIdx = (sourceScene.branches || []).findIndex((b) => !b.nextSceneId);
+        if (emptyBranchIdx !== -1) {
+          const branches = sourceScene.branches!.map((b, i) => i === emptyBranchIdx ? { ...b, nextSceneId: target } : b);
+          updateScene(source, { branches });
           bound = true;
-          const choices = ev.choices.map((c, i) => i === idx ? { ...c, nextSceneId: target } : c);
-          return { ...ev, choices };
-        });
-        if (bound) {
-          updateScene(source, { events });
-        } else {
+        }
+        // 2) вариант выбора без цели
+        if (!bound) {
+          const events = sourceScene.events.map((ev) => {
+            if (bound || ev.type !== 'choice' || !ev.choices || ev.choices.length === 0) return ev;
+            const idx = ev.choices.findIndex((c) => !c.nextSceneId);
+            if (idx === -1) return ev;
+            bound = true;
+            const choices = ev.choices.map((c, i) => i === idx ? { ...c, nextSceneId: target } : c);
+            return { ...ev, choices };
+          });
+          if (bound) {
+            updateScene(source, { events });
+          }
+        }
+        // 3) обычный переход
+        if (!bound) {
           updateScene(source, { nextSceneId: target });
         }
       }
@@ -112,6 +162,18 @@ export function SceneGraph() {
     for (const edge of deleted) {
       const src = chapter.scenes.find((s) => s.id === edge.source);
       if (!src) continue;
+      // Ребро ветки: id вида `branch:${source}:${index}->${target}`.
+      if (edge.id.startsWith('branch:')) {
+        const m = edge.id.match(/^branch:(.+):(\d+)->/);
+        if (m) {
+          const bi = parseInt(m[2], 10);
+          if (src.branches && src.branches[bi]?.nextSceneId === edge.target) {
+            const branches = src.branches.map((b, i) => i === bi ? { ...b, nextSceneId: '' } : b);
+            updateScene(edge.source, { branches });
+          }
+        }
+        continue;
+      }
       // Ребро nextSceneId имеет id вида `${source}->${target}` (без суффикса).
       if (edge.id === `${edge.source}->${edge.target}` && src.nextSceneId === edge.target) {
         updateScene(edge.source, { nextSceneId: undefined });
@@ -158,6 +220,7 @@ export function SceneGraph() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onInit={(inst) => { instanceRef.current = inst; }}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgesDelete={onEdgesDelete}

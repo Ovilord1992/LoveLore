@@ -157,3 +157,130 @@
 .actions-group button.primary:disabled:hover {
   background: #5a3242;
 }
+
+/* ─── Бейдж ошибок на вкладке валидации ─── */
+.sidebar-tabs button { position: relative; }
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  background: #f44336;
+  color: #fff;
+  border-radius: 7px;
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ─── Подсекции меты (endings / statsDisplay / playerNamePrompt) ─── */
+.meta-subsection { margin-top: 14px; padding-top: 10px; border-top: 1px solid #2a2a3e; display: flex; flex-direction: column; gap: 6px; }
+.meta-subsection-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.meta-subsection-header label { margin: 0; }
+.meta-check-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ccc; cursor: pointer; }
+.meta-check-row input { width: auto; }
+.meta-list-row { display: flex; align-items: center; gap: 4px; }
+.meta-list-row input { flex: 1; min-width: 0; }
+.meta-list-row .meta-id-input { max-width: 110px; font-family: monospace; font-size: 11px; }
+.meta-list-row .delete { flex-shrink: 0; background: none; border: none; color: #666; cursor: pointer; padding: 3px; display: inline-flex; }
+.meta-list-row .delete:hover { color: #e91e63; }
+.hidden-toggle { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: #888; cursor: pointer; flex-shrink: 0; }
+.hidden-toggle input { width: auto !important; }
+.meta-hint-btn { background: none; border: 1px dashed #6a5; color: #6fcf7c; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 10px; text-align: left; }
+.meta-hint-btn:hover { background: #1a2a1e; }
+.stat-display-card { background: #101528; border: 1px solid #223; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.stat-icon-select { flex: 1; }
+.stat-color-input { width: 34px !important; height: 26px; padding: 1px !important; flex: none !important; }
+.stat-max-input { max-width: 64px; text-align: center; }
+
+/* ─── Аутфиты ─── */
+.outfits-header { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #2a2a3e; }
+.outfits-header-actions { display: flex; gap: 4px; align-items: center; }
+.outfit-card { background: #101528; border: 1px solid #223; border-radius: 6px; padding: 6px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.outfit-card.default { border-color: #4a2d7a; }
+.outfit-row { display: flex; align-items: center; gap: 4px; }
+.outfit-row input { min-width: 0; }
+.outfit-props { justify-content: flex-start; gap: 12px; }
+.outfit-price-label { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #888; }
+.outfit-price-input { max-width: 70px; text-align: center; }
+.outfit-sprites { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+.outfit-sprites-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.4px; }
+.outfit-sprite-row { display: flex; align-items: center; gap: 6px; }
+.outfit-sprite-key { flex: 1; font-family: monospace; font-size: 11px; color: #ccc; overflow: hidden; text-overflow: ellipsis; }
+.outfit-sprite-missing { font-size: 9px; color: #f4a336; }
+.outfit-sprite-row .delete, .outfit-row .delete { flex-shrink: 0; background: none; border: none; color: #666; cursor: pointer; padding: 3px; display: inline-flex; }
+.outfit-sprite-row .delete:hover, .outfit-row .delete:hover { color: #e91e63; }
+.outfit-sprite-add { display: flex; align-items: center; gap: 4px; }
+.outfit-sprite-add input { flex: 1; min-width: 0; font-size: 11px; }
+
+/* ─── Главы: рекап и firstSceneId ─── */
+.chapter-field-label { font-size: 10px; color: #777; text-transform: uppercase; letter-spacing: 0.4px; margin: 6px 0 2px; display: block; }
+.chapter-recap-input { width: 100%; padding: 6px 8px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 6px; color: #fff; font-size: 11px; resize: vertical; box-sizing: border-box; font-family: inherit; }
+.chapter-recap-input:focus { border-color: #e91e63; outline: none; }
+.scene-item { position: relative; }
+.scene-item-action { background: none; border: none; color: #555; cursor: pointer; font-size: 12px; padding: 0 2px; flex-shrink: 0; }
+.scene-item-action:hover { color: #e91e63; }
+
+/* ─── Аудио-менеджер ─── */
+.audio-section { margin-bottom: 14px; }
+.audio-section-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.audio-section-title { font-size: 12px; font-weight: 600; color: #ccc; }
+.audio-dir { font-size: 10px; color: #666; font-weight: 400; font-family: monospace; }
+.audio-empty { font-size: 11px; color: #555; font-style: italic; padding: 4px 0; }
+.audio-item { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid #1a1a2e; }
+.audio-play-btn { flex-shrink: 0; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: #16213e; border: 1px solid #2a2a3e; border-radius: 50%; color: #aaa; cursor: pointer; padding: 0; }
+.audio-play-btn:hover { border-color: #e91e63; color: #e91e63; }
+.audio-name { flex: 1; font-size: 11px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.audio-size { flex-shrink: 0; font-size: 9px; color: #555; }
+.audio-item .delete { flex-shrink: 0; background: none; border: none; color: #666; cursor: pointer; padding: 3px; display: inline-flex; }
+.audio-item .delete:hover { color: #e91e63; }
+
+/* ─── Поиск ─── */
+.search-summary { font-size: 11px; color: #777; margin: 6px 0; }
+.search-results { display: flex; flex-direction: column; gap: 4px; }
+.search-result { display: flex; flex-direction: column; gap: 2px; text-align: left; background: #16213e; border: 1px solid #2a2a3e; border-radius: 6px; padding: 6px 8px; cursor: pointer; color: #ccc; }
+.search-result:hover { border-color: #e91e63; }
+.search-result-loc { font-size: 10px; color: #888; font-family: monospace; }
+.search-result-text { font-size: 11px; line-height: 1.4; }
+.search-result-text mark { background: #e91e63; color: #fff; border-radius: 2px; padding: 0 1px; }
+
+/* ─── Валидация ─── */
+.validation-live-hint { font-size: 11px; color: #777; margin-bottom: 8px; }
+.validation-item.clickable { cursor: pointer; }
+.validation-item.clickable:hover { background: #241b3e; }
+
+/* ─── Переводы: файл и устаревшие ─── */
+.translation-file-actions { display: flex; gap: 6px; margin: 8px 0; }
+.translation-file-actions button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 6px; color: #ccc; padding: 6px; cursor: pointer; font-size: 11px; }
+.translation-file-actions button:hover { border-color: #e91e63; color: #e91e63; }
+.stale-translations { background: rgba(255, 152, 0, 0.06); border: 1px solid #6b4a1a; border-radius: 8px; padding: 8px; margin: 8px 0; }
+.stale-header { font-size: 11px; font-weight: 600; color: #ffb74d; margin-bottom: 6px; cursor: help; }
+.stale-item { border-top: 1px dashed #4a3a1a; padding: 6px 0; display: flex; flex-direction: column; gap: 3px; }
+.stale-original { font-size: 11px; color: #ccc; }
+.stale-translated { font-size: 11px; color: #8fbf8f; }
+.stale-actions { display: flex; align-items: center; gap: 4px; }
+.stale-actions select { flex: 1; min-width: 0; font-size: 11px; padding: 4px; }
+.stale-remap-btn { flex-shrink: 0; background: #1a2a1e; border: 1px solid #2d5a2d; color: #6fcf7c; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; }
+.stale-remap-btn:hover:not(:disabled) { background: #21351f; }
+.stale-remap-btn:disabled { opacity: 0.4; cursor: default; }
+.stale-actions .delete { flex-shrink: 0; background: none; border: none; color: #666; cursor: pointer; padding: 3px; display: inline-flex; }
+.stale-actions .delete:hover { color: #e91e63; }
+
+/* ─── Публикация ─── */
+.publish-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.publish-session { display: flex; align-items: center; gap: 6px; margin-top: 8px; background: #14261a; border: 1px solid #2d5a2d; border-radius: 6px; padding: 6px 8px; }
+.publish-session-user { flex: 1; font-size: 11px; color: #6fcf7c; overflow: hidden; text-overflow: ellipsis; }
+.publish-logout { background: none; border: none; color: #888; cursor: pointer; padding: 2px; display: inline-flex; }
+.publish-logout:hover { color: #e91e63; }
+.publish-novel-info { font-size: 11px; color: #888; margin: 10px 0 6px; }
+.publish-actions { display: flex; flex-direction: column; gap: 6px; }
+.publish-chapter-row { display: flex; gap: 6px; }
+.publish-chapter-row select { flex: 1; min-width: 0; }
+.publish-chapter-row .publish-btn { width: auto; flex-shrink: 0; }
+.publish-result { margin-top: 10px; padding: 8px; border-radius: 6px; font-size: 11px; line-height: 1.4; word-break: break-word; }
+.publish-result.ok { background: #14261a; border: 1px solid #2d5a2d; color: #6fcf7c; }
+.publish-result.error { background: #2a1416; border: 1px solid #5a2d2d; color: #ef9a9a; }
+.publish-hint { font-size: 10px; color: #666; margin-top: 12px; line-height: 1.5; }

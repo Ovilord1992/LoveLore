@@ -1,4 +1,27 @@
-// Типы данных — полностью совпадают с Dart-моделями Amoria
+// Типы данных — полностью совпадают с Dart-моделями Amoria + формат v2
+// (guides/format-v2.md, Часть 1). Все новые поля v2 — опциональные.
+
+export interface EndingMetaEntry {
+  id: string;
+  title: string;
+  hidden?: boolean;
+}
+
+export type StatIcon = 'heart' | 'star' | 'flame' | 'diamond' | 'moon' | 'sun' | 'leaf';
+
+export interface StatDisplay {
+  variable: string;
+  label: string;
+  icon?: StatIcon;
+  color?: string; // hex "#E91E63"
+  max?: number;
+}
+
+export interface PlayerNamePrompt {
+  enabled: boolean;
+  prompt?: string;
+  defaultName?: string;
+}
 
 export interface NovelMeta {
   id: string;
@@ -16,6 +39,12 @@ export interface NovelMeta {
   dialogueStyle?: 'classic' | 'center'; // classic=bottom, center=Romance Club style
   dialogueFrameColor?: string; // hex e.g. "#B8860B"
   dialogueBgColor?: string;    // hex e.g. "#1A1410"
+  // v2 (1.3): список всех концовок для галереи «N из M»
+  endings?: EndingMetaEntry[];
+  // v2 (1.9): панель отношений
+  statsDisplay?: StatDisplay[];
+  // v2 (1.4): запрос имени игрока при первом старте
+  playerNamePrompt?: PlayerNamePrompt;
 }
 
 export interface Character {
@@ -32,12 +61,15 @@ export interface CharacterSprite {
   label: string;
 }
 
+// v2 (1.5): гардероб. Формат строго по спеке:
+// sprites — маппинг спрайт-ключ → путь картинки ("sprites/mia/casual_happy.png").
 export interface Outfit {
   id: string;
   name: string;
-  spriteOverride: string;
-  description?: string;
-  isDefault?: boolean;
+  default?: boolean;
+  priceDiamonds?: number;
+  thumbnail?: string;
+  sprites: Record<string, string>;
 }
 
 export interface Chapter {
@@ -46,6 +78,23 @@ export interface Chapter {
   number: number;
   firstSceneId: string;
   scenes: Scene[];
+  // v2 (1.8): рекап «Ранее…» перед первой сценой главы
+  recap?: string;
+}
+
+// v2 (1.2): ветвление по переменным в конце сцены
+export interface SceneBranch {
+  conditions: Condition[];
+  conditionsLogic?: ConditionsLogic;
+  nextSceneId: string;
+}
+
+// v2 (1.3): концовка на сцене
+export interface SceneEnding {
+  id: string;
+  title: string;
+  description?: string;
+  image?: string; // напр. "cg/ending_good.png"
 }
 
 export interface Scene {
@@ -57,6 +106,10 @@ export interface Scene {
   charactersOnScreen: SceneCharacter[];
   events: SceneEvent[];
   nextSceneId?: string;
+  // v2 (1.2): ветки проверяются по порядку в конце сцены
+  branches?: SceneBranch[];
+  // v2 (1.3): достижение конца сцены = концовка
+  ending?: SceneEnding;
   /** Позиция ноды в редакторе графа сцен. Сохраняется между переключениями глав
    *  и сессиями. Не экспортируется в рантайм-бандл новеллы (игнорируется клиентом). */
   editorPosition?: { x: number; y: number };
@@ -115,18 +168,29 @@ export interface SceneEvent {
   cameraDuration?: number; // мс
   // Эмоции
   emotionType?: EmotionType;
+  // v2 (1.7): эмоция картинкой вместо emoji ("emotions/love.png")
+  image?: string;
   // Cross-fade спрайтов
   spriteDuration?: number; // мс
   // Таймер на выбор
   timeLimit?: number; // секунды
   defaultChoiceIndex?: number;
+  // v2 (1.6): озвучка dialogue/narration ("voice/ch1/mia_001.mp3")
+  voice?: string;
 }
+
+export type ConditionsLogic = 'and' | 'or';
 
 export interface Choice {
   text: string;
   nextSceneId: string;
   effects?: Record<string, string | number | boolean>;
   condition?: Condition;
+  // v2 (1.1): составные условия; при заданных conditions приоритет у них
+  conditions?: Condition[];
+  conditionsLogic?: ConditionsLogic;
+  // v2 (1.5): сюжетная разблокировка аутфитов ["mia:gala"]
+  unlockOutfits?: string[];
   premium?: boolean;
   cost?: number;
 }
@@ -134,7 +198,8 @@ export interface Choice {
 export interface Condition {
   variable: string;
   operator: '>=' | '<=' | '==' | '!=' | '>' | '<';
-  value: number;
+  // v2 (1.1): в условиях допускаются и bool-значения ({ "value": true })
+  value: number | boolean;
 }
 
 /// Перевод книги на один язык

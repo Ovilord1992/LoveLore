@@ -711,3 +711,84 @@
 .gp-vars { max-height: 120px; overflow-y: auto; padding: 4px 0; }
 .gp-var { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .gp-var strong { color: #E91E63; }
+
+/* ─── v2: сцена с камерой и параллаксом ─── */
+.gp-stage { position: absolute; inset: 0; z-index: 0; transform-origin: center center; }
+.gp-parallax-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s ease;
+  pointer-events: none;
+}
+
+/* ─── v2: CG-оверлей ─── */
+.gp-cg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: gp-cg-fade 0.4s ease;
+}
+@keyframes gp-cg-fade { from { opacity: 0; } to { opacity: 1; } }
+.gp-cg-image { max-width: 100%; max-height: 85%; object-fit: contain; }
+.gp-cg-missing { color: rgba(255,255,255,0.5); font-size: 12px; padding: 16px; text-align: center; word-break: break-all; }
+.gp-cg-hint { position: absolute; bottom: 10px; font-size: 10px; color: rgba(255,255,255,0.4); }
+
+/* ─── v2: экран концовки ─── */
+.gp-ending-screen {
+  background: linear-gradient(180deg, #16081f, #0F0F1E);
+  justify-content: flex-end;
+  align-items: stretch;
+  cursor: default;
+}
+.gp-ending-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
+.gp-ending-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 24px 16px 32px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.85) 40%);
+}
+.gp-ending-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #b8860b; margin-bottom: 8px; }
+.gp-ending-content h3 { font-size: 18px; margin: 0 0 8px; color: #ffd700; }
+.gp-ending-content p { font-size: 12px; color: rgba(255,255,255,0.7); margin: 0 0 16px; }
+
+/* ─── v2: рекап ─── */
+.gp-recap h3 { color: #b8860b; letter-spacing: 1px; }
+.gp-recap-text { white-space: pre-wrap; text-align: left; max-height: 300px; overflow-y: auto; font-size: 12px !important; line-height: 1.5; color: rgba(255,255,255,0.75) !important; }
+
+/* ─── v2: эмоция картинкой ─── */
+.gp-emotion-image { width: 72px; height: 72px; object-fit: contain; }
+
+/* ─── v2: бейджи ─── */
+.gp-voice-badge { position: absolute; top: 6px; right: 8px; font-size: 10px; opacity: 0.6; }
+.gp-outfit-hint { margin-left: 6px; font-size: 11px; }
+
+/* ─── v2: дебаг-панель (имя + статы) ─── */
+.gp-testname-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.gp-testname-row label { flex-shrink: 0; font-size: 10px; color: #666; }
+.gp-testname-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 8px;
+  background: #16162a;
+  border: 1px solid #2a2a3e;
+  border-radius: 4px;
+  color: #e0e0e8;
+  font-size: 11px;
+}
+.gp-testname-row input:focus { border-color: #e91e63; outline: none; }
+.gp-stats { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.gp-stat { display: flex; align-items: center; gap: 6px; }
+.gp-stat-label { flex: 0 0 84px; display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gp-stat-icon { font-size: 11px; }
+.gp-stat-bar { flex: 1; height: 6px; background: #16162a; border-radius: 3px; overflow: hidden; }
+.gp-stat-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.gp-stat-value { flex: 0 0 auto; font-size: 9px; color: #666; }

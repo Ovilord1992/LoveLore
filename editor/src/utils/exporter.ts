@@ -6,7 +6,7 @@ import { validateProject } from './validator';
 /** Убрать пустые строки перевода из всех карт: пустой перевод НЕ должен попасть
  *  в бандл, иначе на клиенте `texts[original] ?? original` подменит оригинал
  *  пустышкой. Отсутствие ключа = корректный fallback на оригинал. */
-function sanitizeTranslation(t: NovelTranslation): NovelTranslation {
+export function sanitizeTranslation(t: NovelTranslation): NovelTranslation {
   const texts: Record<string, string> = {};
   for (const [k, v] of Object.entries(t.texts || {})) {
     if (v && v.trim()) texts[k] = v;
@@ -25,21 +25,16 @@ function sanitizeTranslation(t: NovelTranslation): NovelTranslation {
   return { meta: t.meta, novel, characters, chapters, texts };
 }
 
-/** Экспортировать проект как ZIP-пакет, готовый для Amoria */
-export async function exportAsZip(project: NovelProject, images: Map<string, File>): Promise<void> {
-  // Блокируем экспорт при структурных ошибках (битые ссылки, недостижимая
-  // firstSceneId, пустой nextSceneId у выбора и т.п.). Ассеты здесь НЕ проверяем
-  // (images не передаём) — их отсутствие не должно мешать экспорту текстовой
-  // новеллы; про потерянные картинки предупреждает баннер в UI.
-  const blocking = validateProject(project).filter((e) => e.type === 'error');
-  if (blocking.length > 0) {
-    alert(
-      `Экспорт заблокирован — исправьте ${blocking.length} ошиб(ку/ки):\n\n` +
-      blocking.map((e) => '• ' + e.message).join('\n')
-    );
-    return;
-  }
+/** Структурные ошибки, блокирующие экспорт/публикацию (без проверки ассетов). */
+export function blockingErrors(project: NovelProject): string[] {
+  return validateProject(project)
+    .filter((e) => e.type === 'error')
+    .map((e) => e.message);
+}
 
+/** Собрать ZIP-пакет новеллы (meta/characters/variables/chapters/translations
+ *  + все ассеты: картинки И аудио). Общий код для экспорта в файл и публикации. */
+export async function buildZipBlob(project: NovelProject, assets: Map<string, File>): Promise<Blob> {
   const zip = new JSZip();
 
   // meta.json — в корне ZIP
@@ -72,13 +67,30 @@ export async function exportAsZip(project: NovelProject, images: Map<string, Fil
     }
   }
 
-  // Изображения: backgrounds/, sprites/, cg/
-  for (const [path, file] of images) {
+  // Ассеты: backgrounds/, sprites/, cg/, emotions/, music/, sounds/, voice/
+  for (const [path, file] of assets) {
     zip.file(path, file);
   }
 
-  // Генерируем ZIP
-  const blob = await zip.generateAsync({ type: 'blob' });
+  return zip.generateAsync({ type: 'blob' });
+}
+
+/** Экспортировать проект как ZIP-пакет, готовый для Amoria */
+export async function exportAsZip(project: NovelProject, assets: Map<string, File>): Promise<void> {
+  // Блокируем экспорт при структурных ошибках (битые ссылки, недостижимая
+  // firstSceneId, пустой nextSceneId у выбора и т.п.). Ассеты здесь НЕ проверяем
+  // (assets не передаём в валидатор) — их отсутствие не должно мешать экспорту
+  // текстовой новеллы; про потерянные файлы предупреждает live-валидация.
+  const blocking = blockingErrors(project);
+  if (blocking.length > 0) {
+    alert(
+      `Экспорт заблокирован — исправьте ${blocking.length} ошиб(ку/ки):\n\n` +
+      blocking.map((e) => '• ' + e).join('\n')
+    );
+    return;
+  }
+
+  const blob = await buildZipBlob(project, assets);
   saveAs(blob, `${project.meta.id}.zip`);
 }
 
@@ -99,8 +111,29 @@ export function importProject(file: File): Promise<NovelProject> {
   });
 }
 
-/** Импортировать проект из ZIP-файла */
-export async function importProjectFromZip(file: File): Promise<{ project: NovelProject; images: Map<string, File> }> {
+const IMAGE_DIRS = ['backgrounds/', 'sprites/', 'cg/', 'emotions/'];
+const AUDIO_DIRS = ['music/', 'sounds/', 'voice/'];
+const IMAGE_RE = /\.(png|jpg|jpeg|webp|gif)$/i;
+const AUDIO_RE = /\.(mp3|ogg|wav|m4a|aac)$/i;
+
+function mimeFor(relative: string): string {
+  const ext = (relative.split('.').pop() || '').toLowerCase();
+  switch (ext) {
+    case 'jpg': case 'jpeg': return 'image/jpeg';
+    case 'webp': return 'image/webp';
+    case 'gif': return 'image/gif';
+    case 'png': return 'image/png';
+    case 'mp3': return 'audio/mpeg';
+    case 'ogg': return 'audio/ogg';
+    case 'wav': return 'audio/wav';
+    case 'm4a': return 'audio/mp4';
+    case 'aac': return 'audio/aac';
+    default: return 'application/octet-stream';
+  }
+}
+
+/** Импортировать проект из ZIP-файла (включая картинки и аудио) */
+export async function importProjectFromZip(file: File): Promise<{ project: NovelProject; assets: Map<string, File> }> {
   const zip = await JSZip.loadAsync(file);
 
   // Ищем meta.json — может быть в корне или в подпапке
@@ -169,23 +202,20 @@ export async function importProjectFromZip(file: File): Promise<{ project: Novel
     }
   }
 
-  // Загрузить изображения
-  const images = new Map<string, File>();
-  const imageDirs = ['backgrounds/', 'sprites/', 'cg/'];
+  // Загрузить ассеты: картинки + аудио
+  const assets = new Map<string, File>();
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir) continue;
     const relative = path.startsWith(prefix) ? path.slice(prefix.length) : path;
-    const isImage = imageDirs.some((d) => relative.startsWith(d)) &&
-      /\.(png|jpg|jpeg|webp|gif)$/i.test(relative);
+    const isImage = IMAGE_DIRS.some((d) => relative.startsWith(d)) && IMAGE_RE.test(relative);
+    const isAudio = AUDIO_DIRS.some((d) => relative.startsWith(d)) && AUDIO_RE.test(relative);
     // Также подхватить cover в корне
     const isCover = relative === 'cover.png' || relative === 'cover.jpg';
-    if (isImage || isCover) {
+    if (isImage || isAudio || isCover) {
       const blob = await entry.async('blob');
-      const ext = relative.split('.').pop() || 'png';
-      const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/png';
-      const f = new File([blob], relative.split('/').pop() || relative, { type: mimeType });
-      images.set(relative, f);
+      const f = new File([blob], relative.split('/').pop() || relative, { type: mimeFor(relative) });
+      assets.set(relative, f);
     }
   }
 
@@ -197,7 +227,7 @@ export async function importProjectFromZip(file: File): Promise<{ project: Novel
     ...(Object.keys(translations).length > 0 ? { translations: translations as NovelProject['translations'] } : {}),
   };
 
-  return { project, images };
+  return { project, assets };
 }
 
 /** Экспортировать проект как единый JSON */
@@ -205,4 +235,32 @@ export function exportAsJson(project: NovelProject): void {
   const json = JSON.stringify(project, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   saveAs(blob, `${project.meta.id}.json`);
+}
+
+/** Скачать перевод одного языка как translations/<lang>.json */
+export function exportTranslationFile(lang: string, translation: NovelTranslation): void {
+  const json = JSON.stringify(sanitizeTranslation(translation), null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  saveAs(blob, `${lang}.json`);
+}
+
+/** Прочитать файл translations/<lang>.json (загрузка перевода). */
+export function importTranslationFile(file: File): Promise<NovelTranslation> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string) as Partial<NovelTranslation>;
+        if (!parsed || typeof parsed !== 'object' || typeof parsed.texts !== 'object' || parsed.texts === null) {
+          reject(new Error('Файл не похож на перевод: нет карты "texts"'));
+          return;
+        }
+        resolve(parsed as NovelTranslation);
+      } catch {
+        reject(new Error('Невалидный JSON'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Ошибка чтения файла'));
+    reader.readAsText(file);
+  });
 }

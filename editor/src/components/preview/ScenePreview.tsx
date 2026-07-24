@@ -3,7 +3,7 @@ import './ScenePreview.css';
 
 export function ScenePreview() {
   const { project, selectedChapterIndex, selectedSceneId, selectedEventIndex } = useEditorStore();
-  const imageUrls = useEditorStore((s) => s.imageUrls);
+  const imageUrls = useEditorStore((s) => s.assetUrls);
 
   const chapter = project.chapters[selectedChapterIndex];
   const scene = chapter?.scenes.find((s) => s.id === selectedSceneId);

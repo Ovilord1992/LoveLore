@@ -44,3 +44,65 @@
 }
 .preview-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
 .preview-tab.active { color: #E91E63; border-bottom: 2px solid #E91E63; }
+
+/* ─── Загрузка (гидратация IndexedDB) ─── */
+.app-loading { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; color: #888; font-size: 14px; }
+
+/* ─── Центр тулбара: проекты, undo/redo, валидация ─── */
+.header-center { display: flex; align-items: center; gap: 10px; }
+.toolbar-group { display: flex; gap: 4px; }
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1a1a2e;
+  border: 1px solid #2a2a3e;
+  border-radius: 6px;
+  color: #aaa;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.toolbar-btn:hover:not(:disabled) { border-color: #e91e63; color: #e91e63; }
+.toolbar-btn:disabled { opacity: 0.35; cursor: default; }
+
+.toolbar-validation {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: #1a1a2e;
+}
+.toolbar-validation.ok { color: #6fcf7c; border-color: #2d5a2d; }
+.toolbar-validation.has-warnings { color: #ffb74d; border-color: #6b4a1a; }
+.toolbar-validation.has-errors { color: #ef9a9a; border-color: #5a2d2d; }
+.toolbar-validation:hover { filter: brightness(1.3); }
+
+/* ─── Переключатель проектов ─── */
+.project-switcher { position: relative; }
+.project-switcher-trigger { max-width: 220px; }
+.project-switcher-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-switcher-dropdown {
+  position: absolute;
+  z-index: 500;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 240px;
+  background: #16162a;
+  border: 1px solid #2a2a3e;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.project-switcher-item { display: flex; align-items: center; }
+.project-switcher-item.active { background: #2d1854; }
+.project-switcher-item:hover { background: #241b3e; }
+.project-switcher-select { flex: 1; background: none; border: none; color: #e0e0e8; font-size: 12px; text-align: left; padding: 8px 10px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-switcher-action { background: none; border: none; color: #666; cursor: pointer; padding: 6px; display: inline-flex; }
+.project-switcher-action:hover { color: #e91e63; }
+.project-switcher-create { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; padding: 8px; background: #1a2a1e; border: none; border-top: 1px solid #2a2a3e; color: #6fcf7c; font-size: 11px; cursor: pointer; }
+.project-switcher-create:hover { background: #21351f; }

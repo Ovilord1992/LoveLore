@@ -23,6 +23,18 @@ export function uniqueSceneId(chapterId: string, existing: Set<string>): string 
   return candidate;
 }
 
+/** Id для дубликата сцены: `<исходный>_copy`, `<исходный>_copy2`, … —
+ *  детерминированно и глобально уникально. */
+export function uniqueCopySceneId(sourceId: string, existing: Set<string>): string {
+  let candidate = `${sourceId}_copy`;
+  let n = 2;
+  while (existing.has(candidate)) {
+    candidate = `${sourceId}_copy${n}`;
+    n++;
+  }
+  return candidate;
+}
+
 /** Следующий номер главы: max(number) + 1 — гарантирует уникальный id даже при
  *  разрывах нумерации. */
 export function nextChapterNumber(chapters: Chapter[]): number {
@@ -43,4 +55,12 @@ export function uniqueSpriteId(sprites: { id: string }[]): string {
   let n = sprites.length + 1;
   while (existing.has(`sprite_${n}`)) n++;
   return `sprite_${n}`;
+}
+
+/** Уникальный id аутфита (outfit_N) в пределах персонажа. */
+export function uniqueOutfitId(outfits: { id: string }[]): string {
+  const existing = new Set(outfits.map((o) => o.id));
+  let n = outfits.length + 1;
+  while (existing.has(`outfit_${n}`)) n++;
+  return `outfit_${n}`;
 }

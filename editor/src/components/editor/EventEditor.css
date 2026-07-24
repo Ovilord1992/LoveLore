@@ -123,3 +123,75 @@
 .bg-layer-offset { width: 50px; flex-shrink: 0; padding: 4px 6px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 4px; color: #fff; font-size: 11px; text-align: center; }
 .bg-layer-remove { background: none; border: none; color: #666; cursor: pointer; padding: 4px; flex-shrink: 0; display: flex; align-items: center; }
 .bg-layer-remove:hover { color: #e91e63; }
+
+/* ─── v2: заголовок сцены + дублирование ─── */
+.scene-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.scene-duplicate-btn { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid #2a2a3e; color: #888; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; flex-shrink: 0; }
+.scene-duplicate-btn:hover { border-color: #e91e63; color: #e91e63; }
+
+.field-label { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 6px; }
+
+/* ─── v2: билдер условий ─── */
+.conditions-builder { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.conditions-logic-row { display: flex; align-items: center; gap: 4px; }
+.conditions-logic-label { font-size: 10px; color: #888; }
+.logic-btn { background: #16213e; border: 1px solid #2a2a3e; color: #888; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+.logic-btn.active { border-color: #e91e63; color: #e91e63; background: #2d1854; }
+.add-condition-btn { display: inline-flex; align-items: center; gap: 3px; align-self: flex-start; background: none; border: 1px dashed #2a2a3e; color: #888; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+.add-condition-btn:hover { border-color: #e91e63; color: #e91e63; }
+
+/* ─── v2: ветки сцены ─── */
+.branches-editor, .ending-editor { margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2a3e; }
+.subpanel-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.subpanel-label { font-size: 11px; color: #888; display: flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.branches-hint { font-size: 10px; color: #555; margin: 4px 0; }
+.branch-card { background: #101528; border: 1px solid #223; border-left: 3px solid #00bcd4; border-radius: 6px; padding: 6px; margin-top: 6px; }
+.branch-card-header { display: flex; align-items: center; gap: 6px; }
+.branch-index { font-size: 10px; color: #00bcd4; font-weight: 700; flex-shrink: 0; }
+.branch-summary { flex: 1; font-size: 10px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branch-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.branch-actions button { background: none; border: none; color: #666; cursor: pointer; padding: 2px; display: flex; align-items: center; }
+.branch-actions button:hover { color: #e91e63; }
+.branch-target-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.branch-target-label { color: #00bcd4; font-size: 13px; flex-shrink: 0; }
+
+/* ─── v2: концовка ─── */
+.ending-fields { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.ending-row { display: flex; gap: 6px; }
+.ending-row .ending-id { max-width: 130px; }
+.ending-fields input, .ending-fields textarea { width: 100%; padding: 6px 8px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 6px; color: #fff; font-size: 12px; }
+.ending-fields input:focus, .ending-fields textarea:focus { border-color: #e91e63; outline: none; }
+
+/* ─── v2: озвучка ─── */
+.voice-picker-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.voice-picker-row .field-label { margin-top: 0; flex-shrink: 0; }
+.voice-picker-row .asset-picker { flex: 1; }
+
+/* ─── v2: unlockOutfits ─── */
+.unlock-outfits-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.outfit-chip { display: inline-flex; align-items: center; gap: 4px; background: #2d1854; border: 1px solid #4a2d7a; color: #d0a8ff; border-radius: 10px; padding: 2px 8px; font-size: 10px; }
+.outfit-chip.broken { border-color: #f44336; color: #f44336; }
+.outfit-chip button { background: none; border: none; color: inherit; cursor: pointer; padding: 0; display: flex; align-items: center; }
+.outfit-add-select { width: 100%; margin-top: 4px; padding: 4px 6px; background: #1a1a2e; border: 1px dashed #2a2a3e; border-radius: 6px; color: #666; font-size: 11px; cursor: pointer; }
+.outfit-add-select:hover { border-color: #e91e63; color: #e91e63; }
+
+/* ─── DnD-реордер событий ─── */
+.event-drag-wrap.drop-target > .event-card { outline: 2px dashed #e91e63; outline-offset: 2px; }
+.drag-handle-wrap { display: flex; align-items: center; cursor: grab; }
+.drag-handle-wrap:active { cursor: grabbing; }
+
+/* Кнопка вставки события */
+.add-event-bar .paste-btn { border-color: #6fcf7c; color: #6fcf7c; }
+
+/* Полноширинные элементы внутри flex-wrap .scene-settings */
+.scene-settings .field-label, .scene-settings .asset-picker, .scene-settings .scene-select { flex-basis: 100%; }
+.choice-item .scene-select.scene-ref { max-width: 170px; flex: 1; }
+
+/* Инпуты в панелях веток/концовки (вне .event-body) */
+.branches-editor input, .branches-editor select { padding: 4px 6px; background: #16213e; border: 1px solid #2a2a3e; border-radius: 4px; color: #fff; font-size: 11px; box-sizing: border-box; }
+.branches-editor input:focus, .branches-editor select:focus { border-color: #e91e63; outline: none; }
+.branches-editor .condition-row .delete { flex-shrink: 0; background: none; border: none; color: #666; cursor: pointer; padding: 2px; display: inline-flex; align-items: center; }
+.branches-editor .condition-row .delete:hover { color: #e91e63; }
+.branches-editor .add-btn.small { background: none; border: 1px dashed #2a2a3e; color: #888; padding: 2px 6px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; }
+.branches-editor .add-btn.small:hover { border-color: #e91e63; color: #e91e63; }
+.ending-editor .premium-toggle input { width: auto; }

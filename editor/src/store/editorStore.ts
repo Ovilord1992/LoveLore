@@ -1,7 +1,27 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { temporal } from 'zundo';
 import type { NovelProject, NovelTranslation, Character, Chapter, Scene, SceneEvent, SceneCharacter, NovelMeta } from '../types/novel';
-import { allSceneIds, uniqueSceneId, nextChapterNumber } from '../utils/ids';
+import type { ValidationError } from '../utils/validator';
+import { allSceneIds, uniqueSceneId, nextChapterNumber, uniqueCopySceneId } from '../utils/ids';
+import {
+  type ProjectInfo,
+  type PersistedProjectState,
+  newProjectId,
+  loadProjectsList,
+  saveProjectsList,
+  loadCurrentProjectId,
+  saveCurrentProjectId,
+  saveProjectState,
+  loadProjectState,
+  saveAsset,
+  deleteAsset,
+  loadAssets,
+  replaceAssets,
+  clearAssets as clearAssetsIdb,
+  deleteProjectData,
+  readLegacyLocalStorage,
+  removeLegacyLocalStorage,
+} from './persistence';
 
 const defaultMeta: NovelMeta = {
   id: 'new_novel',
@@ -12,47 +32,71 @@ const defaultMeta: NovelMeta = {
   chaptersCount: 1,
 };
 
-const defaultScene: Scene = {
-  id: 'scene_1',
-  charactersOnScreen: [],
-  events: [
-    { type: 'narration', text: 'Начало истории...' },
-  ],
-};
+function makeDefaultProject(): NovelProject {
+  return {
+    meta: { ...defaultMeta },
+    characters: [],
+    variables: {},
+    chapters: [{
+      id: 'chapter_1',
+      title: 'Глава 1',
+      number: 1,
+      firstSceneId: 'scene_1',
+      scenes: [{
+        id: 'scene_1',
+        charactersOnScreen: [],
+        events: [{ type: 'narration', text: 'Начало истории...' }],
+      }],
+    }],
+  };
+}
 
-const defaultChapter: Chapter = {
-  id: 'chapter_1',
-  title: 'Глава 1',
-  number: 1,
-  firstSceneId: 'scene_1',
-  scenes: [defaultScene],
-};
+export type SidebarTab = 'meta' | 'characters' | 'chapters' | 'variables' | 'audio' | 'translations' | 'search' | 'publish' | 'validate';
 
-// images: Map<путь_в_ZIP, File>  (напр. "backgrounds/city.png" → File)
+// assets: Map<путь_в_ZIP, File> — картинки И аудио (напр. "backgrounds/city.png",
+// "music/theme.mp3", "voice/ch1/mia_001.mp3" → File). Персистятся в IndexedDB.
 interface EditorState {
   project: NovelProject;
-  images: Map<string, File>;
-  imageUrls: Map<string, string>;
+  assets: Map<string, File>;
+  assetUrls: Map<string, string>;
+  projects: ProjectInfo[];
+  currentProjectId: string;
   selectedChapterIndex: number;
   selectedSceneId: string | null;
   selectedEventIndex: number | null;
   selectedTranslationLang: string | null;
   isDirty: boolean;
-  // True после первого запуска onRehydrateStorage — значит persist уже подгрузил
-  // данные с диска, и компоненты могут различать "первый запуск" vs "после refresh".
+  // True после начальной загрузки из IndexedDB — компоненты могут различать
+  // "первый запуск" vs "после refresh".
   hasHydrated: boolean;
   setHasHydrated: (v: boolean) => void;
 
-  // Проект
+  // UI
+  sidebarTab: SidebarTab;
+  setSidebarTab: (tab: SidebarTab) => void;
+  validationErrors: ValidationError[];
+  setValidationErrors: (errors: ValidationError[]) => void;
+  focusSceneRequest: { sceneId: string; nonce: number } | null;
+  focusScene: (sceneId: string) => void;
+  eventClipboard: SceneEvent | null;
+
+  // Проект (данные)
   setProject: (project: NovelProject) => void;
   updateMeta: (meta: Partial<NovelMeta>) => void;
 
-  // Изображения
-  addImage: (zipPath: string, file: File) => void;
-  removeImage: (zipPath: string) => void;
-  getImageUrl: (zipPath: string) => string | undefined;
-  clearImages: () => void;
-  setImages: (images: Map<string, File>) => void;
+  // Мультипроект
+  setProjectsMeta: (projects: ProjectInfo[], currentProjectId: string) => void;
+  createProject: (name?: string) => Promise<void>;
+  switchProject: (id: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  renameProject: (id: string, name: string) => void;
+
+  // Ассеты (картинки и аудио)
+  addAsset: (zipPath: string, file: File) => void;
+  removeAsset: (zipPath: string) => void;
+  getAssetUrl: (zipPath: string) => string | undefined;
+  clearAssets: () => void;
+  setAssets: (assets: Map<string, File>) => void;
 
   // Персонажи
   addCharacter: (character: Character) => void;
@@ -74,6 +118,9 @@ interface EditorState {
   updateScene: (sceneId: string, updates: Partial<Scene>) => void;
   removeScene: (sceneId: string) => void;
   selectScene: (sceneId: string | null) => void;
+  duplicateScene: (sceneId: string) => void;
+  /** Создать пустую сцену в текущей главе, вернуть её id (для «создать и связать»). */
+  createScene: () => string;
 
   // Персонажи на сцене
   addCharacterToScene: (sceneId: string, sc: SceneCharacter) => void;
@@ -86,11 +133,15 @@ interface EditorState {
   removeEvent: (sceneId: string, eventIndex: number) => void;
   moveEvent: (sceneId: string, from: number, to: number) => void;
   selectEvent: (index: number | null) => void;
+  copySelectedEvent: () => boolean;
+  pasteEvent: () => boolean;
 
   // Переводы
   setTranslation: (lang: string, translation: NovelTranslation) => void;
   removeTranslation: (lang: string) => void;
   updateTranslationText: (lang: string, original: string, translated: string) => void;
+  /** Перенести перевод с устаревшего ключа-оригинала на новый (детект устаревших). */
+  remapTranslationKey: (lang: string, oldOriginal: string, newOriginal: string) => void;
   updateTranslationMeta: (lang: string, field: 'novelTitle' | 'novelDescription', value: string) => void;
   updateTranslationCharacter: (lang: string, characterId: string, name: string) => void;
   updateTranslationChapter: (lang: string, chapterId: string, title: string) => void;
@@ -101,16 +152,13 @@ interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>()(
-  persist(
+  temporal(
     (set, get) => ({
-  project: {
-    meta: defaultMeta,
-    characters: [],
-    variables: {},
-    chapters: [defaultChapter],
-  },
-  images: new Map(),
-  imageUrls: new Map(),
+  project: makeDefaultProject(),
+  assets: new Map(),
+  assetUrls: new Map(),
+  projects: [],
+  currentProjectId: '',
   selectedChapterIndex: 0,
   selectedSceneId: 'scene_1',
   selectedEventIndex: null,
@@ -119,6 +167,15 @@ export const useEditorStore = create<EditorState>()(
   hasHydrated: false,
   setHasHydrated: (v) => set({ hasHydrated: v }),
 
+  // --- UI ---
+  sidebarTab: 'meta',
+  setSidebarTab: (tab) => set({ sidebarTab: tab }),
+  validationErrors: [],
+  setValidationErrors: (errors) => set({ validationErrors: errors }),
+  focusSceneRequest: null,
+  focusScene: (sceneId) => set({ focusSceneRequest: { sceneId, nonce: Date.now() } }),
+  eventClipboard: null,
+
   setProject: (project) => set({ project, isDirty: false, selectedChapterIndex: 0, selectedSceneId: null, selectedEventIndex: null }),
 
   updateMeta: (meta) => set((state) => ({
@@ -126,40 +183,148 @@ export const useEditorStore = create<EditorState>()(
     isDirty: true,
   })),
 
-  // --- Изображения ---
-  addImage: (zipPath, file) => set((state) => {
-    const images = new Map(state.images);
-    const imageUrls = new Map(state.imageUrls);
+  // --- Мультипроект ---
+  setProjectsMeta: (projects, currentProjectId) => set({ projects, currentProjectId }),
+
+  createProject: async (name) => {
+    const state = get();
+    // Сохраняем текущий проект перед переключением
+    await flushProjectSave();
+    const id = newProjectId();
+    const info: ProjectInfo = {
+      id,
+      name: name || `Проект ${state.projects.length + 1}`,
+      updatedAt: Date.now(),
+    };
+    const projects = [...get().projects, info];
+    const fresh = makeDefaultProject();
+    await saveProjectState(id, {
+      project: fresh,
+      selectedChapterIndex: 0,
+      selectedSceneId: 'scene_1',
+      selectedEventIndex: null,
+      selectedTranslationLang: null,
+    });
+    await saveProjectsList(projects);
+    await saveCurrentProjectId(id);
+    applyLoadedProject(set, {
+      project: fresh,
+      selectedChapterIndex: 0,
+      selectedSceneId: 'scene_1',
+      selectedEventIndex: null,
+      selectedTranslationLang: null,
+    }, new Map(), projects, id);
+  },
+
+  switchProject: async (id) => {
+    const state = get();
+    if (id === state.currentProjectId) return;
+    if (!state.projects.some((p) => p.id === id)) return;
+    await flushProjectSave();
+    const persisted = await loadProjectState(id);
+    const assets = await loadAssets(id);
+    await saveCurrentProjectId(id);
+    applyLoadedProject(set, persisted ?? {
+      project: makeDefaultProject(),
+      selectedChapterIndex: 0,
+      selectedSceneId: null,
+      selectedEventIndex: null,
+      selectedTranslationLang: null,
+    }, assets, get().projects, id);
+  },
+
+  deleteProject: async (id) => {
+    const state = get();
+    if (!state.projects.some((p) => p.id === id)) return;
+    const remaining = state.projects.filter((p) => p.id !== id);
+    await deleteProjectData(id);
+    if (id !== state.currentProjectId) {
+      await saveProjectsList(remaining);
+      set({ projects: remaining });
+      return;
+    }
+    // Удаляем текущий: переключаемся на первый оставшийся или создаём новый
+    cancelPendingSave();
+    if (remaining.length > 0) {
+      const target = remaining[0];
+      const persisted = await loadProjectState(target.id);
+      const assets = await loadAssets(target.id);
+      await saveProjectsList(remaining);
+      await saveCurrentProjectId(target.id);
+      applyLoadedProject(set, persisted ?? {
+        project: makeDefaultProject(),
+        selectedChapterIndex: 0,
+        selectedSceneId: null,
+        selectedEventIndex: null,
+        selectedTranslationLang: null,
+      }, assets, remaining, target.id);
+    } else {
+      const newId = newProjectId();
+      const info: ProjectInfo = { id: newId, name: 'Проект 1', updatedAt: Date.now() };
+      const fresh = makeDefaultProject();
+      await saveProjectState(newId, {
+        project: fresh,
+        selectedChapterIndex: 0,
+        selectedSceneId: 'scene_1',
+        selectedEventIndex: null,
+        selectedTranslationLang: null,
+      });
+      await saveProjectsList([info]);
+      await saveCurrentProjectId(newId);
+      applyLoadedProject(set, {
+        project: fresh,
+        selectedChapterIndex: 0,
+        selectedSceneId: 'scene_1',
+        selectedEventIndex: null,
+        selectedTranslationLang: null,
+      }, new Map(), [info], newId);
+    }
+  },
+
+  renameProject: (id, name) => {
+    const projects = get().projects.map((p) => p.id === id ? { ...p, name } : p);
+    set({ projects });
+    void saveProjectsList(projects);
+  },
+
+  // --- Ассеты ---
+  addAsset: (zipPath, file) => set((state) => {
+    const assets = new Map(state.assets);
+    const assetUrls = new Map(state.assetUrls);
     // Освобождаем старый URL
-    const oldUrl = imageUrls.get(zipPath);
+    const oldUrl = assetUrls.get(zipPath);
     if (oldUrl) URL.revokeObjectURL(oldUrl);
-    images.set(zipPath, file);
-    imageUrls.set(zipPath, URL.createObjectURL(file));
-    return { images, imageUrls, isDirty: true };
+    assets.set(zipPath, file);
+    assetUrls.set(zipPath, URL.createObjectURL(file));
+    if (state.currentProjectId) void saveAsset(state.currentProjectId, zipPath, file);
+    return { assets, assetUrls, isDirty: true };
   }),
 
-  removeImage: (zipPath) => set((state) => {
-    const images = new Map(state.images);
-    const imageUrls = new Map(state.imageUrls);
-    const url = imageUrls.get(zipPath);
+  removeAsset: (zipPath) => set((state) => {
+    const assets = new Map(state.assets);
+    const assetUrls = new Map(state.assetUrls);
+    const url = assetUrls.get(zipPath);
     if (url) URL.revokeObjectURL(url);
-    images.delete(zipPath);
-    imageUrls.delete(zipPath);
-    return { images, imageUrls, isDirty: true };
+    assets.delete(zipPath);
+    assetUrls.delete(zipPath);
+    if (state.currentProjectId) void deleteAsset(state.currentProjectId, zipPath);
+    return { assets, assetUrls, isDirty: true };
   }),
 
-  getImageUrl: (zipPath) => get().imageUrls.get(zipPath),
+  getAssetUrl: (zipPath) => get().assetUrls.get(zipPath),
 
-  clearImages: () => set((state) => {
-    state.imageUrls.forEach((url) => URL.revokeObjectURL(url));
-    return { images: new Map(), imageUrls: new Map() };
+  clearAssets: () => set((state) => {
+    state.assetUrls.forEach((url) => URL.revokeObjectURL(url));
+    if (state.currentProjectId) void clearAssetsIdb(state.currentProjectId);
+    return { assets: new Map(), assetUrls: new Map() };
   }),
 
-  setImages: (images) => set((state) => {
-    state.imageUrls.forEach((url) => URL.revokeObjectURL(url));
-    const imageUrls = new Map<string, string>();
-    images.forEach((file, path) => imageUrls.set(path, URL.createObjectURL(file)));
-    return { images, imageUrls };
+  setAssets: (assets) => set((state) => {
+    state.assetUrls.forEach((url) => URL.revokeObjectURL(url));
+    const assetUrls = new Map<string, string>();
+    assets.forEach((file, path) => assetUrls.set(path, URL.createObjectURL(file)));
+    if (state.currentProjectId) void replaceAssets(state.currentProjectId, assets);
+    return { assets, assetUrls };
   }),
 
   addCharacter: (character) => set((state) => ({
@@ -280,6 +445,7 @@ export const useEditorStore = create<EditorState>()(
         .map((s) => ({
           ...s,
           nextSceneId: s.nextSceneId === sceneId ? undefined : s.nextSceneId,
+          branches: s.branches?.map((b) => b.nextSceneId === sceneId ? { ...b, nextSceneId: '' } : b),
           events: s.events.map((ev) =>
             ev.type === 'choice' && ev.choices
               ? { ...ev, choices: ev.choices.map((c) => c.nextSceneId === sceneId ? { ...c, nextSceneId: '' } : c) }
@@ -299,6 +465,46 @@ export const useEditorStore = create<EditorState>()(
   }),
 
   selectScene: (sceneId) => set({ selectedSceneId: sceneId, selectedEventIndex: null }),
+
+  duplicateScene: (sceneId) => set((state) => {
+    const chIdx = state.project.chapters.findIndex((ch) => ch.scenes.some((s) => s.id === sceneId));
+    if (chIdx === -1) return state;
+    const source = state.project.chapters[chIdx].scenes.find((s) => s.id === sceneId)!;
+    const newId = uniqueCopySceneId(sceneId, allSceneIds(state.project.chapters));
+    const copy: Scene = JSON.parse(JSON.stringify(source));
+    copy.id = newId;
+    copy.editorPosition = source.editorPosition
+      ? { x: source.editorPosition.x + 48, y: source.editorPosition.y + 48 }
+      : undefined;
+    const chapters = state.project.chapters.map((ch, i) =>
+      i === chIdx ? { ...ch, scenes: [...ch.scenes, copy] } : ch
+    );
+    return {
+      project: { ...state.project, chapters },
+      selectedSceneId: newId,
+      selectedEventIndex: null,
+      isDirty: true,
+    };
+  }),
+
+  createScene: () => {
+    const state = get();
+    const chapter = state.project.chapters[state.selectedChapterIndex];
+    if (!chapter) return '';
+    const sceneId = uniqueSceneId(chapter.id, allSceneIds(state.project.chapters));
+    const scene: Scene = {
+      id: sceneId,
+      charactersOnScreen: [],
+      events: [{ type: 'narration', text: '' }],
+    };
+    set((s) => {
+      const chapters = s.project.chapters.map((ch, i) =>
+        i === s.selectedChapterIndex ? { ...ch, scenes: [...ch.scenes, scene] } : ch
+      );
+      return { project: { ...s.project, chapters }, isDirty: true };
+    });
+    return sceneId;
+  },
 
   // --- Персонажи на сцене ---
   addCharacterToScene: (sceneId, sc) => set((state) => {
@@ -390,6 +596,41 @@ export const useEditorStore = create<EditorState>()(
 
   selectEvent: (index) => set({ selectedEventIndex: index }),
 
+  copySelectedEvent: () => {
+    const state = get();
+    if (state.selectedEventIndex === null || !state.selectedSceneId) return false;
+    const chapter = state.project.chapters[state.selectedChapterIndex];
+    const scene = chapter?.scenes.find((s) => s.id === state.selectedSceneId);
+    const event = scene?.events[state.selectedEventIndex];
+    if (!event) return false;
+    set({ eventClipboard: JSON.parse(JSON.stringify(event)) as SceneEvent });
+    return true;
+  },
+
+  pasteEvent: () => {
+    const state = get();
+    const clip = state.eventClipboard;
+    if (!clip || !state.selectedSceneId) return false;
+    const sceneId = state.selectedSceneId;
+    const insertAt = state.selectedEventIndex !== null ? state.selectedEventIndex + 1 : undefined;
+    set((s) => {
+      const chapters = s.project.chapters.map((ch) => ({
+        ...ch,
+        scenes: ch.scenes.map((sc) => {
+          if (sc.id !== sceneId) return sc;
+          const events = [...sc.events];
+          const idx = insertAt !== undefined && insertAt <= events.length ? insertAt : events.length;
+          events.splice(idx, 0, JSON.parse(JSON.stringify(clip)) as SceneEvent);
+          return { ...sc, events };
+        }),
+      }));
+      const scene = chapters[s.selectedChapterIndex]?.scenes.find((sc) => sc.id === sceneId);
+      const idx = insertAt !== undefined && scene && insertAt < scene.events.length ? insertAt : (scene ? scene.events.length - 1 : null);
+      return { project: { ...s.project, chapters }, selectedEventIndex: idx, isDirty: true };
+    });
+    return true;
+  },
+
   // --- Переводы ---
   setTranslation: (lang, translation) => set((state) => ({
     project: {
@@ -417,6 +658,19 @@ export const useEditorStore = create<EditorState>()(
     } else {
       delete texts[original];
     }
+    translations[lang] = { ...existing, texts };
+    return { project: { ...state.project, translations }, isDirty: true };
+  }),
+
+  remapTranslationKey: (lang, oldOriginal, newOriginal) => set((state) => {
+    const translations = { ...(state.project.translations || {}) };
+    const existing = translations[lang];
+    if (!existing) return state;
+    const texts = { ...existing.texts };
+    const value = texts[oldOriginal];
+    if (value === undefined || !newOriginal.trim()) return state;
+    delete texts[oldOriginal];
+    texts[newOriginal] = value;
     translations[lang] = { ...existing, texts };
     return { project: { ...state.project, translations }, isDirty: true };
   }),
@@ -471,38 +725,200 @@ export const useEditorStore = create<EditorState>()(
   }),
     }),
     {
-      name: 'amoria-editor-store',
-      storage: createJSONStorage(() => localStorage),
-      // Персистим только структуру новеллы и индексы выбора.
-      // НЕ персистим:
-      //   - images   (Map<string, File>)   — File не сериализуется в JSON
-      //   - imageUrls (Map<string, string>) — blob: URL живёт только в текущей сессии
-      // После refresh пользователь увидит структуру новеллы, но картинки
-      // придётся перезагрузить — известное ограничение.
-      partialize: (state) => ({
-        project: state.project,
-        selectedChapterIndex: state.selectedChapterIndex,
-        selectedSceneId: state.selectedSceneId,
-        selectedEventIndex: state.selectedEventIndex,
-        selectedTranslationLang: state.selectedTranslationLang,
-      }),
-      version: 1,
-      // Graceful migration: если в localStorage старая версия — пропускаем (или
-      // миграция в будущем); если незнакомая (новее, или мусор) — сбрасываем
-      // на дефолт, чтобы редактор не крашил на старте.
-      migrate: (persistedState: unknown, version: number) => {
-        if (version === 0) {
-          // future: migration from v0 to v1 if нужно
-          return persistedState as never;
-        }
-        // unknown version — сбросить state на дефолт
-        return undefined as never;
-      },
-      // Помечаем стор гидратированным, чтобы UI мог отличить "только что
-      // открыли редактор" от "перезагрузили страницу с восстановленным проектом".
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
+      // История undo/redo — ТОЛЬКО JSON-состояние проекта. Map ассетов и
+      // выборки/UI не входят (Map<File> не откатываем — blob'ы живут отдельно).
+      partialize: (state) => ({ project: state.project }),
+      limit: 100,
+      // Не создаём запись истории, если project не менялся (клики выбора и т.п.)
+      equality: (past, current) => past.project === current.project,
+      // Группируем быстрые правки (набор текста): не чаще 1 записи в 600 мс.
+      handleSet: (handleSet) => {
+        let lastSavedAt = 0;
+        return (...args: Parameters<typeof handleSet>) => {
+          const now = Date.now();
+          if (now - lastSavedAt < 600) return;
+          lastSavedAt = now;
+          handleSet(...args);
+        };
       },
     }
   )
 );
+
+// ───────────────────────── Персист (IndexedDB) ─────────────────────────
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSave: { projectId: string } | null = null;
+
+function collectPersistedState(): PersistedProjectState {
+  const s = useEditorStore.getState();
+  return {
+    project: s.project,
+    selectedChapterIndex: s.selectedChapterIndex,
+    selectedSceneId: s.selectedSceneId,
+    selectedEventIndex: s.selectedEventIndex,
+    selectedTranslationLang: s.selectedTranslationLang,
+  };
+}
+
+function cancelPendingSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  pendingSave = null;
+}
+
+async function doSave(projectId: string) {
+  const state = collectPersistedState();
+  await saveProjectState(projectId, state);
+  const s = useEditorStore.getState();
+  const projects = s.projects.map((p) => p.id === projectId ? { ...p, updatedAt: Date.now() } : p);
+  useEditorStore.setState({ projects });
+  await saveProjectsList(projects);
+}
+
+/** Немедленно сохранить отложенные изменения текущего проекта. */
+export async function flushProjectSave(): Promise<void> {
+  const target = pendingSave?.projectId || useEditorStore.getState().currentProjectId;
+  cancelPendingSave();
+  if (!target) return;
+  await doSave(target);
+}
+
+function scheduleSave() {
+  const projectId = useEditorStore.getState().currentProjectId;
+  if (!projectId) return;
+  pendingSave = { projectId };
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const id = pendingSave?.projectId;
+    cancelPendingSave();
+    if (id) void doSave(id);
+  }, 400);
+}
+
+/** Применить загруженный проект в стор: пауза истории + сброс undo-стека. */
+function applyLoadedProject(
+  set: (partial: Partial<EditorState>) => void,
+  persisted: PersistedProjectState,
+  assets: Map<string, File>,
+  projects: ProjectInfo[],
+  currentProjectId: string,
+) {
+  const temporalApi = useEditorStore.temporal.getState();
+  temporalApi.pause();
+  const old = useEditorStore.getState();
+  old.assetUrls.forEach((url) => URL.revokeObjectURL(url));
+  const assetUrls = new Map<string, string>();
+  assets.forEach((file, path) => assetUrls.set(path, URL.createObjectURL(file)));
+  set({
+    project: persisted.project,
+    selectedChapterIndex: Math.min(persisted.selectedChapterIndex, persisted.project.chapters.length - 1),
+    selectedSceneId: persisted.selectedSceneId,
+    selectedEventIndex: persisted.selectedEventIndex,
+    selectedTranslationLang: persisted.selectedTranslationLang,
+    assets,
+    assetUrls,
+    projects,
+    currentProjectId,
+    isDirty: false,
+    eventClipboard: null,
+    validationErrors: [],
+    focusSceneRequest: null,
+  });
+  temporalApi.clear();
+  temporalApi.resume();
+}
+
+let persistenceInitialized = false;
+
+/** Инициализация персиста: миграция старого localStorage → «Проект 1»,
+ *  загрузка текущего проекта и ассетов из IndexedDB, подписка на автосохранение.
+ *  Вызывается один раз из main.tsx. */
+export async function initEditorPersistence(): Promise<void> {
+  if (persistenceInitialized) return;
+  persistenceInitialized = true;
+
+  try {
+    let projects = await loadProjectsList();
+    let currentId = await loadCurrentProjectId();
+
+    if (projects.length === 0) {
+      // Первый запуск ИЛИ миграция со старого однослотового localStorage.
+      const legacy = readLegacyLocalStorage();
+      const id = newProjectId();
+      const info: ProjectInfo = {
+        id,
+        name: legacy?.project.meta.title?.trim() ? legacy.project.meta.title : 'Проект 1',
+        updatedAt: Date.now(),
+      };
+      const state: PersistedProjectState = legacy ?? {
+        project: makeDefaultProject(),
+        selectedChapterIndex: 0,
+        selectedSceneId: 'scene_1',
+        selectedEventIndex: null,
+        selectedTranslationLang: null,
+      };
+      await saveProjectState(id, state);
+      await saveProjectsList([info]);
+      await saveCurrentProjectId(id);
+      if (legacy) removeLegacyLocalStorage();
+      projects = [info];
+      currentId = id;
+    }
+
+    if (!currentId || !projects.some((p) => p.id === currentId)) {
+      currentId = projects[0].id;
+      await saveCurrentProjectId(currentId);
+    }
+
+    const persisted = await loadProjectState(currentId);
+    const assets = await loadAssets(currentId);
+    applyLoadedProject(
+      (partial) => useEditorStore.setState(partial),
+      persisted ?? {
+        project: makeDefaultProject(),
+        selectedChapterIndex: 0,
+        selectedSceneId: 'scene_1',
+        selectedEventIndex: null,
+        selectedTranslationLang: null,
+      },
+      assets,
+      projects,
+      currentId,
+    );
+  } catch (err) {
+    console.error('[editor] Ошибка инициализации IndexedDB-персиста:', err);
+  } finally {
+    useEditorStore.setState({ hasHydrated: true });
+  }
+
+  // Автосохранение JSON-состояния (ассеты пишутся сразу в своих экшенах).
+  let prev = collectPersistedState();
+  useEditorStore.subscribe((state) => {
+    if (!state.hasHydrated || !state.currentProjectId) return;
+    const next: PersistedProjectState = {
+      project: state.project,
+      selectedChapterIndex: state.selectedChapterIndex,
+      selectedSceneId: state.selectedSceneId,
+      selectedEventIndex: state.selectedEventIndex,
+      selectedTranslationLang: state.selectedTranslationLang,
+    };
+    const changed =
+      next.project !== prev.project ||
+      next.selectedChapterIndex !== prev.selectedChapterIndex ||
+      next.selectedSceneId !== prev.selectedSceneId ||
+      next.selectedEventIndex !== prev.selectedEventIndex ||
+      next.selectedTranslationLang !== prev.selectedTranslationLang;
+    prev = next;
+    if (changed) scheduleSave();
+  });
+
+  // Лучший из возможных flush при закрытии вкладки: IDB-транзакция, начатая
+  // до unload, обычно успевает завершиться.
+  window.addEventListener('beforeunload', () => {
+    if (pendingSave) void flushProjectSave();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && pendingSave) void flushProjectSave();
+  });
+}

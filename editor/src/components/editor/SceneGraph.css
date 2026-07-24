@@ -4,3 +4,5 @@
 .scene-node-id { font-weight: 600; font-size: 12px; color: #e91e63; margin-bottom: 4px; }
 .scene-node-info { font-size: 11px; color: #888; }
 .scene-node-bg { font-size: 10px; color: #666; margin-top: 4px; }
+
+.scene-node-ending-badge { margin-left: 6px; font-size: 11px; }
