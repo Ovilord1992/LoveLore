@@ -44,6 +44,7 @@ export default function NovelsPage() {
   const [chapters, setChapters] = useState<ChapterRow[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
   const [chaptersSaving, setChaptersSaving] = useState<number | null>(null);
+  const [chapterUploading, setChapterUploading] = useState(false);
   const reqId = useRef(0);
   const { message } = AntApp.useApp();
 
@@ -132,10 +133,8 @@ export default function NovelsPage() {
     }
   };
 
-  // ─── Управление главами (релиз/скрытие) ──────────────────────────────────
-  const openChapters = async (novelId: string, title: string) => {
-    setChaptersModal({ novelId, title });
-    setChapters([]);
+  // ─── Управление главами (релиз/расписание/загрузка) ──────────────────────
+  const loadChapters = async (novelId: string) => {
     setChaptersLoading(true);
     try {
       const { data } = await api.get(`/admin/novels/${novelId}/chapters`);
@@ -146,6 +145,12 @@ export default function NovelsPage() {
     } finally {
       setChaptersLoading(false);
     }
+  };
+
+  const openChapters = (novelId: string, title: string) => {
+    setChaptersModal({ novelId, title });
+    setChapters([]);
+    loadChapters(novelId);
   };
 
   const patchChapter = async (number: number, body: Record<string, unknown>, okMsg: string) => {
@@ -163,12 +168,81 @@ export default function NovelsPage() {
     }
   };
 
-  const toggleChapterRelease = (number: number, current: boolean) =>
-    patchChapter(number, { isReleased: !current }, !current ? 'Глава выпущена' : 'Глава скрыта');
+  const toggleChapterRelease = (chapter: ChapterRow) => {
+    const releasing = !chapter.isReleased;
+    patchChapter(chapter.number, { isReleased: releasing }, releasing ? 'Глава выпущена' : 'Глава скрыта');
+    if (!releasing && chapter.releasedAt && !dayjs(chapter.releasedAt).isAfter(dayjs())) {
+      // Серверный планировщик релизит главы с isReleased=false и прошедшей releasedAt —
+      // скрытие ранее выпущенной главы он отменит на ближайшем тике (~60 с).
+      message.warning(
+        'У главы дата выпуска в прошлом: серверный планировщик снова выпустит её в течение ~1 минуты. ' +
+        'Чтобы скрыть надолго, задайте будущую дату в расписании.',
+        8,
+      );
+    }
+  };
 
-  const updateChapterDate = (number: number, d: Dayjs | null) => {
+  const updateChapterDate = (chapter: ChapterRow, d: Dayjs | null) => {
     if (!d) return;
-    patchChapter(number, { releasedAt: d.toISOString() }, 'Дата выпуска обновлена');
+    if (!chapter.isReleased) {
+      // Планирование: для невыпущенной главы дата обязана быть в будущем,
+      // иначе серверный планировщик зарелизит её в ближайшие 60 секунд.
+      if (!d.isAfter(dayjs())) {
+        message.error('Дата планирования должна быть в будущем — прошедшая дата немедленно выпустит главу');
+        return;
+      }
+      patchChapter(
+        chapter.number,
+        { isReleased: false, releasedAt: d.toISOString() },
+        `Глава запланирована на ${d.format('DD.MM.YYYY HH:mm')}`,
+      );
+      return;
+    }
+    patchChapter(chapter.number, { releasedAt: d.toISOString() }, 'Дата выпуска обновлена');
+  };
+
+  // Загрузка одной главы JSON-файлом → POST /admin/novels/:id/chapters
+  const uploadChapterJson = async (file: File) => {
+    if (!chaptersModal) return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch (err) {
+      message.error(`Невалидный JSON: ${(err as Error).message}`);
+      return;
+    }
+    let chapter = (parsed ?? {}) as Record<string, unknown>;
+    // Допускаем файл-обёртку { "chapter": {...} } — как в теле запроса
+    if (chapter.chapter && typeof chapter.chapter === 'object' && !Array.isArray(chapter.chapter)) {
+      chapter = chapter.chapter as Record<string, unknown>;
+    }
+    const problems: string[] = [];
+    if (typeof chapter.id !== 'string' || !chapter.id) problems.push('id');
+    if (typeof chapter.title !== 'string' || !chapter.title) problems.push('title');
+    if (!Number.isInteger(chapter.number) || (chapter.number as number) < 1) problems.push('number (целое ≥ 1)');
+    if (typeof chapter.firstSceneId !== 'string' || !chapter.firstSceneId) problems.push('firstSceneId');
+    if (!Array.isArray(chapter.scenes) || chapter.scenes.length === 0) problems.push('scenes (непустой массив)');
+    if (problems.length > 0) {
+      message.error(`Файл не похож на главу — некорректные поля: ${problems.join(', ')}`);
+      return;
+    }
+
+    setChapterUploading(true);
+    try {
+      const { data } = await api.post(`/admin/novels/${chaptersModal.novelId}/chapters`, { chapter });
+      const created = data.message === 'Chapter created';
+      message.success(
+        `${created ? 'Глава добавлена' : 'Глава обновлена'} (№${chapter.number}). ` +
+        `Глав: ${data.novel.chaptersCount}, выпущено: ${data.novel.releasedChapters}, версия: v${data.novel.version}`,
+      );
+      loadChapters(chaptersModal.novelId); // обновить список глав
+      fetchNovels(); // обновить счётчики в основной таблице
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки главы');
+    } finally {
+      setChapterUploading(false);
+    }
   };
 
   const uploadProps: UploadProps = {
@@ -243,33 +317,46 @@ export default function NovelsPage() {
   ];
 
   const chapterColumns: ColumnsType<ChapterRow> = [
-    { title: '№', dataIndex: 'number', key: 'number', width: 60 },
+    { title: '№', dataIndex: 'number', key: 'number', width: 50 },
     { title: 'Заголовок', dataIndex: 'title', key: 'title' },
     {
-      title: 'Выпущена', key: 'isReleased', width: 110,
+      title: 'Статус', key: 'status', width: 210,
+      render: (_: unknown, r: ChapterRow) => {
+        if (r.isReleased) return <Tag color="green">Выпущена</Tag>;
+        if (r.releasedAt && dayjs(r.releasedAt).isAfter(dayjs())) {
+          return <Tag color="orange">Запланирована на {dayjs(r.releasedAt).format('DD.MM.YYYY HH:mm')}</Tag>;
+        }
+        return <Tag>Не выпущена</Tag>;
+      },
+    },
+    {
+      title: 'Выпущена', key: 'isReleased', width: 100,
       render: (_: unknown, r: ChapterRow) => (
         <Switch
           checked={r.isReleased}
           checkedChildren="Да"
           unCheckedChildren="Нет"
           loading={chaptersSaving === r.number}
-          onChange={() => toggleChapterRelease(r.number, r.isReleased)}
+          onChange={() => toggleChapterRelease(r)}
         />
       ),
     },
     {
-      title: 'Дата выпуска', key: 'releasedAt', width: 210,
+      title: 'Дата выпуска / расписание', key: 'releasedAt', width: 215,
       render: (_: unknown, r: ChapterRow) => (
-        <DatePicker
-          value={r.releasedAt ? dayjs(r.releasedAt) : null}
-          onChange={(d) => updateChapterDate(r.number, d)}
-          showTime
-          format="DD.MM.YYYY HH:mm"
-          allowClear={false}
-          size="small"
-          disabled={chaptersSaving === r.number}
-          placeholder="—"
-        />
+        <Tooltip title={r.isReleased ? 'Дата фактического выпуска' : 'Будущая дата — сервер выпустит главу автоматически (интервал ~60 с)'}>
+          <DatePicker
+            value={r.releasedAt ? dayjs(r.releasedAt) : null}
+            onChange={(d) => updateChapterDate(r, d)}
+            showTime
+            format="DD.MM.YYYY HH:mm"
+            allowClear={false}
+            size="small"
+            disabled={chaptersSaving === r.number}
+            disabledDate={r.isReleased ? undefined : (d) => d.isBefore(dayjs().startOf('day'))}
+            placeholder={r.isReleased ? '—' : 'Запланировать…'}
+          />
+        </Tooltip>
       ),
     },
   ];
@@ -355,18 +442,34 @@ export default function NovelsPage() {
         open={!!chaptersModal}
         onCancel={() => { setChaptersModal(null); setChapters([]); }}
         footer={null}
-        width={760}
+        width={860}
       >
         {chaptersModal && (
-          <Table
-            columns={chapterColumns}
-            dataSource={chapters}
-            rowKey="id"
-            loading={chaptersLoading}
-            pagination={false}
-            size="small"
-            locale={{ emptyText: 'Нет глав' }}
-          />
+          <>
+            <div style={{ marginBottom: 12, textAlign: 'right' }}>
+              <Upload
+                accept=".json,application/json"
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  void uploadChapterJson(file);
+                  return false; // не отправляем через встроенный аплоадер — шлём JSON сами
+                }}
+              >
+                <Button icon={<UploadOutlined />} loading={chapterUploading}>
+                  Загрузить главу (JSON-файл)
+                </Button>
+              </Upload>
+            </div>
+            <Table
+              columns={chapterColumns}
+              dataSource={chapters}
+              rowKey="id"
+              loading={chaptersLoading}
+              pagination={false}
+              size="small"
+              locale={{ emptyText: 'Нет глав' }}
+            />
+          </>
         )}
       </Modal>
     </div>

@@ -26,6 +26,15 @@ interface UserDetail {
   saves: { id: string; novelId: string; updatedAt: string }[];
 }
 
+interface LedgerEntry {
+  id: string;
+  currency: string;
+  delta: number;
+  reason: string;
+  refId: string | null;
+  createdAt: string;
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -35,6 +44,8 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ role: '', diamonds: 0, tickets: 0 });
   const reqId = useRef(0);
@@ -65,11 +76,26 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  const fetchLedger = async (id: string) => {
+    setLedgerLoading(true);
+    try {
+      const { data } = await api.get(`/admin/users/${id}/ledger`, { params: { limit: 50 } });
+      setLedger(data.entries);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      message.error(e.response?.data?.error || 'Ошибка загрузки операций леджера');
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
   const showDetail = async (id: string) => {
     try {
       const { data } = await api.get(`/admin/users/${id}`);
       setDetail(data.user);
       setDetailOpen(true);
+      setLedger([]);
+      fetchLedger(id);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
       message.error(e.response?.data?.error || 'Ошибка загрузки пользователя');
@@ -145,6 +171,30 @@ export default function UsersPage() {
     },
   ];
 
+  const ledgerColumns: ColumnsType<LedgerEntry> = [
+    {
+      title: 'Когда', dataIndex: 'createdAt', key: 'createdAt', width: 150,
+      render: (d: string) => new Date(d).toLocaleString('ru'),
+    },
+    {
+      title: 'Валюта', dataIndex: 'currency', key: 'currency', width: 90,
+      render: (c: string) => (c === 'diamonds' ? '💎 алмазы' : c === 'tickets' ? '🎟 билеты' : c),
+    },
+    {
+      title: 'Дельта', dataIndex: 'delta', key: 'delta', width: 80, align: 'right' as const,
+      render: (d: number) => (
+        <span style={{ color: d >= 0 ? '#3f8600' : '#cf1322', fontVariantNumeric: 'tabular-nums' }}>
+          {d >= 0 ? `+${d}` : d}
+        </span>
+      ),
+    },
+    {
+      title: 'Причина', dataIndex: 'reason', key: 'reason', width: 140,
+      render: (r: string) => <Tag>{r}</Tag>,
+    },
+    { title: 'refId', dataIndex: 'refId', key: 'refId', ellipsis: true, render: (v: string | null) => v || '—' },
+  ];
+
   const handleTableChange = (pagination: TablePaginationConfig) => {
     setPage(pagination.current || 1);
   };
@@ -170,18 +220,31 @@ export default function UsersPage() {
       />
 
       {/* Детали */}
-      <Modal title="Детали пользователя" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={null} width={600}>
+      <Modal title="Детали пользователя" open={detailOpen} onCancel={() => setDetailOpen(false)} footer={null} width={760}>
         {detail && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="ID">{detail.id}</Descriptions.Item>
-            <Descriptions.Item label="Email">{detail.email}</Descriptions.Item>
-            <Descriptions.Item label="Имя">{detail.displayName}</Descriptions.Item>
-            <Descriptions.Item label="Роль"><Tag color={detail.role === 'admin' ? 'red' : 'blue'}>{detail.role}</Tag></Descriptions.Item>
-            <Descriptions.Item label="💎 Алмазы">{detail.currency?.diamonds ?? 0}</Descriptions.Item>
-            <Descriptions.Item label="🎟 Билеты">{detail.currency?.tickets ?? 0}</Descriptions.Item>
-            <Descriptions.Item label="Сохранений">{detail.saves.length}</Descriptions.Item>
-            <Descriptions.Item label="Регистрация">{new Date(detail.createdAt).toLocaleString('ru')}</Descriptions.Item>
-          </Descriptions>
+          <>
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="ID">{detail.id}</Descriptions.Item>
+              <Descriptions.Item label="Email">{detail.email}</Descriptions.Item>
+              <Descriptions.Item label="Имя">{detail.displayName}</Descriptions.Item>
+              <Descriptions.Item label="Роль"><Tag color={detail.role === 'admin' ? 'red' : 'blue'}>{detail.role}</Tag></Descriptions.Item>
+              <Descriptions.Item label="💎 Алмазы">{detail.currency?.diamonds ?? 0}</Descriptions.Item>
+              <Descriptions.Item label="🎟 Билеты">{detail.currency?.tickets ?? 0}</Descriptions.Item>
+              <Descriptions.Item label="Сохранений">{detail.saves.length}</Descriptions.Item>
+              <Descriptions.Item label="Регистрация">{new Date(detail.createdAt).toLocaleString('ru')}</Descriptions.Item>
+            </Descriptions>
+            <Typography.Title level={5} style={{ marginTop: 16 }}>Последние операции леджера</Typography.Title>
+            <Table
+              columns={ledgerColumns}
+              dataSource={ledger}
+              rowKey="id"
+              size="small"
+              loading={ledgerLoading}
+              pagination={false}
+              scroll={{ y: 260 }}
+              locale={{ emptyText: 'Операций нет' }}
+            />
+          </>
         )}
       </Modal>
 

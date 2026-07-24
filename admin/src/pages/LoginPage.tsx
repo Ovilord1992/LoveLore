@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, App as AntApp } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
-import api from '../services/api';
+import api, { saveTokens } from '../services/api';
 
 const { Title } = Typography;
 
@@ -21,7 +21,7 @@ export default function LoginPage({ onLogin }: Props) {
         message.error('Доступ запрещён: нужна роль admin');
         return;
       }
-      localStorage.setItem('admin_token', data.token);
+      saveTokens(data.token, data.refreshToken);
       onLogin();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };

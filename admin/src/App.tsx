@@ -8,6 +8,7 @@ import NovelsPage from './pages/NovelsPage';
 import ConfigPage from './pages/ConfigPage';
 import ReviewsPage from './pages/ReviewsPage';
 import AdminLayout from './components/AdminLayout';
+import { logoutAdmin } from './services/api';
 
 const pageFromHash = () => {
   const hash = window.location.hash.replace('#/', '') || 'dashboard';
@@ -36,7 +37,8 @@ function AppContent() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
+    // Отзыв refresh-токена на сервере (fire-and-forget) + локальная очистка
+    void logoutAdmin();
     setLoggedIn(false);
   };
 
