@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import type { NovelProject, NovelTranslation } from '../types/novel';
+import { CURRENT_FORMAT_VERSION } from '../types/novel';
 import { validateProject } from './validator';
 
 /** Убрать пустые строки перевода из всех карт: пустой перевод НЕ должен попасть
@@ -37,8 +38,11 @@ export function blockingErrors(project: NovelProject): string[] {
 export async function buildZipBlob(project: NovelProject, assets: Map<string, File>): Promise<Blob> {
   const zip = new JSZip();
 
-  // meta.json — в корне ZIP
-  zip.file('meta.json', JSON.stringify(project.meta, null, 2));
+  // meta.json — в корне ZIP; formatVersion проставляется всегда (спека 4.1)
+  zip.file(
+    'meta.json',
+    JSON.stringify({ ...project.meta, formatVersion: CURRENT_FORMAT_VERSION }, null, 2)
+  );
 
   // characters.json
   zip.file(

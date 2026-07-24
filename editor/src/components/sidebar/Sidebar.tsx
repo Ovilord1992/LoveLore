@@ -152,6 +152,13 @@ function MetaTab() {
         placeholder="романтика, мистика"
       />
 
+      <label>Мин. версия приложения (опционально)</label>
+      <input
+        value={meta.minAppVersion || ''}
+        onChange={(e) => updateMeta({ minAppVersion: e.target.value.trim() || undefined })}
+        placeholder="1.0.0"
+      />
+
       <label>Язык оригинала</label>
       <select
         value={meta.sourceLanguage || 'ru'}

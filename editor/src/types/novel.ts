@@ -45,7 +45,13 @@ export interface NovelMeta {
   statsDisplay?: StatDisplay[];
   // v2 (1.4): запрос имени игрока при первом старте
   playerNamePrompt?: PlayerNamePrompt;
+  // v2.1 (4.1): версия формата (пишется при экспорте) и минимальная версия приложения
+  formatVersion?: number;
+  minAppVersion?: string;
 }
+
+// Текущая версия формата, проставляется в meta.json при экспорте (спека 4.1)
+export const CURRENT_FORMAT_VERSION = 2;
 
 export interface Character {
   id: string;
