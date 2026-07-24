@@ -284,3 +284,96 @@
 - **Skip прочитанного**: множество прочитанных `sceneId:eventIndex` per novel (Hive) + кнопка-тумблер fast-forward (~120 мс/событие) до первого непрочитанного или выбора.
 - **Backlog**: история реплик (спикер+текст+выборы, кап 200) + существующий `DialogueLogScreen` подключается кнопкой в игровом UI.
 - **CG-галерея**: unlocked-ключи формата `<novelId>|<путь картинки>`; галерея рендерит реальные изображения через загрузчик новелл, группировка по новеллам.
+
+---
+
+# Часть 4. Дополнение v2.1 — live-ops дозакрытие (июль 2026)
+
+Контракты волны 2. Принципы те же: обратная совместимость, никаких новых типов событий, экономика только через леджер.
+
+## 4.1. Версионирование формата
+
+`meta.json`, новые опциональные поля:
+
+```json
+"formatVersion": 2,
+"minAppVersion": "1.0.0"
+```
+
+- `formatVersion` — целое; при отсутствии считается `1`. Клиент объявляет `supportedFormatVersion = 2` (константа). Если `formatVersion` новеллы больше поддерживаемого — новелла не запускается: экран «Обновите приложение» (в каталоге — бейдж, вход заблокирован).
+- `minAppVersion` — semver-строка; сравнивается с версией приложения. Клиент: версию берём из package_info_plus, если пакет уже есть; иначе — константа, синхронизированная с pubspec (с комментарием).
+- Редактор пишет `formatVersion: 2` в экспорт автоматически; `minAppVersion` — опциональное поле в редакторе меты.
+
+## 4.2. Защита сейвов при обновлении контента
+
+Восстановление сейва обязано переживать любое изменение контента:
+
+1. `sceneId` из сейва не найден в главе → откат к `firstSceneId` главы + snackbar «История была обновлена — прогресс возвращён к началу главы».
+2. Глава из сейва отсутствует/не выпущена → откат к последней доступной главе (или главе 1) с тем же уведомлением.
+3. `eventIndex` за пределами `scene.events` → кламп к началу сцены.
+4. Переход в несуществующую сцену в рантайме (`nextSceneId`/branch указывает в никуда) → лог + стандартный поток конца главы, не крэш.
+5. Ключи skip-read (`sceneId:eventIndex`) при рассинхроне просто не совпадают — это допустимо (события покажутся как непрочитанные), падать нельзя.
+
+## 4.3. Версии контента и откат (сервер)
+
+- Таблица `NovelArchive { id, novelId, version, filePath, sizeBytes, createdAt }`. При каждой перезаливке ZIP/upsert главы текущий архив сначала копируется в `uploads/history/<novelId>/v<version>.zip`; храним последние **5** версий (старшие удаляются вместе с файлами).
+- `GET /v1/admin/novels/:id/versions` → `{ versions: [{version, sizeBytes, createdAt}] }`.
+- `POST /v1/admin/novels/:id/rollback` `{ version }` → восстанавливает ZIP из архива, перечитывает главы (merge release-состояния как при перезаливке), `version++` (история линейна, как у конфига), инвалидация ZIP-кеша. 404 если версии нет.
+
+## 4.4. Аналитика: ретеншн и воронки (сервер + админка)
+
+- `GET /v1/admin/analytics/retention?days=30` → `{ cohorts: [{ date, installs, d1, d7, d30 }] }`. Когорта = deviceId с первым `session_start` в дату date; dN = число устройств когорты с любым событием в date+N (для неполных когорт dN = null).
+- `GET /v1/admin/analytics/funnel?novelId=<id>` → `{ novelId, novelStarts, chapters: [{ chapter, starts, completes }] }` — distinct deviceId по `chapter_start`/`chapter_complete` (params.novelId/params.chapter).
+
+## 4.5. Промокоды
+
+- Таблицы: `PromoCode { id, code unique (upper-case), diamonds, tickets, vipDays, maxRedemptions (0 = безлимит), redemptionsCount, expiresAt?, isActive, createdAt }`, `PromoRedemption { id, codeId, userId, createdAt, unique(codeId, userId) }`.
+- `POST /v1/promo/redeem` (auth, limiter) `{ code }` → `200 { reward: { diamonds, tickets, vipDays }, balances }`. Ошибки: `404` нет кода / неактивен, `410` истёк или исчерпан, `409` уже погашен этим пользователем. Начисление атомарно через леджер (reason `promo`, refId = code); `vipDays` продлевает `vipExpiresAt` (от max(now, текущего)).
+- Админ-CRUD: `GET /v1/admin/promo` (список с redemptionsCount), `POST /v1/admin/promo`, `PATCH /v1/admin/promo/:id` (isActive, expiresAt, maxRedemptions).
+- Клиент: поле «Промокод» в профиле/настройках; balances из ответа авторитетны.
+
+## 4.6. Эксперименты (A/B) и сегменты — секции GameConfig
+
+```json
+"experiments": [
+  { "id": "price_test_1", "enabled": true, "variants": [
+    { "key": "control", "weight": 50, "overrides": {} },
+    { "key": "cheap",   "weight": 50, "overrides": { "economy.premiumChoiceBaseCost": 10 } }
+  ] }
+],
+"segments": [
+  { "id": "ios_vip", "conditions": { "platform": "ios", "vip": true },
+    "overrides": { "ads.maxAdsPerDay": 0 } }
+]
+```
+
+- **Порядок применения на клиенте:** базовый конфиг → overrides всех подошедших segments (по порядку массива) → overrides варианта каждого включённого эксперимента. Overrides — плоские dot-пути внутри секций, значение заменяется целиком.
+- **Бакетирование:** детерминированное, стабильное между сессиями: `fnv1a("<deviceId>:<experimentId>") % totalWeight` → вариант по кумулятивным весам. Один раз за сессию на каждый применённый эксперимент клиент шлёт событие `experiment_exposure` `{ experimentId, variant }` (добавить в словарь имён на сервере).
+- **Условия сегментов:** `platform` ("android"|"ios"), `vip` (bool), `installedAfter`/`installedBefore` (ISO; дата первого запуска хранится в `app_settings.first_launch_ts`, проставляется при первом старте).
+- Сервер: zod-схемы обеих секций (веса > 0, уникальные id), админка — типизированные редакторы.
+
+## 4.7. Удаление аккаунта и экспорт данных (требования сторов/GDPR)
+
+- `DELETE /v1/auth/account` (auth) — анонимизация: email → `deleted-<id>@deleted.local`, passwordHash → случайный, displayName очищен, `tokenVersion++`, все refresh-токены отозваны; удаляются GameSave, UserProfileData, CurrencyData, Favorite, Rating, Review пользователя; CurrencyLedger/IapTransaction/AnalyticsEvent остаются привязанными к анонимизированной записи (финансовый учёт). → `200 { deleted: true }`.
+- `GET /v1/auth/export` (auth) → JSON со всеми данными пользователя (user без hash, saves, profile, currency, ledger, transactions без чувствительных полей, redemptions).
+- Клиент (настройки): «Скачать мои данные» (сохранить JSON в Documents + snackbar с путём, без новых зависимостей) и «Удалить аккаунт» (двойное подтверждение → запрос → локальный wipe токенов/профиля → экран входа).
+
+## 4.8. Мелочь
+
+- Сброс расписания главы: `PATCH /v1/admin/novels/:id/chapters/:number` с `releasedAt: null` очищает дату (серверная поддержка уже есть) — в админке кнопка «Убрать из расписания».
+
+## 4.9. Тест-режим контента (админ видит черновики)
+
+- Каталог `GET /v1/novels`, детали, список глав и обе download-ручки принимают **опциональный** Bearer. Для пользователя с ролью `admin`: каталог включает неопубликованные новеллы (в ответе добавляется поле `isPublished`), проверки `isReleased` глав пропускаются, ZIP отдаётся полным (без фильтрации невыпущенных глав, мимо кеша).
+- Для обычных пользователей и анонимов поведение НЕ меняется.
+- Клиент: шлёт токен на этих ручках, если залогинен; новеллы с `isPublished: false` помечаются бейджем «Черновик». Логика переходов глав не меняется (сервер сам отвечает админу, что глава доступна).
+
+## 4.10. Согласия, возраст, ссылки (стор-комплаенс)
+
+- Новая секция GameConfig `links: { privacyPolicyUrl, termsUrl }` (zod, опциональные строки-URL; редактируется в админке).
+- Клиент, первый запуск (до онбординга): экран согласий — подтверждение возраста 16+, тумблер аналитики (по умолчанию вкл), тумблер персонализированной рекламы, ссылки на privacy/terms из конфига. Ключи в `app_settings`: `age_confirmed`, `consent_analytics`, `consent_ads_personalized`. Изменение — в настройках.
+- `analytics_service`: при выключенном согласии события не логируются и не отправляются (очередь не пополняется).
+- `ad_service`: при выключенной персонализации — non-personalized запросы (`npa=1`); на iOS перед персонализированной рекламой — запрос ATT (`app_tracking_transparency`), отказ → npa.
+- Локальные уведомления (`flutter_local_notifications`, без точных алармов): «билеты восстановились» (время полного рефилла), напоминание о daily reward (локальный вечерний час, если не забран); отмена при открытии приложения; тумблеры в настройках; разрешения Android 13+/iOS запрашиваются при включении.
+- In-app review (`in_app_review`): после первой концовки или 5 завершённых глав, не чаще раза в 30 дней (флаги в `app_settings`).
+- Диплинки (`app_links`): `amoria://novel/<id>` → экран деталей новеллы; регистрация схемы в Android/iOS конфигах.
